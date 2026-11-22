@@ -1,0 +1,35 @@
+{
+  "entity": {
+    "switch": {
+      "irrigation": { "default": "mdi:sprinkler-variant" },
+      "rain_block": { "default": "mdi:weather-rainy" }
+    },
+    "select": {
+      "frequency": { "default": "mdi:calendar-week" },
+      "manual_timer": { "default": "mdi:timer-outline" }
+    },
+    "button": {
+      "start": { "default": "mdi:play" },
+      "stop": { "default": "mdi:stop" }
+    },
+    "sensor": {
+      "status": {
+        "default": "mdi:water-pump",
+        "state": {
+          "running": "mdi:sprinkler-variant",
+          "blocked": "mdi:water-off"
+        }
+      },
+      "remaining": { "default": "mdi:timer-sand" },
+      "next_run": { "default": "mdi:calendar-clock" },
+      "last_block": { "default": "mdi:water-off" },
+      "last_run": { "default": "mdi:history" },
+      "zone_duration": { "default": "mdi:timer-cog-outline" },
+      "zone_end": { "default": "mdi:clock-end" }
+    }
+  },
+  "services": {
+    "start": { "service": "mdi:play" },
+    "stop": { "service": "mdi:stop" }
+  }
+}

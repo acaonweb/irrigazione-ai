@@ -1,0 +1,308 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "New irrigation system",
+        "description": "Give the system a name and choose the weather and outdoor sensors. You will add the zones in the next step.",
+        "data": {
+          "name": "Name",
+          "weather_entity": "Weather entity",
+          "temperature_sensor": "Outdoor temperature sensor",
+          "humidity_sensor": "Outdoor humidity sensor"
+        },
+        "data_description": {
+          "weather_entity": "Used for the formula and the rain block",
+          "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
+          "humidity_sensor": "Optional: otherwise the weather entity humidity is used"
+        }
+      },
+      "zone": {
+        "title": "Zone {count}",
+        "description": "Configure one zone: one valve with its drippers.",
+        "data": {
+          "name": "Zone name",
+          "valve": "Valve",
+          "moisture_sensor": "Soil moisture sensor",
+          "flow_rate": "Flow rate",
+          "min_duration": "Minimum duration",
+          "max_duration": "Maximum duration",
+          "coefficient": "Coefficient",
+          "soil_volume": "Soil volume",
+          "exposure": "Exposure"
+        },
+        "data_description": {
+          "name": "e.g. Second floor, Attic, Vegetable garden",
+          "valve": "Switch or valve entity that opens the water for this zone",
+          "moisture_sensor": "Optional: without it the formula assumes 50%",
+          "flow_rate": "Liters per minute delivered by the drippers of this zone",
+          "min_duration": "The calculated time never goes below this",
+          "max_duration": "The calculated time never goes above this",
+          "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
+          "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
+          "exposure": "Main orientation of the zone (used by the AI analysis)"
+        }
+      },
+      "zone_menu": {
+        "title": "Zones",
+        "description": "Zones configured so far: {zones}.",
+        "menu_options": {
+          "zone": "Add another zone",
+          "schedule": "Continue to scheduling"
+        }
+      },
+      "schedule": {
+        "title": "Scheduling",
+        "description": "When and how to water. You can change everything later from the integration options.",
+        "data": {
+          "sunset_offset": "Minutes after sunset",
+          "weekly_day": "Day for 'once a week'",
+          "twice_weekly_days": "Days for 'twice a week'",
+          "run_mode": "Zones",
+          "safety_minutes": "Safety close",
+          "close_on_startup": "Close valves on startup",
+          "notify_services": "Notifications"
+        },
+        "data_description": {
+          "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
+          "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
+          "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
+          "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
+          "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Enter a name.",
+      "valve_in_use": "This valve is already used by another zone.",
+      "min_greater_than_max": "The minimum duration is greater than the maximum."
+    },
+    "abort": {
+      "already_configured": "A system with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Irrigation system settings",
+        "data": {
+          "weather_entity": "Weather entity",
+          "temperature_sensor": "Outdoor temperature sensor",
+          "humidity_sensor": "Outdoor humidity sensor",
+          "sunset_offset": "Minutes after sunset",
+          "weekly_day": "Day for 'once a week'",
+          "twice_weekly_days": "Days for 'twice a week'",
+          "run_mode": "Zones",
+          "safety_minutes": "Safety close",
+          "close_on_startup": "Close valves on startup",
+          "notify_services": "Notifications"
+        },
+        "data_description": {
+          "weather_entity": "Used for the formula and the rain block",
+          "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
+          "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
+          "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
+          "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
+          "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
+          "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
+          "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "zone": {
+      "entry_type": "Zone",
+      "initiate_flow": {
+        "user": "Add zone"
+      },
+      "step": {
+        "user": {
+          "title": "New zone",
+          "data": {
+            "name": "Zone name",
+            "valve": "Valve",
+            "moisture_sensor": "Soil moisture sensor",
+            "flow_rate": "Flow rate",
+            "min_duration": "Minimum duration",
+            "max_duration": "Maximum duration",
+            "coefficient": "Coefficient",
+            "soil_volume": "Soil volume",
+            "exposure": "Exposure"
+          },
+          "data_description": {
+            "name": "e.g. Second floor, Attic, Vegetable garden",
+            "valve": "Switch or valve entity that opens the water for this zone",
+            "moisture_sensor": "Optional: without it the formula assumes 50%",
+            "flow_rate": "Liters per minute delivered by the drippers of this zone",
+            "min_duration": "The calculated time never goes below this",
+            "max_duration": "The calculated time never goes above this",
+            "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
+            "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
+            "exposure": "Main orientation of the zone (used by the AI analysis)"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit zone",
+          "data": {
+            "name": "Zone name",
+            "valve": "Valve",
+            "moisture_sensor": "Soil moisture sensor",
+            "flow_rate": "Flow rate",
+            "min_duration": "Minimum duration",
+            "max_duration": "Maximum duration",
+            "coefficient": "Coefficient",
+            "soil_volume": "Soil volume",
+            "exposure": "Exposure"
+          },
+          "data_description": {
+            "name": "e.g. Second floor, Attic, Vegetable garden",
+            "valve": "Switch or valve entity that opens the water for this zone",
+            "moisture_sensor": "Optional: without it the formula assumes 50%",
+            "flow_rate": "Liters per minute delivered by the drippers of this zone",
+            "min_duration": "The calculated time never goes below this",
+            "max_duration": "The calculated time never goes above this",
+            "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
+            "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
+            "exposure": "Main orientation of the zone (used by the AI analysis)"
+          }
+        }
+      },
+      "error": {
+        "name_required": "Enter a name.",
+        "valve_in_use": "This valve is already used by another zone.",
+        "min_greater_than_max": "The minimum duration is greater than the maximum."
+      },
+      "abort": {
+        "reconfigure_successful": "Zone updated."
+      }
+    }
+  },
+  "selector": {
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    },
+    "run_mode": {
+      "options": {
+        "parallel": "In parallel",
+        "sequential": "In sequence"
+      }
+    },
+    "exposure": {
+      "options": {
+        "north": "North",
+        "south": "South",
+        "east": "East",
+        "west": "West"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "irrigation": {
+        "name": "Irrigation"
+      },
+      "rain_block": {
+        "name": "Rain block"
+      }
+    },
+    "select": {
+      "frequency": {
+        "name": "Frequency",
+        "state": {
+          "off": "Off",
+          "weekly": "Once a week",
+          "twice_weekly": "Twice a week",
+          "daily": "Every day"
+        }
+      },
+      "manual_timer": {
+        "name": "Manual timer",
+        "state": {
+          "off": "Off (formula)",
+          "15": "15 min",
+          "30": "30 min",
+          "60": "60 min"
+        }
+      }
+    },
+    "button": {
+      "start": {
+        "name": "Start now"
+      },
+      "stop": {
+        "name": "Stop"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "running": "Running",
+          "blocked": "Blocked"
+        }
+      },
+      "remaining": {
+        "name": "Time remaining"
+      },
+      "next_run": {
+        "name": "Next run"
+      },
+      "last_block": {
+        "name": "Last block"
+      },
+      "last_run": {
+        "name": "Last run"
+      },
+      "zone_duration": {
+        "name": "Planned duration"
+      },
+      "zone_end": {
+        "name": "Expected end"
+      }
+    }
+  },
+  "services": {
+    "start": {
+      "name": "Start irrigation",
+      "description": "Starts a cycle on all zones.",
+      "fields": {
+        "config_entry_id": {
+          "name": "System",
+          "description": "Leave empty for all systems."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Same minutes for every zone; empty = formula or manual timer."
+        },
+        "force": {
+          "name": "Ignore rain block",
+          "description": "Start even if the weather says it is raining."
+        }
+      }
+    },
+    "stop": {
+      "name": "Stop irrigation",
+      "description": "Stops the running cycle and closes the valves.",
+      "fields": {
+        "config_entry_id": {
+          "name": "System",
+          "description": "Leave empty for all systems."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "Irrigation system not found or not loaded."
+    }
+  }
+}

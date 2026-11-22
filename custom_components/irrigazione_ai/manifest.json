@@ -1,0 +1,14 @@
+{
+  "domain": "irrigazione_ai",
+  "name": "Irrigazione AI",
+  "after_dependencies": ["sun", "weather", "notify"],
+  "codeowners": ["@acaonweb"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/acaonweb/irrigazione-ai",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/acaonweb/irrigazione-ai/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

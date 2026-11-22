@@ -1,0 +1,95 @@
+"""Costanti per Irrigazione AI."""
+
+from __future__ import annotations
+
+from typing import Final
+
+DOMAIN: Final = "irrigazione_ai"
+
+# Tipo di subentry per le zone
+SUBENTRY_ZONE: Final = "zone"
+
+# --- Configurazione impianto (data/options) ---
+CONF_WEATHER: Final = "weather_entity"
+CONF_TEMPERATURE: Final = "temperature_sensor"
+CONF_HUMIDITY: Final = "humidity_sensor"
+CONF_SUNSET_OFFSET: Final = "sunset_offset"
+CONF_RUN_MODE: Final = "run_mode"
+CONF_SAFETY_MINUTES: Final = "safety_minutes"
+CONF_CLOSE_ON_STARTUP: Final = "close_on_startup"
+CONF_WEEKLY_DAY: Final = "weekly_day"
+CONF_TWICE_WEEKLY_DAYS: Final = "twice_weekly_days"
+CONF_NOTIFY: Final = "notify_services"
+
+RUN_MODE_PARALLEL: Final = "parallel"
+RUN_MODE_SEQUENTIAL: Final = "sequential"
+
+# --- Configurazione zona (subentry data) ---
+CONF_ZONE_NAME: Final = "name"
+CONF_VALVE: Final = "valve"
+CONF_MOISTURE: Final = "moisture_sensor"
+CONF_FLOW_RATE: Final = "flow_rate"
+CONF_MIN_DURATION: Final = "min_duration"
+CONF_MAX_DURATION: Final = "max_duration"
+CONF_COEFFICIENT: Final = "coefficient"
+CONF_SOIL_VOLUME: Final = "soil_volume"
+CONF_EXPOSURE: Final = "exposure"
+
+EXPOSURES: Final = ["north", "south", "east", "west"]
+
+# --- Default ---
+DEFAULT_NAME: Final = "Irrigazione"
+DEFAULT_SUNSET_OFFSET: Final = 5
+DEFAULT_RUN_MODE: Final = RUN_MODE_PARALLEL
+DEFAULT_SAFETY_MINUTES: Final = 60
+DEFAULT_CLOSE_ON_STARTUP: Final = True
+DEFAULT_WEEKLY_DAY: Final = "sun"
+DEFAULT_TWICE_WEEKLY_DAYS: Final = ["thu", "sun"]
+DEFAULT_FLOW_RATE: Final = 0.726
+DEFAULT_MIN_DURATION: Final = 15
+DEFAULT_MAX_DURATION: Final = 120
+DEFAULT_COEFFICIENT: Final = 1.0
+DEFAULT_SOIL_VOLUME: Final = 100
+DEFAULT_EXPOSURE: Final = "north"
+
+WEEKDAYS: Final = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+# --- Frequenza (select) ---
+FREQ_OFF: Final = "off"
+FREQ_WEEKLY: Final = "weekly"
+FREQ_TWICE_WEEKLY: Final = "twice_weekly"
+FREQ_DAILY: Final = "daily"
+FREQUENCIES: Final = [FREQ_OFF, FREQ_WEEKLY, FREQ_TWICE_WEEKLY, FREQ_DAILY]
+DEFAULT_FREQUENCY: Final = FREQ_TWICE_WEEKLY
+
+# --- Timer manuale (select) ---
+MANUAL_TIMER_OPTIONS: Final = ["off", "15", "30", "60"]
+
+# --- Origine di un ciclo ---
+SOURCE_SCHEDULE: Final = "schedule"
+SOURCE_MANUAL: Final = "manual"
+SOURCE_SERVICE: Final = "service"
+
+# --- Stato impianto ---
+STATUS_IDLE: Final = "idle"
+STATUS_RUNNING: Final = "running"
+STATUS_BLOCKED: Final = "blocked"
+STATUSES: Final = [STATUS_IDLE, STATUS_RUNNING, STATUS_BLOCKED]
+
+# Stati meteo considerati "pioggia" per il blocco
+RAIN_STATES: Final = frozenset(
+    {"rainy", "pouring", "lightning-rainy", "snowy-rainy", "lightning", "hail"}
+)
+
+# Servizi
+SERVICE_START: Final = "start"
+SERVICE_STOP: Final = "stop"
+ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
+ATTR_DURATION: Final = "duration"
+ATTR_FORCE: Final = "force"
+
+# Tentativi di chiusura valvola
+CLOSE_RETRIES: Final = 3
+CLOSE_RETRY_DELAY: Final = 2.0
+# Attesa dopo l'avvio di HA prima di chiudere valvole rimaste aperte
+STARTUP_CLOSE_DELAY: Final = 30.0

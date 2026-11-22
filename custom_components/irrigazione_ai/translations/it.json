@@ -1,0 +1,308 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nuovo impianto di irrigazione",
+        "description": "Dai un nome all'impianto e scegli il meteo e i sensori esterni. Le zone le aggiungi al passo successivo.",
+        "data": {
+          "name": "Nome",
+          "weather_entity": "Entità meteo",
+          "temperature_sensor": "Sensore temperatura esterna",
+          "humidity_sensor": "Sensore umidità esterna"
+        },
+        "data_description": {
+          "weather_entity": "Usata dalla formula e dal blocco pioggia",
+          "temperature_sensor": "Facoltativo: altrimenti si usa la temperatura dell'entità meteo",
+          "humidity_sensor": "Facoltativo: altrimenti si usa l'umidità dell'entità meteo"
+        }
+      },
+      "zone": {
+        "title": "Zona {count}",
+        "description": "Configura una zona: una valvola con i suoi gocciolatori.",
+        "data": {
+          "name": "Nome della zona",
+          "valve": "Valvola",
+          "moisture_sensor": "Sensore umidità del terriccio",
+          "flow_rate": "Portata",
+          "min_duration": "Durata minima",
+          "max_duration": "Durata massima",
+          "coefficient": "Coefficiente",
+          "soil_volume": "Volume del terriccio",
+          "exposure": "Esposizione"
+        },
+        "data_description": {
+          "name": "Per esempio Secondo piano, Sottotetto, Orto",
+          "valve": "Entità switch o valve che apre l'acqua per questa zona",
+          "moisture_sensor": "Facoltativo: senza, la formula considera il 50%",
+          "flow_rate": "Litri al minuto erogati dai gocciolatori di questa zona",
+          "min_duration": "Il tempo calcolato non scende mai sotto questo valore",
+          "max_duration": "Il tempo calcolato non supera mai questo valore",
+          "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
+          "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
+          "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+        }
+      },
+      "zone_menu": {
+        "title": "Zone",
+        "description": "Zone configurate finora: {zones}.",
+        "menu_options": {
+          "zone": "Aggiungi un'altra zona",
+          "schedule": "Passa alla programmazione"
+        }
+      },
+      "schedule": {
+        "title": "Programmazione",
+        "description": "Quando e come irrigare. Puoi cambiare tutto anche dopo, dalle opzioni dell'integrazione.",
+        "data": {
+          "sunset_offset": "Minuti dopo il tramonto",
+          "weekly_day": "Giorno per 'una volta a settimana'",
+          "twice_weekly_days": "Giorni per 'due volte a settimana'",
+          "run_mode": "Zone",
+          "safety_minutes": "Chiusura di sicurezza",
+          "close_on_startup": "Chiudi le valvole all'avvio",
+          "notify_services": "Notifiche"
+        },
+        "data_description": {
+          "sunset_offset": "Quando parte il ciclo programmato; negativo = prima del tramonto",
+          "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
+          "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
+          "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
+          "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Inserisci un nome.",
+      "valve_in_use": "Questa valvola è già usata da un'altra zona.",
+      "min_greater_than_max": "La durata minima è maggiore della massima."
+    },
+    "abort": {
+      "already_configured": "Esiste già un impianto con questo nome."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Impostazioni dell'impianto",
+        "data": {
+          "weather_entity": "Entità meteo",
+          "temperature_sensor": "Sensore temperatura esterna",
+          "humidity_sensor": "Sensore umidità esterna",
+          "sunset_offset": "Minuti dopo il tramonto",
+          "weekly_day": "Giorno per 'una volta a settimana'",
+          "twice_weekly_days": "Giorni per 'due volte a settimana'",
+          "run_mode": "Zone",
+          "safety_minutes": "Chiusura di sicurezza",
+          "close_on_startup": "Chiudi le valvole all'avvio",
+          "notify_services": "Notifiche"
+        },
+        "data_description": {
+          "weather_entity": "Usata dalla formula e dal blocco pioggia",
+          "temperature_sensor": "Facoltativo: altrimenti si usa la temperatura dell'entità meteo",
+          "humidity_sensor": "Facoltativo: altrimenti si usa l'umidità dell'entità meteo",
+          "sunset_offset": "Quando parte il ciclo programmato; negativo = prima del tramonto",
+          "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
+          "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
+          "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
+          "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "zone": {
+      "entry_type": "Zona",
+      "initiate_flow": {
+        "user": "Aggiungi zona"
+      },
+      "step": {
+        "user": {
+          "title": "Nuova zona",
+          "data": {
+            "name": "Nome della zona",
+            "valve": "Valvola",
+            "moisture_sensor": "Sensore umidità del terriccio",
+            "flow_rate": "Portata",
+            "min_duration": "Durata minima",
+            "max_duration": "Durata massima",
+            "coefficient": "Coefficiente",
+            "soil_volume": "Volume del terriccio",
+            "exposure": "Esposizione"
+          },
+          "data_description": {
+            "name": "Per esempio Secondo piano, Sottotetto, Orto",
+            "valve": "Entità switch o valve che apre l'acqua per questa zona",
+            "moisture_sensor": "Facoltativo: senza, la formula considera il 50%",
+            "flow_rate": "Litri al minuto erogati dai gocciolatori di questa zona",
+            "min_duration": "Il tempo calcolato non scende mai sotto questo valore",
+            "max_duration": "Il tempo calcolato non supera mai questo valore",
+            "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
+            "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
+            "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+          }
+        },
+        "reconfigure": {
+          "title": "Modifica zona",
+          "data": {
+            "name": "Nome della zona",
+            "valve": "Valvola",
+            "moisture_sensor": "Sensore umidità del terriccio",
+            "flow_rate": "Portata",
+            "min_duration": "Durata minima",
+            "max_duration": "Durata massima",
+            "coefficient": "Coefficiente",
+            "soil_volume": "Volume del terriccio",
+            "exposure": "Esposizione"
+          },
+          "data_description": {
+            "name": "Per esempio Secondo piano, Sottotetto, Orto",
+            "valve": "Entità switch o valve che apre l'acqua per questa zona",
+            "moisture_sensor": "Facoltativo: senza, la formula considera il 50%",
+            "flow_rate": "Litri al minuto erogati dai gocciolatori di questa zona",
+            "min_duration": "Il tempo calcolato non scende mai sotto questo valore",
+            "max_duration": "Il tempo calcolato non supera mai questo valore",
+            "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
+            "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
+            "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+          }
+        }
+      },
+      "error": {
+        "name_required": "Inserisci un nome.",
+        "valve_in_use": "Questa valvola è già usata da un'altra zona.",
+        "min_greater_than_max": "La durata minima è maggiore della massima."
+      },
+      "abort": {
+        "reconfigure_successful": "Zona aggiornata."
+      }
+    }
+  },
+  "selector": {
+    "weekday": {
+      "options": {
+        "mon": "Lunedì",
+        "tue": "Martedì",
+        "wed": "Mercoledì",
+        "thu": "Giovedì",
+        "fri": "Venerdì",
+        "sat": "Sabato",
+        "sun": "Domenica"
+      }
+    },
+    "run_mode": {
+      "options": {
+        "parallel": "In parallelo",
+        "sequential": "In sequenza"
+      }
+    },
+    "exposure": {
+      "options": {
+        "north": "Nord",
+        "south": "Sud",
+        "east": "Est",
+        "west": "Ovest"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "irrigation": {
+        "name": "Irrigazione"
+      },
+      "rain_block": {
+        "name": "Blocco pioggia"
+      }
+    },
+    "select": {
+      "frequency": {
+        "name": "Frequenza",
+        "state": {
+          "off": "Spenta",
+          "weekly": "Una volta a settimana",
+          "twice_weekly": "Due volte a settimana",
+          "daily": "Tutti i giorni"
+        }
+      },
+      "manual_timer": {
+        "name": "Timer manuale",
+        "state": {
+          "off": "Off (formula)",
+          "15": "15 min",
+          "30": "30 min",
+          "60": "60 min"
+        }
+      }
+    },
+    "button": {
+      "start": {
+        "name": "Avvia ora"
+      },
+      "stop": {
+        "name": "Ferma"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Stato",
+        "state": {
+          "idle": "Ferma",
+          "running": "In corso",
+          "blocked": "Bloccata"
+        }
+      },
+      "remaining": {
+        "name": "Tempo rimanente"
+      },
+      "next_run": {
+        "name": "Prossima irrigazione"
+      },
+      "last_block": {
+        "name": "Ultimo blocco"
+      },
+      "last_run": {
+        "name": "Ultima irrigazione"
+      },
+      "zone_duration": {
+        "name": "Durata prevista"
+      },
+      "zone_end": {
+        "name": "Fine prevista"
+      }
+    }
+  },
+  "services": {
+    "start": {
+      "name": "Avvia irrigazione",
+      "description": "Avvia un ciclo su tutte le zone.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Impianto",
+          "description": "Lascia vuoto per tutti gli impianti."
+        },
+        "duration": {
+          "name": "Durata",
+          "description": "Stessi minuti per ogni zona; vuoto = formula o timer manuale."
+        },
+        "force": {
+          "name": "Ignora blocco pioggia",
+          "description": "Avvia anche se il meteo indica pioggia."
+        }
+      }
+    },
+    "stop": {
+      "name": "Ferma irrigazione",
+      "description": "Interrompe il ciclo in corso e chiude le valvole.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Impianto",
+          "description": "Lascia vuoto per tutti gli impianti."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "Impianto non trovato o non caricato."
+    }
+  }
+}
