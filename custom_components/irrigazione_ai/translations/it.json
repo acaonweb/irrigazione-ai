@@ -28,7 +28,8 @@
           "max_duration": "Durata massima",
           "coefficient": "Coefficiente",
           "soil_volume": "Volume del terriccio",
-          "exposure": "Esposizione"
+          "exposure": "Esposizione",
+          "formula": "Formula della zona"
         },
         "data_description": {
           "name": "Per esempio Secondo piano, Sottotetto, Orto",
@@ -39,7 +40,8 @@
           "max_duration": "Il tempo calcolato non supera mai questo valore",
           "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
           "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
-          "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+          "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+          "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
         }
       },
       "zone_menu": {
@@ -69,12 +71,31 @@
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
           "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
         }
+      },
+      "formula": {
+        "title": "Formula della durata",
+        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
+        "data": {
+          "formula": "Formula"
+        },
+        "data_description": {
+          "formula": "Quella predefinita è la formula classica: modificala come preferisci"
+        }
+      },
+      "formula_preview": {
+        "title": "Anteprima della formula",
+        "description": "Con i valori attuali la formula dà:\n\n{preview}\n\nLe zone con una formula propria non sono mostrate.",
+        "menu_options": {
+          "finish": "Va bene, salva",
+          "formula": "Modifica la formula"
+        }
       }
     },
     "error": {
       "name_required": "Inserisci un nome.",
       "valve_in_use": "Questa valvola è già usata da un'altra zona.",
-      "min_greater_than_max": "La durata minima è maggiore della massima."
+      "min_greater_than_max": "La durata minima è maggiore della massima.",
+      "formula_invalid": "La formula non funziona: {error}"
     },
     "abort": {
       "already_configured": "Esiste già un impianto con questo nome."
@@ -106,7 +127,28 @@
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
           "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
         }
+      },
+      "formula": {
+        "title": "Formula della durata",
+        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
+        "data": {
+          "formula": "Formula"
+        },
+        "data_description": {
+          "formula": "Quella predefinita è la formula classica: modificala come preferisci"
+        }
+      },
+      "formula_preview": {
+        "title": "Anteprima della formula",
+        "description": "Con i valori attuali la formula dà:\n\n{preview}\n\nLe zone con una formula propria non sono mostrate.",
+        "menu_options": {
+          "finish": "Va bene, salva",
+          "formula": "Modifica la formula"
+        }
       }
+    },
+    "error": {
+      "formula_invalid": "La formula non funziona: {error}"
     }
   },
   "config_subentries": {
@@ -127,7 +169,8 @@
             "max_duration": "Durata massima",
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
-            "exposure": "Esposizione"
+            "exposure": "Esposizione",
+            "formula": "Formula della zona"
           },
           "data_description": {
             "name": "Per esempio Secondo piano, Sottotetto, Orto",
@@ -138,7 +181,8 @@
             "max_duration": "Il tempo calcolato non supera mai questo valore",
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
-            "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+            "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         },
         "reconfigure": {
@@ -152,7 +196,8 @@
             "max_duration": "Durata massima",
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
-            "exposure": "Esposizione"
+            "exposure": "Esposizione",
+            "formula": "Formula della zona"
           },
           "data_description": {
             "name": "Per esempio Secondo piano, Sottotetto, Orto",
@@ -163,14 +208,16 @@
             "max_duration": "Il tempo calcolato non supera mai questo valore",
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
-            "exposure": "Orientamento principale della zona (usato dall'analisi AI)"
+            "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         }
       },
       "error": {
         "name_required": "Inserisci un nome.",
         "valve_in_use": "Questa valvola è già usata da un'altra zona.",
-        "min_greater_than_max": "La durata minima è maggiore della massima."
+        "min_greater_than_max": "La durata minima è maggiore della massima.",
+        "formula_invalid": "La formula non funziona: {error}"
       },
       "abort": {
         "reconfigure_successful": "Zona aggiornata."

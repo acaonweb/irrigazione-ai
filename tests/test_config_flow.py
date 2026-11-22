@@ -69,8 +69,34 @@ async def test_full_wizard(hass: HomeAssistant, valves) -> None:
     assert result["step_id"] == "schedule"
 
     result = await hass.config_entries.flow.async_configure(result["flow_id"], SCHEDULE)
+    assert result["step_id"] == "formula"
+
+    # Gli errori di sintassi li blocca già il selettore template di HA;
+    # qui un template valido che però non restituisce un numero.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"formula": "{{ weather }}"}
+    )
+    assert result["errors"] == {"formula": "formula_invalid"}
+    assert "non è un numero" in result["description_placeholders"]["error"]
+    # Variabile inesistente usata in un calcolo
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"formula": "{{ pippo * 2 }}"}
+    )
+    assert result["errors"] == {"formula": "formula_invalid"}
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"formula": "{{ 40 * coefficient }}"}
+    )
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "formula_preview"
+    assert "**Secondo piano**: 40 min" in result["description_placeholders"]["preview"]
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "finish"}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     entry = result["result"]
+    assert entry.options["formula"] == "{{ 40 * coefficient }}"
     assert entry.title == "Terrazzo"
     assert entry.options[CONF_WEATHER] == WEATHER
     assert entry.options[CONF_RUN_MODE] == "sequential"
@@ -132,7 +158,39 @@ async def test_options_flow(hass: HomeAssistant, valves) -> None:
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_WEATHER: WEATHER, **SCHEDULE, "safety_minutes": 30}
     )
+    assert result["step_id"] == "formula"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"formula": "{{ 25 }}"}
+    )
+    assert result["step_id"] == "formula_preview"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "finish"}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.options["safety_minutes"] == 30
     assert entry.options[CONF_RUN_MODE] == "sequential"
+    assert entry.options["formula"] == "{{ 25 }}"
+    assert hass.states.get("sensor.secondo_piano_planned_duration").state == "25"
+
+
+async def test_zone_formula_invalid(hass: HomeAssistant, valves) -> None:
+    """Formula della zona non valida: errore nel modulo."""
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    hass.states.async_set("switch.valvola03", "off")
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, SUBENTRY_ZONE), context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], _zone_input("Orto", "switch.valvola03") | {"formula": "{{ 'abc' }}"}
+    )
+    assert result["errors"] == {"formula": "formula_invalid"}
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], _zone_input("Orto", "switch.valvola03") | {"formula": "{{ 33 }}"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.orto_planned_duration").state == "33"

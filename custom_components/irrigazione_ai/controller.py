@@ -35,7 +35,12 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt as dt_util
 
-from .calc import calculate_duration, is_irrigation_day
+from .calc import (
+    calculate_duration,
+    clamp_minutes,
+    formula_variables,
+    is_irrigation_day,
+)
 from .const import (
     CLOSE_RETRIES,
     CLOSE_RETRY_DELAY,
@@ -43,6 +48,7 @@ from .const import (
     CONF_COEFFICIENT,
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
+    CONF_FORMULA,
     CONF_HUMIDITY,
     CONF_MAX_DURATION,
     CONF_MIN_DURATION,
@@ -62,6 +68,7 @@ from .const import (
     DEFAULT_COEFFICIENT,
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
+    DEFAULT_FORMULA,
     DEFAULT_FREQUENCY,
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
@@ -81,6 +88,7 @@ from .const import (
     STATUS_RUNNING,
     SUBENTRY_ZONE,
 )
+from .formula import FormulaError, render_formula
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,6 +114,7 @@ class ZoneConfig:
     coefficient: float
     soil_volume: float
     exposure: str
+    formula: str | None = None
 
     @classmethod
     def from_subentry(cls, subentry_id: str, data: dict[str, Any]) -> ZoneConfig:
@@ -121,6 +130,7 @@ class ZoneConfig:
             coefficient=float(data.get(CONF_COEFFICIENT, DEFAULT_COEFFICIENT)),
             soil_volume=float(data.get(CONF_SOIL_VOLUME, DEFAULT_SOIL_VOLUME)),
             exposure=data.get(CONF_EXPOSURE, DEFAULT_EXPOSURE),
+            formula=(data.get(CONF_FORMULA) or "").strip() or None,
         )
 
 
@@ -173,6 +183,8 @@ class IrrigationController:
         self.last_block: str | None = None
         self.last_block_at: datetime | None = None
         self.last_run_end: datetime | None = None
+
+        self.formula_errors: dict[str, str] = {}
 
         self._run_task: asyncio.Task | None = None
         self._unsubs: list[Callable[[], None]] = []
@@ -311,16 +323,62 @@ class IrrigationController:
         """Umidità del terriccio della zona."""
         return _float_state(self.hass, zone.moisture_sensor)
 
-    def calculated_minutes(self, zone: ZoneConfig) -> int:
-        """Durata calcolata con la formula meteo."""
-        return calculate_duration(
-            self.zone_moisture(zone),
-            self.outdoor_temperature(),
-            self.weather_state(),
+    def system_formula(self) -> str:
+        """Formula dell'impianto (predefinita se non impostata)."""
+        return (self.config.get(CONF_FORMULA) or "").strip() or DEFAULT_FORMULA
+
+    def zone_formula(self, zone: ZoneConfig) -> tuple[str, str]:
+        """Formula usata per la zona e da dove viene (zone/system/default)."""
+        if zone.formula:
+            return zone.formula, "zone"
+        custom = (self.config.get(CONF_FORMULA) or "").strip()
+        if custom and custom != DEFAULT_FORMULA:
+            return custom, "system"
+        return DEFAULT_FORMULA, "default"
+
+    def zone_variables(self, zone: ZoneConfig) -> dict[str, Any]:
+        """Variabili a disposizione della formula per la zona."""
+        return formula_variables(
+            moisture=self.zone_moisture(zone),
+            temperature=self.outdoor_temperature(),
+            humidity=self.outdoor_humidity(),
+            weather=self.weather_state(),
             coefficient=zone.coefficient,
-            min_minutes=zone.min_duration,
-            max_minutes=zone.max_duration,
+            flow_rate=zone.flow_rate,
+            soil_volume=zone.soil_volume,
+            exposure=zone.exposure,
+            min_duration=zone.min_duration,
+            max_duration=zone.max_duration,
         )
+
+    def calculated_minutes(self, zone: ZoneConfig) -> int:
+        """Durata calcolata con la formula (personalizzata o predefinita).
+
+        Se la formula personalizzata fallisce si usa quella predefinita e
+        l'errore resta in formula_errors (mostrato dal sensore della zona).
+        """
+        formula, _source = self.zone_formula(zone)
+        try:
+            value = render_formula(self.hass, formula, self.zone_variables(zone))
+        except FormulaError as err:
+            message = str(err)
+            if self.formula_errors.get(zone.zone_id) != message:
+                _LOGGER.warning(
+                    "Formula della zona %s non valida (%s): uso quella predefinita",
+                    zone.name,
+                    message,
+                )
+            self.formula_errors[zone.zone_id] = message
+            return calculate_duration(
+                self.zone_moisture(zone),
+                self.outdoor_temperature(),
+                self.weather_state(),
+                coefficient=zone.coefficient,
+                min_minutes=zone.min_duration,
+                max_minutes=zone.max_duration,
+            )
+        self.formula_errors.pop(zone.zone_id, None)
+        return clamp_minutes(value, zone.min_duration, zone.max_duration)
 
     def planned_minutes(self, zone: ZoneConfig) -> int:
         """Durata che verrebbe usata ora (timer manuale o formula)."""

@@ -14,14 +14,16 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_NAME
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
+from .calc import clamp_minutes, formula_variables
 from .const import (
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
+    CONF_FORMULA,
     CONF_HUMIDITY,
     CONF_MAX_DURATION,
     CONF_MIN_DURATION,
@@ -41,6 +43,7 @@ from .const import (
     DEFAULT_COEFFICIENT,
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
+    DEFAULT_FORMULA,
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
     DEFAULT_NAME,
@@ -57,6 +60,8 @@ from .const import (
     SUBENTRY_ZONE,
     WEEKDAYS,
 )
+from .controller import ZoneConfig, _float_state
+from .formula import FormulaError, render_formula
 
 # ----------------------------------------------------------------------
 # Schemi
@@ -206,8 +211,94 @@ def _zone_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=EXPOSURES, translation_key="exposure")
             ),
+            vol.Optional(
+                CONF_FORMULA,
+                description={"suggested_value": defaults.get(CONF_FORMULA)},
+            ): selector.TemplateSelector(),
         }
     )
+
+
+def _formula_schema(current: str | None) -> vol.Schema:
+    """Editor della formula dell'impianto."""
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_FORMULA, default=current or DEFAULT_FORMULA
+            ): selector.TemplateSelector(),
+        }
+    )
+
+
+def _inputs(hass: HomeAssistant, system: dict[str, Any]) -> tuple[float | None, float | None, str | None]:
+    """Temperatura, umidità e meteo attuali (come li legge il motore)."""
+    weather_id = system.get(CONF_WEATHER)
+    weather = hass.states.get(weather_id) if weather_id else None
+    temperature = _float_state(hass, system.get(CONF_TEMPERATURE))
+    humidity = _float_state(hass, system.get(CONF_HUMIDITY))
+    if weather is not None:
+        if temperature is None:
+            try:
+                temperature = float(weather.attributes.get("temperature"))
+            except (TypeError, ValueError):
+                temperature = None
+        if humidity is None:
+            try:
+                humidity = float(weather.attributes.get("humidity"))
+            except (TypeError, ValueError):
+                humidity = None
+    return temperature, humidity, weather.state if weather else None
+
+
+def _zone_variables(hass: HomeAssistant, system: dict[str, Any], zone: ZoneConfig) -> dict[str, Any]:
+    temperature, humidity, weather = _inputs(hass, system)
+    return formula_variables(
+        moisture=_float_state(hass, zone.moisture_sensor),
+        temperature=temperature,
+        humidity=humidity,
+        weather=weather,
+        coefficient=zone.coefficient,
+        flow_rate=zone.flow_rate,
+        soil_volume=zone.soil_volume,
+        exposure=zone.exposure,
+        min_duration=zone.min_duration,
+        max_duration=zone.max_duration,
+    )
+
+
+def _check_formula(
+    hass: HomeAssistant,
+    formula: str,
+    system: dict[str, Any],
+    zones: list[dict[str, Any]],
+    *,
+    only_without_own: bool = False,
+) -> list[tuple[str, int, float]]:
+    """Calcola la formula per ogni zona. Solleva FormulaError se fallisce.
+
+    Ritorna (nome zona, minuti limitati, valore grezzo).
+    """
+    results: list[tuple[str, int, float]] = []
+    for data in zones:
+        zone = ZoneConfig.from_subentry("preview", data)
+        if only_without_own and zone.formula:
+            continue
+        value = render_formula(hass, formula, _zone_variables(hass, system, zone))
+        results.append(
+            (zone.name, clamp_minutes(value, zone.min_duration, zone.max_duration), value)
+        )
+    return results
+
+
+def _preview_text(results: list[tuple[str, int, float]]) -> str:
+    """Anteprima in markdown."""
+    if not results:
+        return "-"
+    lines = []
+    for name, minutes, raw in results:
+        extra = "" if round(raw) == minutes else f" (formula: {raw:.1f})"
+        lines.append(f"- **{name}**: {minutes} min{extra}")
+    return "\n".join(lines)
 
 
 def _clean_zone(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -217,13 +308,30 @@ def _clean_zone(user_input: dict[str, Any]) -> dict[str, Any]:
     for key in (CONF_MIN_DURATION, CONF_MAX_DURATION):
         data[key] = int(data[key])
     data[CONF_SOIL_VOLUME] = float(data[CONF_SOIL_VOLUME])
+    formula = (data.get(CONF_FORMULA) or "").strip()
+    if formula:
+        data[CONF_FORMULA] = formula
+    else:
+        data.pop(CONF_FORMULA, None)
     return data
 
 
 def _validate_zone(
-    user_input: dict[str, Any], used_valves: set[str]
+    user_input: dict[str, Any],
+    used_valves: set[str],
+    hass: HomeAssistant | None = None,
+    system: dict[str, Any] | None = None,
+    placeholders: dict[str, str] | None = None,
 ) -> dict[str, str]:
     errors: dict[str, str] = {}
+    formula = (user_input.get(CONF_FORMULA) or "").strip()
+    if formula and hass is not None:
+        try:
+            _check_formula(hass, formula, system or {}, [_clean_zone(user_input)])
+        except FormulaError as err:
+            errors[CONF_FORMULA] = "formula_invalid"
+            if placeholders is not None:
+                placeholders["error"] = str(err)
     if not user_input[CONF_ZONE_NAME].strip():
         errors[CONF_ZONE_NAME] = "name_required"
     if user_input[CONF_VALVE] in used_valves:
@@ -247,7 +355,7 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Wizard: impianto -> zone -> programmazione."""
+    """Wizard: impianto -> zone -> programmazione -> formula."""
 
     VERSION = 1
 
@@ -256,6 +364,9 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name: str = DEFAULT_NAME
         self._system: dict[str, Any] = {}
         self._zones: list[dict[str, Any]] = []
+        self._schedule: dict[str, Any] = {}
+        self._formula: str = DEFAULT_FORMULA
+        self._preview: str = ""
 
     @staticmethod
     @callback
@@ -275,7 +386,6 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Passo 1: impianto."""
-        errors: dict[str, str] = {}
         if user_input is not None:
             name = user_input.pop(CONF_NAME).strip() or DEFAULT_NAME
             self._async_abort_entries_match({CONF_NAME: name})
@@ -286,16 +396,17 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {vol.Required(CONF_NAME, default=DEFAULT_NAME): selector.TextSelector()}
         ).extend(_system_schema({}).schema)
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+        return self.async_show_form(step_id="user", data_schema=schema)
 
     async def async_step_zone(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Passo 2: una zona."""
         errors: dict[str, str] = {}
+        placeholders = {"count": str(len(self._zones) + 1), "error": ""}
         if user_input is not None:
             used = {z[CONF_VALVE] for z in self._zones}
-            errors = _validate_zone(user_input, used)
+            errors = _validate_zone(user_input, used, self.hass, self._system, placeholders)
             if not errors:
                 self._zones.append(_clean_zone(user_input))
                 return await self.async_step_zone_menu()
@@ -305,7 +416,7 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
                 _zone_schema({}), user_input or {}
             ),
             errors=errors,
-            description_placeholders={"count": str(len(self._zones) + 1)},
+            description_placeholders=placeholders,
         )
 
     async def async_step_zone_menu(
@@ -323,43 +434,149 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_schedule(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Passo 3: programmazione, poi crea l'impianto."""
+        """Passo 3: programmazione."""
         if user_input is not None:
-            options = {**self._system, **_clean_schedule(user_input)}
-            return self.async_create_entry(
-                title=self._name,
-                data={CONF_NAME: self._name},
-                options=options,
-                subentries=[
-                    {
-                        "subentry_type": SUBENTRY_ZONE,
-                        "data": zone,
-                        "title": zone[CONF_ZONE_NAME],
-                        "unique_id": zone[CONF_VALVE],
-                    }
-                    for zone in self._zones
-                ],
-            )
+            self._schedule = _clean_schedule(user_input)
+            return await self.async_step_formula()
         return self.async_show_form(step_id="schedule", data_schema=_schedule_schema({}))
+
+    async def async_step_formula(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Passo 4: formula della durata."""
+        errors: dict[str, str] = {}
+        placeholders = {"error": ""}
+        if user_input is not None:
+            formula = user_input[CONF_FORMULA].strip() or DEFAULT_FORMULA
+            try:
+                results = _check_formula(
+                    self.hass, formula, self._system, self._zones, only_without_own=True
+                )
+            except FormulaError as err:
+                errors[CONF_FORMULA] = "formula_invalid"
+                placeholders["error"] = str(err)
+            else:
+                self._formula = formula
+                self._preview = _preview_text(results)
+                return await self.async_step_formula_preview()
+        return self.async_show_form(
+            step_id="formula",
+            data_schema=_formula_schema(
+                user_input[CONF_FORMULA] if user_input else self._formula
+            ),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+    async def async_step_formula_preview(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Anteprima: conferma o torna all'editor."""
+        return self.async_show_menu(
+            step_id="formula_preview",
+            menu_options=["finish", "formula"],
+            description_placeholders={"preview": self._preview},
+        )
+
+    async def async_step_finish(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Crea l'impianto con le zone."""
+        options = {**self._system, **self._schedule, CONF_FORMULA: self._formula}
+        return self.async_create_entry(
+            title=self._name,
+            data={CONF_NAME: self._name},
+            options=options,
+            subentries=[
+                {
+                    "subentry_type": SUBENTRY_ZONE,
+                    "data": zone,
+                    "title": zone[CONF_ZONE_NAME],
+                    "unique_id": zone[CONF_VALVE],
+                }
+                for zone in self._zones
+            ],
+        )
 
 
 # ----------------------------------------------------------------------
-# Opzioni (impianto + programmazione)
+# Opzioni (impianto + programmazione + formula)
 # ----------------------------------------------------------------------
 
 
 class IrrigazioneOptionsFlow(OptionsFlow):
-    """Modifica sensori e programmazione."""
+    """Modifica sensori, programmazione e formula."""
+
+    def __init__(self) -> None:
+        """Inizializza."""
+        self._options: dict[str, Any] = {}
+        self._preview: str = ""
+
+    def _zones(self) -> list[dict[str, Any]]:
+        return [
+            dict(sub.data)
+            for sub in self.config_entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_ZONE
+        ]
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Un unico modulo con tutte le impostazioni dell'impianto."""
+        """Sensori e programmazione."""
         if user_input is not None:
-            return self.async_create_entry(data=_clean_schedule(user_input))
+            self._options = _clean_schedule(user_input)
+            return await self.async_step_formula()
         current = dict(self.config_entry.options)
         schema = _system_schema(current).extend(_schedule_schema(current).schema)
         return self.async_show_form(step_id="init", data_schema=schema)
+
+    async def async_step_formula(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Editor della formula."""
+        errors: dict[str, str] = {}
+        placeholders = {"error": ""}
+        if user_input is not None:
+            formula = user_input[CONF_FORMULA].strip() or DEFAULT_FORMULA
+            try:
+                results = _check_formula(
+                    self.hass, formula, self._options, self._zones(), only_without_own=True
+                )
+            except FormulaError as err:
+                errors[CONF_FORMULA] = "formula_invalid"
+                placeholders["error"] = str(err)
+            else:
+                self._options[CONF_FORMULA] = formula
+                self._preview = _preview_text(results)
+                return await self.async_step_formula_preview()
+        current = (
+            user_input[CONF_FORMULA]
+            if user_input
+            else self._options.get(CONF_FORMULA)
+            or self.config_entry.options.get(CONF_FORMULA)
+        )
+        return self.async_show_form(
+            step_id="formula",
+            data_schema=_formula_schema(current),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+    async def async_step_formula_preview(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Anteprima: salva o torna all'editor."""
+        return self.async_show_menu(
+            step_id="formula_preview",
+            menu_options=["finish", "formula"],
+            description_placeholders={"preview": self._preview},
+        )
+
+    async def async_step_finish(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Salva."""
+        return self.async_create_entry(data=self._options)
 
 
 # ----------------------------------------------------------------------
@@ -383,8 +600,15 @@ class ZoneSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Nuova zona."""
         errors: dict[str, str] = {}
+        placeholders = {"error": ""}
         if user_input is not None:
-            errors = _validate_zone(user_input, self._used_valves())
+            errors = _validate_zone(
+                user_input,
+                self._used_valves(),
+                self.hass,
+                dict(self._get_entry().options),
+                placeholders,
+            )
             if not errors:
                 data = _clean_zone(user_input)
                 return self.async_create_entry(
@@ -396,6 +620,7 @@ class ZoneSubentryFlow(ConfigSubentryFlow):
                 _zone_schema({}), user_input or {}
             ),
             errors=errors,
+            description_placeholders=placeholders,
         )
 
     async def async_step_reconfigure(
@@ -404,8 +629,15 @@ class ZoneSubentryFlow(ConfigSubentryFlow):
         """Modifica una zona esistente."""
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
+        placeholders = {"error": ""}
         if user_input is not None:
-            errors = _validate_zone(user_input, self._used_valves(subentry.subentry_id))
+            errors = _validate_zone(
+                user_input,
+                self._used_valves(subentry.subentry_id),
+                self.hass,
+                dict(self._get_entry().options),
+                placeholders,
+            )
             if not errors:
                 data = _clean_zone(user_input)
                 return self.async_update_and_abort(
@@ -419,4 +651,5 @@ class ZoneSubentryFlow(ConfigSubentryFlow):
             step_id="reconfigure",
             data_schema=_zone_schema(user_input or dict(subentry.data)),
             errors=errors,
+            description_placeholders=placeholders,
         )

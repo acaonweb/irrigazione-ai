@@ -40,6 +40,52 @@ DEFAULT_TEMPERATURE = 20.0
 MIN_MOISTURE = 10.0
 
 
+def weather_factor(weather: str | None) -> float:
+    """Fattore moltiplicativo per lo stato meteo."""
+    return WEATHER_FACTORS.get(weather or "", 1.0)
+
+
+def clamp_minutes(value: float, min_minutes: int, max_minutes: int) -> int:
+    """Limita e arrotonda una durata."""
+    low, high = min(min_minutes, max_minutes), max(min_minutes, max_minutes)
+    return int(round(min(max(value, low), high)))
+
+
+def formula_variables(
+    *,
+    moisture: float | None,
+    temperature: float | None,
+    humidity: float | None,
+    weather: str | None,
+    coefficient: float,
+    flow_rate: float,
+    soil_volume: float,
+    exposure: str,
+    min_duration: int,
+    max_duration: int,
+) -> dict[str, object]:
+    """Variabili a disposizione della formula personalizzata.
+
+    moisture ha un minimo del 10% (50% se manca il sensore) e temperature
+    vale 20 °C se manca, così la formula non divide mai per zero.
+    """
+    hum = DEFAULT_MOISTURE if moisture is None else moisture
+    return {
+        "moisture": max(hum, MIN_MOISTURE),
+        "moisture_raw": moisture,
+        "temperature": DEFAULT_TEMPERATURE if temperature is None else temperature,
+        "humidity": humidity,
+        "weather": weather or "",
+        "weather_factor": weather_factor(weather),
+        "coefficient": coefficient,
+        "flow_rate": flow_rate,
+        "soil_volume": soil_volume,
+        "exposure": exposure,
+        "min_duration": min_duration,
+        "max_duration": max_duration,
+    }
+
+
 def calculate_duration(
     moisture: float | None,
     temperature: float | None,
@@ -62,11 +108,9 @@ def calculate_duration(
     temp = DEFAULT_TEMPERATURE if temperature is None else temperature
 
     minutes = (20 + 20 * (100 - hum) / hum + 20 * temp / 25) * 0.9
-    minutes *= WEATHER_FACTORS.get(weather or "", 1.0)
+    minutes *= weather_factor(weather)
     minutes *= coefficient
-
-    low, high = min(min_minutes, max_minutes), max(min_minutes, max_minutes)
-    return int(round(min(max(minutes, low), high)))
+    return clamp_minutes(minutes, min_minutes, max_minutes)
 
 
 def is_irrigation_day(

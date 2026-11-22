@@ -28,7 +28,8 @@
           "max_duration": "Maximum duration",
           "coefficient": "Coefficient",
           "soil_volume": "Soil volume",
-          "exposure": "Exposure"
+          "exposure": "Exposure",
+          "formula": "Zone formula"
         },
         "data_description": {
           "name": "e.g. Second floor, Attic, Vegetable garden",
@@ -39,7 +40,8 @@
           "max_duration": "The calculated time never goes above this",
           "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
           "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
-          "exposure": "Main orientation of the zone (used by the AI analysis)"
+          "exposure": "Main orientation of the zone (used by the AI analysis)",
+          "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
         }
       },
       "zone_menu": {
@@ -69,12 +71,31 @@
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
           "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
         }
+      },
+      "formula": {
+        "title": "Duration formula",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "data": {
+          "formula": "Formula"
+        },
+        "data_description": {
+          "formula": "The default is the classic formula: change it as you like"
+        }
+      },
+      "formula_preview": {
+        "title": "Formula preview",
+        "description": "With the current values the formula gives:\n\n{preview}\n\nZones with their own formula are not shown.",
+        "menu_options": {
+          "finish": "Looks good, save",
+          "formula": "Edit the formula"
+        }
       }
     },
     "error": {
       "name_required": "Enter a name.",
       "valve_in_use": "This valve is already used by another zone.",
-      "min_greater_than_max": "The minimum duration is greater than the maximum."
+      "min_greater_than_max": "The minimum duration is greater than the maximum.",
+      "formula_invalid": "The formula does not work: {error}"
     },
     "abort": {
       "already_configured": "A system with this name already exists."
@@ -106,7 +127,28 @@
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
           "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
         }
+      },
+      "formula": {
+        "title": "Duration formula",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "data": {
+          "formula": "Formula"
+        },
+        "data_description": {
+          "formula": "The default is the classic formula: change it as you like"
+        }
+      },
+      "formula_preview": {
+        "title": "Formula preview",
+        "description": "With the current values the formula gives:\n\n{preview}\n\nZones with their own formula are not shown.",
+        "menu_options": {
+          "finish": "Looks good, save",
+          "formula": "Edit the formula"
+        }
       }
+    },
+    "error": {
+      "formula_invalid": "The formula does not work: {error}"
     }
   },
   "config_subentries": {
@@ -127,7 +169,8 @@
             "max_duration": "Maximum duration",
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
-            "exposure": "Exposure"
+            "exposure": "Exposure",
+            "formula": "Zone formula"
           },
           "data_description": {
             "name": "e.g. Second floor, Attic, Vegetable garden",
@@ -138,7 +181,8 @@
             "max_duration": "The calculated time never goes above this",
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
-            "exposure": "Main orientation of the zone (used by the AI analysis)"
+            "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         },
         "reconfigure": {
@@ -152,7 +196,8 @@
             "max_duration": "Maximum duration",
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
-            "exposure": "Exposure"
+            "exposure": "Exposure",
+            "formula": "Zone formula"
           },
           "data_description": {
             "name": "e.g. Second floor, Attic, Vegetable garden",
@@ -163,14 +208,16 @@
             "max_duration": "The calculated time never goes above this",
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
-            "exposure": "Main orientation of the zone (used by the AI analysis)"
+            "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         }
       },
       "error": {
         "name_required": "Enter a name.",
         "valve_in_use": "This valve is already used by another zone.",
-        "min_greater_than_max": "The minimum duration is greater than the maximum."
+        "min_greater_than_max": "The minimum duration is greater than the maximum.",
+        "formula_invalid": "The formula does not work: {error}"
       },
       "abort": {
         "reconfigure_successful": "Zone updated."

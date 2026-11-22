@@ -18,6 +18,7 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 1. **Impianto:** nome, entità meteo, sensori facoltativi di temperatura e umidità esterna.
 2. **Zone:** una per valvola (`switch` o `valve`), con sensore di umidità del terriccio, portata in L/min, durata minima e massima, coefficiente, volume del terriccio ed esposizione. Le zone si aggiungono e modificano anche dopo, dalla pagina dell'integrazione (**Aggiungi zona**).
 3. **Programmazione:** minuti dopo il tramonto, giorni per le frequenze settimanali, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura delle valvole al riavvio, azioni di notifica.
+4. **Formula:** editor della formula della durata, con anteprima dei minuti per ogni zona.
 
 ## Entità
 
@@ -29,16 +30,51 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 | Selettore *Timer manuale* | 15/30/60 minuti per tutte le zone al posto della formula |
 | Pulsanti *Avvia ora* / *Ferma* | Comandi immediati |
 | Sensori *Stato*, *Tempo rimanente*, *Prossima irrigazione*, *Ultima irrigazione*, *Ultimo blocco* | Stato dell'impianto |
-| Per zona: *Durata prevista*, *Fine prevista* | Minuti calcolati ora (con litri negli attributi) e ora di fine durante il ciclo |
+| Per zona: *Durata prevista*, *Fine prevista* | Minuti calcolati ora (con litri, formula usata ed eventuale errore negli attributi) e ora di fine durante il ciclo |
 
 ## Servizi
 
 - `irrigazione_ai.start` — avvia un ciclo. Campi facoltativi: `config_entry_id`, `duration` (minuti uguali per tutte le zone), `force` (ignora il blocco pioggia).
 - `irrigazione_ai.stop` — ferma il ciclo e chiude le valvole.
 
-## Formula
+## Formula personalizzata
 
-Per ogni zona: `t = (20 + 20·(100−u)/u + 20·T/25) · 0,9 · fattore_meteo · coefficiente`, con `u` umidità del terriccio (minimo 10%) e `T` temperatura esterna, limitata tra durata minima e massima. Fattori meteo: sereno 1,1; poco nuvoloso 0,8; nuvoloso 0,5; pioggia 0,2.
+La durata di ogni zona si calcola con una **formula scritta come template Jinja**, lo stesso linguaggio dei sensori template di Home Assistant. Si modifica nel wizard e nelle opzioni dell'impianto. Ogni zona può averne una propria, che sostituisce quella dell'impianto. Prima di salvare, il wizard mostra quanti minuti darebbe a ogni zona con i valori attuali.
+
+Formula predefinita:
+
+```jinja
+{{ (20 + 20 * (100 - moisture) / moisture + 20 * temperature / 25) * 0.9 * weather_factor * coefficient }}
+```
+
+| Variabile | Significato |
+| --- | --- |
+| `moisture` | Umidità del terriccio della zona in % (minimo 10; 50 se manca il sensore) |
+| `moisture_raw` | Umidità del terriccio così com'è (`none` se manca) |
+| `temperature` | Temperatura esterna in °C (20 se manca) |
+| `humidity` | Umidità esterna in % (`none` se manca) |
+| `weather` | Stato dell'entità meteo (`sunny`, `cloudy`, `rainy`…) |
+| `weather_factor` | Sereno 1,1 · poco nuvoloso 0,8 · nuvoloso 0,5 · nebbia 0,6 · pioggia 0,2 · altro 1 |
+| `coefficient` | Coefficiente della zona |
+| `flow_rate` | Portata della zona in L/min |
+| `soil_volume` | Volume del terriccio in L |
+| `exposure` | `north`, `south`, `east`, `west` |
+| `min_duration`, `max_duration` | Limiti della zona in minuti |
+
+Si può leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato viene **sempre** limitato tra durata minima e massima della zona. Se la formula smette di funzionare (per esempio perché un sensore che legge diventa non disponibile), l'integrazione usa la formula predefinita: l'errore compare nell'attributo `formula_error` del sensore *Durata prevista* della zona.
+
+Esempi:
+
+```jinja
+{# Litri da dare in base al volume del terriccio, convertiti in minuti #}
+{{ soil_volume * (60 - moisture) / 100 / flow_rate }}
+
+{# Più acqua con l'esposizione a sud #}
+{{ (40 - moisture / 2) * (1.3 if exposure == 'south' else 1) * weather_factor }}
+
+{# Tempo fisso deciso da un helper #}
+{{ states('input_number.minuti_irrigazione') | float(20) }}
+```
 
 ## Sicurezza
 
@@ -50,7 +86,7 @@ Per ogni zona: `t = (20 + 20·(100−u)/u + 20·T/25) · 0,9 · fattore_meteo ·
 
 ## English
 
-Multi-zone irrigation for Home Assistant: per-zone durations from weather and soil moisture, sunset scheduling, rain block, safety close for valves, all set up through a config flow. Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. The UI is available in Italian and English.
+Multi-zone irrigation for Home Assistant: per-zone durations from a user-editable Jinja formula (weather, soil moisture, any entity), sunset scheduling, rain block, safety close for valves, all set up through a config flow. Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. The UI is available in Italian and English.
 
 ## Licenza
 

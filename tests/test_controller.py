@@ -149,3 +149,29 @@ async def test_unload_closes_valves(hass: HomeAssistant, valves, slow_zone_sleep
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get(VALVE_1).state == "off"
+
+
+async def test_custom_formula_and_fallback(hass: HomeAssistant, valves) -> None:
+    """Formula personalizzata, limiti min/max e ripiego se fallisce."""
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry,
+        options={**entry.options, "formula": "{{ states('input_number.minuti') | float }}"},
+    )
+    hass.states.async_set("input_number.minuti", "42")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    controller = entry.runtime_data
+    zone = next(iter(controller.zones.values()))
+    assert controller.calculated_minutes(zone) == 42
+
+    hass.states.async_set("input_number.minuti", "500")
+    assert controller.calculated_minutes(zone) == 120  # massimo della zona
+
+    hass.states.async_set("input_number.minuti", "non numero")
+    # float senza default fallisce -> formula predefinita (u=50, 20 °C, sunny = 55)
+    assert controller.calculated_minutes(zone) == 55
+    assert zone.zone_id in controller.formula_errors
+    attrs = hass.states.get("sensor.secondo_piano_planned_duration").attributes
+    assert attrs["formula"] == "system"

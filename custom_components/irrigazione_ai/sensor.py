@@ -167,7 +167,11 @@ class LastRunSensor(IrrigazioneEntity, SensorEntity):
 
 
 class ZoneDurationSensor(ZoneEntity, SensorEntity):
-    """Durata che verrebbe usata ora per la zona (formula o timer manuale)."""
+    """Durata che verrebbe usata ora per la zona (formula o timer manuale).
+
+    Si aggiorna quando cambiano sensori e meteo, e ogni 5 minuti per le
+    formule personalizzate che leggono altre entità.
+    """
 
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
     _attr_device_class = SensorDeviceClass.DURATION
@@ -199,6 +203,14 @@ class ZoneDurationSensor(ZoneEntity, SensorEntity):
                 async_track_state_change_event(self.hass, sources, _changed)
             )
 
+        @callback
+        def _tick(_now: datetime) -> None:
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_track_time_interval(self.hass, _tick, timedelta(minutes=5))
+        )
+
     @property
     def native_value(self) -> int:
         """Minuti."""
@@ -208,11 +220,15 @@ class ZoneDurationSensor(ZoneEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Dati usati nel calcolo."""
         c = self.controller
+        formula_minutes = c.calculated_minutes(self.zone)
+        _formula, source = c.zone_formula(self.zone)
         return {
+            "formula": source,
+            "formula_error": c.formula_errors.get(self.zone.zone_id),
             "moisture": c.zone_moisture(self.zone),
             "temperature": c.outdoor_temperature(),
             "weather": c.weather_state(),
-            "formula_minutes": c.calculated_minutes(self.zone),
+            "formula_minutes": formula_minutes,
             "manual_timer": c.manual_timer or None,
             "liters": round(c.planned_minutes(self.zone) * self.zone.flow_rate, 1),
         }

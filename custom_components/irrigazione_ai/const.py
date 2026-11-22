@@ -20,6 +20,7 @@ CONF_CLOSE_ON_STARTUP: Final = "close_on_startup"
 CONF_WEEKLY_DAY: Final = "weekly_day"
 CONF_TWICE_WEEKLY_DAYS: Final = "twice_weekly_days"
 CONF_NOTIFY: Final = "notify_services"
+CONF_FORMULA: Final = "formula"
 
 RUN_MODE_PARALLEL: Final = "parallel"
 RUN_MODE_SEQUENTIAL: Final = "sequential"
@@ -51,6 +52,15 @@ DEFAULT_MAX_DURATION: Final = 120
 DEFAULT_COEFFICIENT: Final = 1.0
 DEFAULT_SOIL_VOLUME: Final = 100
 DEFAULT_EXPOSURE: Final = "north"
+
+# Formula predefinita (Jinja). Variabili: moisture, temperature, humidity,
+# weather, weather_factor, coefficient, flow_rate, soil_volume, exposure,
+# min_duration, max_duration. Il risultato viene sempre limitato tra
+# min_duration e max_duration.
+DEFAULT_FORMULA: Final = (
+    "{{ (20 + 20 * (100 - moisture) / moisture + 20 * temperature / 25)"
+    " * 0.9 * weather_factor * coefficient }}"
+)
 
 WEEKDAYS: Final = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
