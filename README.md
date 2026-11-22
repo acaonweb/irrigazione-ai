@@ -2,7 +2,12 @@
   <img src="docs/card.png" alt="Card Irrigazione AI: comandi a riposo, comandi durante un ciclo con AI, grafici" width="900">
 </p>
 
-<h1 align="center">💧 Irrigazione AI</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/irrigazione_ai/brand/dark_logo@2x.png">
+    <img src="custom_components/irrigazione_ai/brand/logo@2x.png" alt="Irrigazione AI" height="96">
+  </picture>
+</h1>
 
 <p align="center">
   <b>L'impianto di irrigazione che decide da solo quanta acqua dare, zona per zona.</b><br>
