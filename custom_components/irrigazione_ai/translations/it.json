@@ -113,7 +113,7 @@
           "ai_api_key": "Salvata nella configurazione di Home Assistant",
           "ai_base_url": "Per esempio http://192.168.1.10:11434",
           "ai_model": "Nome del modello come lo chiama il servizio",
-          "ai_on_error": "Cosa fare se l'AI non risponde o risponde male",
+          "ai_on_error": "Cosa fare se l'AI non risponde o risponde male. In ogni caso arriva una notifica",
           "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'"
         }
       }
@@ -199,7 +199,7 @@
           "ai_api_key": "Salvata nella configurazione di Home Assistant",
           "ai_base_url": "Per esempio http://192.168.1.10:11434",
           "ai_model": "Nome del modello come lo chiama il servizio",
-          "ai_on_error": "Cosa fare se l'AI non risponde o risponde male",
+          "ai_on_error": "Cosa fare se l'AI non risponde o risponde male. In ogni caso arriva una notifica",
           "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'"
         }
       }
@@ -322,8 +322,9 @@
     },
     "ai_on_error": {
       "options": {
-        "skip": "Salta il ciclo",
-        "formula": "Usa la formula"
+        "formula": "Irriga con la formula",
+        "formula_disable": "Irriga con la formula e spegni l'analisi AI",
+        "skip": "Salta il ciclo"
       }
     }
   },

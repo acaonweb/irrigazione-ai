@@ -113,7 +113,7 @@
           "ai_api_key": "Stored in the Home Assistant configuration",
           "ai_base_url": "e.g. http://192.168.1.10:11434",
           "ai_model": "Model name as the service calls it",
-          "ai_on_error": "What to do if the AI does not answer or answers badly",
+          "ai_on_error": "What to do if the AI does not answer or answers badly. You always get a notification",
           "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
         }
       }
@@ -199,7 +199,7 @@
           "ai_api_key": "Stored in the Home Assistant configuration",
           "ai_base_url": "e.g. http://192.168.1.10:11434",
           "ai_model": "Model name as the service calls it",
-          "ai_on_error": "What to do if the AI does not answer or answers badly",
+          "ai_on_error": "What to do if the AI does not answer or answers badly. You always get a notification",
           "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
         }
       }
@@ -322,8 +322,9 @@
     },
     "ai_on_error": {
       "options": {
-        "skip": "Skip the cycle",
-        "formula": "Use the formula"
+        "formula": "Water with the formula",
+        "formula_disable": "Water with the formula and turn off the AI analysis",
+        "skip": "Skip the cycle"
       }
     }
   },

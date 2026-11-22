@@ -123,24 +123,37 @@ async def test_ai_skip(hass: HomeAssistant, valves, aioclient_mock) -> None:
     )
 
 
-async def test_ai_error_skip_or_formula(hass: HomeAssistant, valves, aioclient_mock) -> None:
-    """Errore AI: salta il ciclo, oppure usa la formula se impostato."""
+async def test_ai_error_skip(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Errore AI con 'salta il ciclo'."""
     aioclient_mock.post(OPENAI_URL, status=500, text="boom")
-    entry = await _setup(hass, valves)
+    entry = await _setup(hass, valves, ai_on_error="skip")
     await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
     await hass.async_block_till_done()
     assert not [c for c in valves if c.service == "turn_on"]
     assert entry.runtime_data.last_block == "ai_error"
     assert hass.states.get("sensor.irrigazione_ai_decision").state == "error"
+    assert hass.states.get("switch.irrigazione_ai_analysis").state == "on"
 
-    hass.config_entries.async_update_entry(
-        entry, options={**entry.options, "ai_on_error": "formula"}
-    )
-    await hass.async_block_till_done()
-    install_fake_valves(hass, valves)
+
+async def test_ai_error_formula(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Errore AI con 'irriga con la formula' (predefinito): l'AI resta accesa."""
+    aioclient_mock.post(OPENAI_URL, status=500, text="boom")
+    entry = await _setup(hass, valves, ai_on_error="formula")
     await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert {c.data["entity_id"] for c in valves if c.service == "turn_on"} == {VALVE_1, VALVE_2}
+    assert not entry.runtime_data.ai_last_used
+    assert hass.states.get("switch.irrigazione_ai_analysis").state == "on"
+
+
+async def test_ai_error_formula_disable(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Errore AI con 'formula e spegni l'AI'."""
+    aioclient_mock.post(OPENAI_URL, status=500, text="boom")
+    await _setup(hass, valves, ai_on_error="formula_disable")
+    await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert {c.data["entity_id"] for c in valves if c.service == "turn_on"} == {VALVE_1, VALVE_2}
+    assert hass.states.get("switch.irrigazione_ai_analysis").state == "off"
 
 
 async def test_manual_duration_bypasses_ai(hass: HomeAssistant, valves, aioclient_mock) -> None:
@@ -203,7 +216,7 @@ async def test_ai_wizard_step(hass: HomeAssistant, valves, aioclient_mock) -> No
     assert result["step_id"] == "ai_details"
 
     aioclient_mock.post(OPENAI_URL, status=401, text="bad key")
-    details = {"ai_api_key": "sk-wrong", "ai_model": "gpt-4.1-mini", "ai_on_error": "skip"}
+    details = {"ai_api_key": "sk-wrong", "ai_model": "gpt-4.1-mini", "ai_on_error": "formula"}
     result = await hass.config_entries.options.async_configure(result["flow_id"], details)
     assert result["errors"] == {"base": "invalid_auth"}
 

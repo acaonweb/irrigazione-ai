@@ -94,7 +94,12 @@ Con l'interruttore *Analisi AI* acceso, prima di ogni ciclo l'integrazione chied
 
 **Regole date all'AI:** stima dell'evapotraspirazione; si sottrae la pioggia caduta e prevista; niente irrigazione se ha piovuto per oltre metà delle ultime ore o è attesa pioggia significativa; 0 litri sopra il 70% di umidità del terriccio; irrigazione minima di mantenimento tra 50% e 65%; esposizione a sud aumenta il fabbisogno, a nord lo riduce.
 
-**Se l'AI non risponde** puoi scegliere se saltare il ciclo o usare la formula. Con il timer manuale, o con una durata passata a `irrigazione_ai.start`, l'AI non viene interpellata.
+**Se l'AI non risponde** (o risponde in modo non valido) arriva sempre una notifica, e puoi scegliere cosa fare:
+- *Irriga con la formula* (predefinito): il ciclo parte con la formula e l'AI resta attiva per il ciclo successivo.
+- *Irriga con la formula e spegni l'analisi AI*: come sopra, ma l'interruttore *Analisi AI* si spegne finché non lo riaccendi.
+- *Salta il ciclo*: non si irriga.
+
+Con il timer manuale, o con una durata passata a `irrigazione_ai.start`, l'AI non viene interpellata.
 
 ## Sicurezza
 

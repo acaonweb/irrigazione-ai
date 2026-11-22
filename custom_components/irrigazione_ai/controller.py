@@ -52,7 +52,8 @@ from .calc import (
 )
 from .const import (
     AI_NONE,
-    AI_ON_ERROR_FORMULA,
+    AI_ON_ERROR_DISABLE,
+    AI_ON_ERROR_SKIP,
     CLOSE_RETRIES,
     CLOSE_RETRY_DELAY,
     CONF_AI_INSTRUCTIONS,
@@ -564,15 +565,21 @@ class IrrigationController:
             try:
                 result = await self.async_analyze()
             except AiError as err:
-                if self.config.get(CONF_AI_ON_ERROR, DEFAULT_AI_ON_ERROR) != AI_ON_ERROR_FORMULA:
+                on_error = self.config.get(CONF_AI_ON_ERROR, DEFAULT_AI_ON_ERROR)
+                if on_error == AI_ON_ERROR_SKIP:
                     self.last_block = "ai_error"
                     self.last_block_at = dt_util.utcnow()
                     self.async_update_listeners()
                     await self._notify(f"Irrigazione annullata: l'analisi AI non è riuscita ({err}).")
                     return False
-                await self._notify(
-                    f"Analisi AI non riuscita ({err}): uso la formula."
-                )
+                if on_error == AI_ON_ERROR_DISABLE:
+                    self.ai_enabled = False
+                    self.async_update_listeners()
+                    await self._notify(
+                        f"Analisi AI non riuscita ({err}): analisi AI disattivata, irrigo con la formula."
+                    )
+                else:
+                    await self._notify(f"Analisi AI non riuscita ({err}): irrigo con la formula.")
             else:
                 if not result.irrigate:
                     self.last_block = "ai"

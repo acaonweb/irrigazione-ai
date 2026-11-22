@@ -23,8 +23,7 @@ from .const import (
     AI_API_PROVIDERS,
     AI_NONE,
     AI_OLLAMA,
-    AI_ON_ERROR_FORMULA,
-    AI_ON_ERROR_SKIP,
+    AI_ON_ERROR_OPTIONS,
     AI_PROVIDERS,
     AI_TASK,
     CONF_AI_API_KEY,
@@ -427,7 +426,7 @@ def _ai_details_schema(provider: str, defaults: dict[str, Any]) -> vol.Schema:
         )
     ] = selector.SelectSelector(
         selector.SelectSelectorConfig(
-            options=[AI_ON_ERROR_SKIP, AI_ON_ERROR_FORMULA], translation_key="ai_on_error"
+            options=AI_ON_ERROR_OPTIONS, translation_key="ai_on_error"
         )
     )
     fields[
