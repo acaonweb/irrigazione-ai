@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.7.0";
+const CARD_VERSION = "0.7.2";
 
 const TEXT = {
   it: {
@@ -15,7 +15,7 @@ const TEXT = {
     blocked: { rain: "Saltata per pioggia", ai: "Saltata dall'AI", ai_error: "AI non riuscita" },
     next: "prossima", ends: "fine", remaining: "Tempo rimanente", zone: "Zona",
     moisture: "Umidità", dry: "🔴 Secco", ok: "🟢 Ottimale", wet: "💧 Umido",
-    planned: "Prevista", battery: "Batteria", ai: "AI", rain: "Pioggia",
+    planned: "Prevista", battery: "Batteria", ai: "AI", rain: "Pioggia", setup: "Configura",
     aiTitle: "🤖 Decisione AI", analyze: "Analizza", durations: "Durate previste", aiDurations: "Durate AI",
     decision: { irrigate: "Irrigare", skip: "Saltare", error: "Errore", unknown: "Nessuna analisi" },
     off: "Off", daily: "7/7", min: "min", skip: "salta",
@@ -28,7 +28,7 @@ const TEXT = {
     blocked: { rain: "Skipped for rain", ai: "Skipped by AI", ai_error: "AI failed" },
     next: "next", ends: "ends", remaining: "Time remaining", zone: "Zone",
     moisture: "Moisture", dry: "🔴 Dry", ok: "🟢 Good", wet: "💧 Wet",
-    planned: "Planned", battery: "Battery", ai: "AI", rain: "Rain",
+    planned: "Planned", battery: "Battery", ai: "AI", rain: "Rain", setup: "Set up",
     aiTitle: "🤖 AI decision", analyze: "Analyze", durations: "Planned durations", aiDurations: "AI durations",
     decision: { irrigate: "Water", skip: "Skip", error: "Error", unknown: "No analysis yet" },
     off: "Off", daily: "7/7", min: "min", skip: "skip",
@@ -67,6 +67,8 @@ const CONTROL_STYLE = `
   .yellow { height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 6px;
             background: rgba(35,35,35,.95); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; border: none; font-family: inherit; }
   .yellow.on { background: linear-gradient(135deg,#FFD54F,#FFA000); color: #3d2b00; }
+  .yellow.setup { flex-direction: column; gap: 0; opacity: .75; }
+  .yellow.setup small { font-weight: 400; font-size: 11px; opacity: .8; }
   .stack { display: flex; flex-direction: column; gap: 8px; }
   .btns { display: grid; gap: 8px; }
   .btn { border-radius: 12px; min-height: 48px; padding: 6px; cursor: pointer; display: flex; flex-direction: column;
@@ -280,7 +282,11 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       <div class="shape" style="--ia-c:var(--ia-blue)"><ha-icon icon="mdi:timer-sand"></ha-icon></div>
       <div class="txt"><div class="secondary">${t.remaining}</div><div class="value">${remaining === null ? "–" : remaining + " " + t.min}</div></div></div></div>` : "";
 
-    const showSide = (aiSw && aiSw.state !== "unavailable") || rain;
+    const aiReady = aiSw && aiSw.state !== "unavailable";
+    const aiButton = aiReady
+      ? `<button class="yellow ${aiOn ? "on" : ""}" data-toggle="${sys.ai_analysis}"><ha-icon icon="mdi:robot"></ha-icon>${t.ai}</button>`
+      : `<button class="yellow setup" data-setup="1"><span><ha-icon icon="mdi:robot"></ha-icon> ${t.ai}</span><small>${t.setup}</small></button>`;
+    const showSide = true;
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CONTROL_STYLE}</style>
       <ha-card><div class="grid">
@@ -291,7 +297,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
           </div>
         </div>
         ${showSide ? `<div class="span3 stack">
-          ${aiSw && aiSw.state !== "unavailable" ? `<button class="yellow ${aiOn ? "on" : ""}" data-toggle="${sys.ai_analysis}"><ha-icon icon="mdi:robot"></ha-icon>${t.ai}</button>` : ""}
+          ${aiButton}
           ${rain ? `<button class="yellow ${rain.state === "on" ? "on" : ""}" data-toggle="${sys.rain_block}"><ha-icon icon="mdi:weather-rainy"></ha-icon>${t.rain}</button>` : ""}
         </div>` : ""}
         ${map.zones.map((z, i) => this._zoneTile(z, i, t, batteries[i])).join("")}
@@ -306,6 +312,10 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const root = this.shadowRoot;
     root.querySelectorAll("[data-toggle]").forEach((el) => el.addEventListener("click", (ev) => {
       ev.stopPropagation(); this._call("switch", "toggle", { entity_id: el.dataset.toggle });
+    }));
+    root.querySelectorAll("[data-setup]").forEach((el) => el.addEventListener("click", () => {
+      history.pushState(null, "", "/config/integrations/integration/irrigazione_ai");
+      window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
     }));
     root.querySelectorAll("[data-select]").forEach((el) => el.addEventListener("click", () =>
       this._call("select", "select_option", { entity_id: el.dataset.select, option: el.dataset.option })));
