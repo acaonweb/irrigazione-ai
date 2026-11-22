@@ -23,7 +23,7 @@ async def async_setup_entry(
     """Crea gli interruttori."""
     controller = entry.runtime_data
     async_add_entities(
-        [IrrigationSwitch(controller), RainBlockSwitch(controller)]
+        [IrrigationSwitch(controller), RainBlockSwitch(controller), AiSwitch(controller)]
     )
 
 
@@ -76,4 +76,38 @@ class RainBlockSwitch(IrrigazioneEntity, SwitchEntity, RestoreEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disattiva il blocco."""
         self.controller.rain_block = False
+        self.controller.async_update_listeners()
+
+
+class AiSwitch(IrrigazioneEntity, SwitchEntity, RestoreEntity):
+    """Se acceso, l'AI decide se e quanto irrigare a ogni ciclo."""
+
+    def __init__(self, controller) -> None:
+        """Inizializza."""
+        super().__init__(controller, "ai_analysis")
+
+    async def async_added_to_hass(self) -> None:
+        """Ripristina lo stato (spento di default)."""
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_state()) is not None:
+            self.controller.ai_enabled = last.state == "on"
+
+    @property
+    def available(self) -> bool:
+        """Disponibile solo se un provider AI è configurato."""
+        return self.controller.ai_configured
+
+    @property
+    def is_on(self) -> bool:
+        """Analisi AI attiva."""
+        return self.controller.ai_enabled
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Attiva."""
+        self.controller.ai_enabled = True
+        self.controller.async_update_listeners()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Disattiva."""
+        self.controller.ai_enabled = False
         self.controller.async_update_listeners()

@@ -103,3 +103,46 @@ CLOSE_RETRIES: Final = 3
 CLOSE_RETRY_DELAY: Final = 2.0
 # Attesa dopo l'avvio di HA prima di chiudere valvole rimaste aperte
 STARTUP_CLOSE_DELAY: Final = 30.0
+
+# --- Analisi AI ---
+CONF_AI_PROVIDER: Final = "ai_provider"
+CONF_AI_TASK_ENTITY: Final = "ai_task_entity"
+CONF_AI_API_KEY: Final = "ai_api_key"
+CONF_AI_MODEL: Final = "ai_model"
+CONF_AI_BASE_URL: Final = "ai_base_url"
+CONF_AI_ON_ERROR: Final = "ai_on_error"
+CONF_AI_INSTRUCTIONS: Final = "ai_instructions"
+
+AI_NONE: Final = "none"
+AI_TASK: Final = "ai_task"
+AI_OPENAI: Final = "openai"
+AI_ANTHROPIC: Final = "anthropic"
+AI_GEMINI: Final = "gemini"
+AI_OLLAMA: Final = "ollama"
+AI_PROVIDERS: Final = [AI_NONE, AI_TASK, AI_OPENAI, AI_ANTHROPIC, AI_GEMINI, AI_OLLAMA]
+AI_API_PROVIDERS: Final = [AI_OPENAI, AI_ANTHROPIC, AI_GEMINI]
+
+DEFAULT_AI_MODELS: Final = {
+    AI_OPENAI: "gpt-4.1-mini",
+    AI_ANTHROPIC: "claude-haiku-5-5",
+    AI_GEMINI: "gemini-2.5-flash",
+    AI_OLLAMA: "llama3.1",
+}
+DEFAULT_OLLAMA_URL: Final = "http://localhost:11434"
+
+AI_ON_ERROR_SKIP: Final = "skip"
+AI_ON_ERROR_FORMULA: Final = "formula"
+DEFAULT_AI_ON_ERROR: Final = AI_ON_ERROR_SKIP
+
+AI_TIMEOUT: Final = 90
+AI_RAIN_HOURS: Final = 12
+AI_FORECAST_HOURS: Final = 12
+
+# Esito dell'analisi
+AI_RESULT_IRRIGATE: Final = "irrigate"
+AI_RESULT_SKIP: Final = "skip"
+AI_RESULT_ERROR: Final = "error"
+AI_RESULTS: Final = [AI_RESULT_IRRIGATE, AI_RESULT_SKIP, AI_RESULT_ERROR]
+
+SERVICE_ANALYZE: Final = "analyze"
+SOURCE_AI: Final = "ai"

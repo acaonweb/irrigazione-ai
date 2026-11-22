@@ -1,0 +1,438 @@
+"""Analisi AI: dati, prompt, chiamata al modello e lettura della risposta.
+
+Sostituisce il workflow n8n (agente meteo + agente agronomo) con un'unica
+richiesta. Funziona con un'entità AI Task di Home Assistant oppure
+chiamando direttamente OpenAI, Anthropic, Google Gemini od Ollama.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import math
+import re
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any
+
+import aiohttp
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
+
+from .calc import clamp_minutes
+from .const import (
+    AI_ANTHROPIC,
+    AI_FORECAST_HOURS,
+    AI_GEMINI,
+    AI_OLLAMA,
+    AI_OPENAI,
+    AI_RAIN_HOURS,
+    AI_TASK,
+    AI_TIMEOUT,
+    CONF_AI_API_KEY,
+    CONF_AI_BASE_URL,
+    CONF_AI_MODEL,
+    CONF_AI_PROVIDER,
+    CONF_AI_TASK_ENTITY,
+    DEFAULT_AI_MODELS,
+    DEFAULT_OLLAMA_URL,
+    RAIN_STATES,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French", "es": "Spanish"}
+
+
+class AiError(Exception):
+    """Errore generico dell'analisi AI."""
+
+
+class AiAuthError(AiError):
+    """Chiave API non valida."""
+
+
+class AiConnectionError(AiError):
+    """Servizio non raggiungibile."""
+
+
+@dataclass
+class AiZoneResult:
+    """Esito per una zona."""
+
+    zone_id: str
+    name: str
+    liters: float
+    minutes: int
+    reason: str
+
+
+@dataclass
+class AiResult:
+    """Esito di un'analisi."""
+
+    irrigate: bool
+    reason: str
+    at: datetime
+    provider: str
+    zones: dict[str, AiZoneResult] = field(default_factory=dict)
+
+
+# ----------------------------------------------------------------------
+# Dati
+# ----------------------------------------------------------------------
+
+
+async def async_rain_history(
+    hass: HomeAssistant, weather_entity: str | None, hours: int = AI_RAIN_HOURS
+) -> dict[str, Any] | None:
+    """Quanto ha piovuto nelle ultime ore secondo lo storico dell'entità meteo."""
+    if not weather_entity or "recorder" not in hass.config.components:
+        return None
+    from homeassistant.components.recorder import get_instance, history  # noqa: PLC0415
+
+    end = dt_util.utcnow()
+    start = end - timedelta(hours=hours)
+    try:
+        states = await get_instance(hass).async_add_executor_job(
+            history.state_changes_during_period,
+            hass,
+            start,
+            end,
+            weather_entity,
+            True,  # no_attributes
+            False,  # descending
+            None,  # limit
+            True,  # include_start_time_state
+        )
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("Storico meteo non disponibile", exc_info=True)
+        return None
+    items = states.get(weather_entity, [])
+    if not items:
+        return None
+    rainy_seconds = 0.0
+    for index, state in enumerate(items):
+        begin = max(state.last_changed, start)
+        finish = items[index + 1].last_changed if index + 1 < len(items) else end
+        if state.state in RAIN_STATES and finish > begin:
+            rainy_seconds += (finish - begin).total_seconds()
+    total = hours * 3600
+    return {
+        "hours": hours,
+        "rain_hours": round(rainy_seconds / 3600, 1),
+        "rain_percent": round(100 * rainy_seconds / total),
+        "rained": rainy_seconds > 0,
+    }
+
+
+async def async_forecast(
+    hass: HomeAssistant, weather_entity: str | None, hours: int = AI_FORECAST_HOURS
+) -> list[dict[str, Any]] | None:
+    """Previsioni delle prossime ore (oraria, altrimenti giornaliera)."""
+    if not weather_entity or not hass.services.has_service("weather", "get_forecasts"):
+        return None
+    for kind, count in (("hourly", hours), ("daily", 2)):
+        try:
+            response = await hass.services.async_call(
+                "weather",
+                "get_forecasts",
+                {"entity_id": weather_entity, "type": kind},
+                blocking=True,
+                return_response=True,
+            )
+        except Exception:  # noqa: BLE001 - tipo non supportato dall'entità
+            continue
+        forecast = (response or {}).get(weather_entity, {}).get("forecast") or []
+        if forecast:
+            return [
+                {
+                    "time": item.get("datetime"),
+                    "condition": item.get("condition"),
+                    "temperature": item.get("temperature"),
+                    "precipitation_mm": item.get("precipitation"),
+                    "precipitation_probability": item.get("precipitation_probability"),
+                    "humidity": item.get("humidity"),
+                }
+                for item in forecast[:count]
+            ]
+    return None
+
+
+# ----------------------------------------------------------------------
+# Prompt
+# ----------------------------------------------------------------------
+
+
+def build_prompt(context: dict[str, Any], language: str, extra: str | None) -> str:
+    """Istruzioni per il modello (agente meteo + agronomo in una richiesta)."""
+    lang = LANGUAGES.get(language.split("-")[0], "English")
+    zones = context["zones"]
+    keys = ", ".join(
+        f'"zone_{i}_liters": number, "zone_{i}_reason": "string"'
+        for i in range(1, len(zones) + 1)
+    )
+    extra_rule = f"\n- Notes from the owner: {extra.strip()}" if extra and extra.strip() else ""
+    return (
+        "You are an agronomist expert in precision irrigation and a meteorologist. "
+        "Decide whether the garden should be watered now and how many liters each zone needs.\n\n"
+        f"Data (JSON):\n{json.dumps(context, ensure_ascii=False, default=str)}\n\n"
+        "Rules:\n"
+        "- Estimate the expected evapotranspiration from temperature, outdoor humidity, "
+        "weather, season and exposure (south increases it, north reduces it).\n"
+        "- Subtract the water already supplied by rain in the last hours and the rain "
+        "expected in the next hours.\n"
+        "- If it rained for more than 50% of the recent hours, or significant rain is "
+        "expected in the next hours, set irrigate to false.\n"
+        "- If the soil moisture of a zone is above 70%, give that zone 0 liters.\n"
+        "- If the soil moisture is between 50% and 65%, still give a small maintenance "
+        "amount, even for large soil volumes.\n"
+        "- Higher temperatures increase the water need.\n"
+        "- Do not invent missing data: if something is missing, make a prudent estimate."
+        f"{extra_rule}\n\n"
+        "Answer ONLY with a JSON object with exactly these keys:\n"
+        f'{{"irrigate": true or false, "reason": "string", {keys}}}\n'
+        "The zone numbers refer to the 'index' field of each zone. "
+        f"Write every reason in {lang}, at most 20 words each. "
+        "If irrigate is false, every zone gets 0 liters."
+    )
+
+
+def build_structure(zone_count: int) -> dict[str, Any]:
+    """Struttura per ai_task.generate_data (stesse chiavi del JSON)."""
+    structure: dict[str, Any] = {
+        "irrigate": {
+            "description": "True if the garden should be watered now",
+            "required": True,
+            "selector": {"boolean": {}},
+        },
+        "reason": {
+            "description": "Short explanation of the decision",
+            "required": True,
+            "selector": {"text": {}},
+        },
+    }
+    for i in range(1, zone_count + 1):
+        structure[f"zone_{i}_liters"] = {
+            "description": f"Liters of water for zone {i}",
+            "required": True,
+            "selector": {"number": {"min": 0, "max": 100000, "step": 0.1, "mode": "box"}},
+        }
+        structure[f"zone_{i}_reason"] = {
+            "description": f"Short explanation for zone {i}",
+            "required": True,
+            "selector": {"text": {}},
+        }
+    return structure
+
+
+# ----------------------------------------------------------------------
+# Chiamata al modello
+# ----------------------------------------------------------------------
+
+
+def parse_json_text(text: str) -> dict[str, Any]:
+    """Estrae l'oggetto JSON dalla risposta testuale del modello."""
+    cleaned = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.MULTILINE).strip()
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start == -1 or end <= start:
+        raise AiError("la risposta del modello non contiene JSON")
+    try:
+        data = json.loads(cleaned[start : end + 1])
+    except json.JSONDecodeError as err:
+        raise AiError(f"JSON non valido nella risposta: {err}") from err
+    if not isinstance(data, dict):
+        raise AiError("la risposta del modello non è un oggetto JSON")
+    return data
+
+
+async def _post(
+    hass: HomeAssistant, url: str, payload: dict[str, Any], headers: dict[str, str]
+) -> dict[str, Any]:
+    session = async_get_clientsession(hass)
+    try:
+        async with session.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=AI_TIMEOUT),
+        ) as response:
+            body = await response.text()
+            if response.status in (401, 403) or (
+                response.status == 400 and "API key" in body
+            ):
+                raise AiAuthError(f"chiave API non valida (HTTP {response.status})")
+            if response.status >= 400:
+                raise AiError(f"HTTP {response.status}: {body[:200]}")
+            return json.loads(body)
+    except (aiohttp.ClientError, TimeoutError) as err:
+        raise AiConnectionError(f"servizio non raggiungibile: {err}") from err
+    except json.JSONDecodeError as err:
+        raise AiError("risposta non in formato JSON") from err
+
+
+async def _query_text(hass: HomeAssistant, cfg: dict[str, Any], prompt: str) -> str:
+    """Invia il prompt al provider scelto e restituisce il testo della risposta."""
+    provider = cfg.get(CONF_AI_PROVIDER)
+    model = (cfg.get(CONF_AI_MODEL) or "").strip() or DEFAULT_AI_MODELS.get(provider, "")
+    key = (cfg.get(CONF_AI_API_KEY) or "").strip()
+    try:
+        if provider == AI_OPENAI:
+            data = await _post(
+                hass,
+                "https://api.openai.com/v1/chat/completions",
+                {
+                    "model": model,
+                    "response_format": {"type": "json_object"},
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                {"Authorization": f"Bearer {key}"},
+            )
+            return data["choices"][0]["message"]["content"]
+        if provider == AI_ANTHROPIC:
+            data = await _post(
+                hass,
+                "https://api.anthropic.com/v1/messages",
+                {
+                    "model": model,
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                {"x-api-key": key, "anthropic-version": "2023-06-01"},
+            )
+            return "".join(
+                part.get("text", "") for part in data["content"] if part.get("type") == "text"
+            )
+        if provider == AI_GEMINI:
+            data = await _post(
+                hass,
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                {
+                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                    "generationConfig": {"responseMimeType": "application/json"},
+                },
+                {"x-goog-api-key": key},
+            )
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        if provider == AI_OLLAMA:
+            base = (cfg.get(CONF_AI_BASE_URL) or DEFAULT_OLLAMA_URL).rstrip("/")
+            data = await _post(
+                hass,
+                f"{base}/api/chat",
+                {
+                    "model": model,
+                    "stream": False,
+                    "format": "json",
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                {},
+            )
+            return data["message"]["content"]
+    except (KeyError, IndexError, TypeError) as err:
+        raise AiError("risposta del modello in un formato inatteso") from err
+    raise AiError(f"provider non supportato: {provider}")
+
+
+async def async_query(
+    hass: HomeAssistant, cfg: dict[str, Any], prompt: str, zone_count: int
+) -> dict[str, Any]:
+    """Chiede l'analisi al modello e restituisce il dizionario della risposta."""
+    if cfg.get(CONF_AI_PROVIDER) == AI_TASK:
+        entity_id = cfg.get(CONF_AI_TASK_ENTITY)
+        if not entity_id or hass.states.get(entity_id) is None:
+            raise AiError("entità AI Task non trovata")
+        try:
+            response = await hass.services.async_call(
+                "ai_task",
+                "generate_data",
+                {
+                    "entity_id": entity_id,
+                    "task_name": "Irrigazione AI",
+                    "instructions": prompt,
+                    "structure": build_structure(zone_count),
+                },
+                blocking=True,
+                return_response=True,
+            )
+        except Exception as err:  # noqa: BLE001
+            raise AiError(f"AI Task: {err}") from err
+        data = (response or {}).get("data")
+        if isinstance(data, str):
+            return parse_json_text(data)
+        if not isinstance(data, dict):
+            raise AiError("AI Task non ha restituito dati strutturati")
+        return data
+    return parse_json_text(await _query_text(hass, cfg, prompt))
+
+
+async def async_validate(hass: HomeAssistant, cfg: dict[str, Any]) -> None:
+    """Verifica la configurazione con una richiesta minima."""
+    if cfg.get(CONF_AI_PROVIDER) == AI_TASK:
+        entity_id = cfg.get(CONF_AI_TASK_ENTITY)
+        if not entity_id or hass.states.get(entity_id) is None:
+            raise AiError("entità AI Task non trovata")
+        return
+    text = await _query_text(
+        hass, cfg, 'This is a connection test. Reply only with the JSON object {"ok": true}.'
+    )
+    parse_json_text(text)
+
+
+# ----------------------------------------------------------------------
+# Lettura dell'esito
+# ----------------------------------------------------------------------
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "yes", "si", "sì", "1")
+    return bool(value)
+
+
+def _as_float(value: Any) -> float:
+    try:
+        number = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
+        return 0.0
+    return number if math.isfinite(number) and number > 0 else 0.0
+
+
+def parse_result(
+    data: dict[str, Any], zones: list[Any], provider: str
+) -> AiResult:
+    """Converte la risposta in litri e minuti per zona.
+
+    `zones` è la lista di ZoneConfig nello stesso ordine usato nel prompt.
+    I minuti sono litri / portata, arrotondati per eccesso e limitati tra
+    durata minima e massima della zona; 0 litri = zona non irrigata.
+    """
+    if "irrigate" not in data:
+        raise AiError("risposta incompleta: manca 'irrigate'")
+    irrigate = _as_bool(data.get("irrigate"))
+    result = AiResult(
+        irrigate=irrigate,
+        reason=str(data.get("reason") or "").strip(),
+        at=dt_util.utcnow(),
+        provider=provider,
+    )
+    for index, zone in enumerate(zones, start=1):
+        liters = _as_float(data.get(f"zone_{index}_liters")) if irrigate else 0.0
+        minutes = 0
+        if liters > 0 and zone.flow_rate > 0:
+            minutes = clamp_minutes(
+                # round() evita che 21.78 / 0.726 = 30.0000001 diventi 31
+                math.ceil(round(liters / zone.flow_rate, 6)),
+                zone.min_duration,
+                zone.max_duration,
+            )
+        result.zones[zone.zone_id] = AiZoneResult(
+            zone_id=zone.zone_id,
+            name=zone.name,
+            liters=round(liters, 1),
+            minutes=minutes,
+            reason=str(data.get(f"zone_{index}_reason") or "").strip(),
+        )
+    if irrigate and not any(z.minutes for z in result.zones.values()):
+        result.irrigate = False
+    return result

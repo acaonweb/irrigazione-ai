@@ -4,7 +4,7 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 
 *English summary below.*
 
-> **Stato:** fase 1 (motore e wizard). Analisi AI con LLM, storico/consumi, notifiche avanzate e card arriveranno nelle prossime versioni.
+> **Stato:** motore, wizard, formula personalizzata e analisi AI. Storico/consumi, notifiche avanzate e card arriveranno nelle prossime versioni.
 
 ## Installazione
 
@@ -15,10 +15,11 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 
 ## Configurazione guidata
 
-1. **Impianto:** nome, entità meteo, sensori facoltativi di temperatura e umidità esterna.
+1. **Impianto:** nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo).
 2. **Zone:** una per valvola (`switch` o `valve`), con sensore di umidità del terriccio, portata in L/min, durata minima e massima, coefficiente, volume del terriccio ed esposizione. Le zone si aggiungono e modificano anche dopo, dalla pagina dell'integrazione (**Aggiungi zona**).
 3. **Programmazione:** minuti dopo il tramonto, giorni per le frequenze settimanali, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura delle valvole al riavvio, azioni di notifica.
 4. **Formula:** editor della formula della durata, con anteprima dei minuti per ogni zona.
+5. **Analisi AI** (facoltativa): servizio AI da usare, verificato con una richiesta di prova.
 
 ## Entità
 
@@ -29,13 +30,17 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 | Selettore *Frequenza* | Spenta, una volta a settimana, due volte a settimana, tutti i giorni |
 | Selettore *Timer manuale* | 15/30/60 minuti per tutte le zone al posto della formula |
 | Pulsanti *Avvia ora* / *Ferma* | Comandi immediati |
+| Interruttore *Analisi AI* | Se acceso, a ogni ciclo l'AI decide se irrigare e quanto |
+| Pulsante *Analizza ora* | Chiede subito una valutazione all'AI, senza irrigare |
+| Sensore *Decisione AI* | Irrigare / Saltare / Errore, con motivo e litri per zona negli attributi |
 | Sensori *Stato*, *Tempo rimanente*, *Prossima irrigazione*, *Ultima irrigazione*, *Ultimo blocco* | Stato dell'impianto |
-| Per zona: *Durata prevista*, *Fine prevista* | Minuti calcolati ora (con litri, formula usata ed eventuale errore negli attributi) e ora di fine durante il ciclo |
+| Per zona: *Durata prevista*, *Fine prevista*, *Durata AI* | Minuti calcolati ora (con litri, formula usata ed eventuale errore negli attributi) e ora di fine durante il ciclo |
 
 ## Servizi
 
 - `irrigazione_ai.start` — avvia un ciclo. Campi facoltativi: `config_entry_id`, `duration` (minuti uguali per tutte le zone), `force` (ignora il blocco pioggia).
 - `irrigazione_ai.stop` — ferma il ciclo e chiude le valvole.
+- `irrigazione_ai.analyze` — chiede all'AI una valutazione senza irrigare e restituisce l'esito (decisione, motivo, litri e minuti per zona).
 
 ## Formula personalizzata
 
@@ -76,6 +81,21 @@ Esempi:
 {{ states('input_number.minuti_irrigazione') | float(20) }}
 ```
 
+## Analisi AI
+
+Con l'interruttore *Analisi AI* acceso, prima di ogni ciclo l'integrazione chiede a un modello AI **se irrigare** e **quanti litri** dare a ogni zona. I litri diventano minuti con la portata della zona (arrotondati per eccesso e limitati tra minimo e massimo). Una zona con 0 litri non viene aperta.
+
+**Servizi supportati**
+- **Entità AI Task** di Home Assistant: usa un'integrazione AI già configurata (OpenAI, Anthropic, Google, Ollama…), senza chiavi nell'integrazione.
+- **API key propria**: OpenAI, Anthropic Claude, Google Gemini.
+- **Ollama** in locale, indicando l'indirizzo.
+
+**Cosa riceve l'AI:** data e ora, posizione approssimata (1 decimale), meteo attuale, ore di pioggia nelle ultime 12 ore (dallo storico dell'entità meteo), previsioni orarie delle prossime 12 ore e, per ogni zona: umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula. Nelle opzioni puoi aggiungere note libere (piante, vasi, clima…).
+
+**Regole date all'AI:** stima dell'evapotraspirazione; si sottrae la pioggia caduta e prevista; niente irrigazione se ha piovuto per oltre metà delle ultime ore o è attesa pioggia significativa; 0 litri sopra il 70% di umidità del terriccio; irrigazione minima di mantenimento tra 50% e 65%; esposizione a sud aumenta il fabbisogno, a nord lo riduce.
+
+**Se l'AI non risponde** puoi scegliere se saltare il ciclo o usare la formula. Con il timer manuale, o con una durata passata a `irrigazione_ai.start`, l'AI non viene interpellata.
+
 ## Sicurezza
 
 - Una valvola aperta a mano (fuori da un ciclo) si chiude dopo i minuti di sicurezza impostati.
@@ -86,7 +106,7 @@ Esempi:
 
 ## English
 
-Multi-zone irrigation for Home Assistant: per-zone durations from a user-editable Jinja formula (weather, soil moisture, any entity), sunset scheduling, rain block, safety close for valves, all set up through a config flow. Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. The UI is available in Italian and English.
+Multi-zone irrigation for Home Assistant: per-zone durations from a user-editable Jinja formula (weather, soil moisture, any entity), sunset scheduling, rain block, optional AI analysis (Home Assistant AI Task, OpenAI, Anthropic, Gemini or Ollama) deciding liters per zone, safety close for valves, all set up through a config flow. Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. The UI is available in Italian and English.
 
 ## Licenza
 

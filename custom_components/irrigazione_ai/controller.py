@@ -35,6 +35,15 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt as dt_util
 
+from .ai import (
+    AiError,
+    AiResult,
+    async_forecast,
+    async_query,
+    async_rain_history,
+    build_prompt,
+    parse_result,
+)
 from .calc import (
     calculate_duration,
     clamp_minutes,
@@ -42,8 +51,13 @@ from .calc import (
     is_irrigation_day,
 )
 from .const import (
+    AI_NONE,
+    AI_ON_ERROR_FORMULA,
     CLOSE_RETRIES,
     CLOSE_RETRY_DELAY,
+    CONF_AI_INSTRUCTIONS,
+    CONF_AI_ON_ERROR,
+    CONF_AI_PROVIDER,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
     CONF_EXPOSURE,
@@ -64,6 +78,7 @@ from .const import (
     CONF_WEATHER,
     CONF_WEEKLY_DAY,
     CONF_ZONE_NAME,
+    DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
     DEFAULT_COEFFICIENT,
     DEFAULT_EXPOSURE,
@@ -185,6 +200,14 @@ class IrrigationController:
         self.last_run_end: datetime | None = None
 
         self.formula_errors: dict[str, str] = {}
+
+        # Analisi AI
+        self.ai_enabled: bool = False
+        self.ai_result: AiResult | None = None
+        self.ai_error: str | None = None
+        self.ai_error_at: datetime | None = None
+        self.ai_last_used: bool = False
+        self._ai_lock = asyncio.Lock()
 
         self._run_task: asyncio.Task | None = None
         self._unsubs: list[Callable[[], None]] = []
@@ -425,6 +448,81 @@ class IrrigationController:
         )
 
     # ------------------------------------------------------------------
+    # Analisi AI
+    # ------------------------------------------------------------------
+    @property
+    def ai_configured(self) -> bool:
+        """True se è stato scelto un provider AI."""
+        return (self.config.get(CONF_AI_PROVIDER) or AI_NONE) != AI_NONE
+
+    @property
+    def ai_active(self) -> bool:
+        """L'analisi AI decide i cicli."""
+        return self.ai_configured and self.ai_enabled
+
+    async def async_build_ai_context(self) -> dict[str, Any]:
+        """Dati inviati al modello."""
+        weather_entity = self.config.get(CONF_WEATHER)
+        now = dt_util.now()
+        return {
+            "now": now.isoformat(timespec="minutes"),
+            "location": {
+                "latitude": round(self.hass.config.latitude, 1),
+                "longitude": round(self.hass.config.longitude, 1),
+            },
+            "weather_now": {
+                "condition": self.weather_state(),
+                "temperature_c": self.outdoor_temperature(),
+                "humidity_percent": self.outdoor_humidity(),
+            },
+            "rain_last_hours": await async_rain_history(self.hass, weather_entity),
+            "forecast_next_hours": await async_forecast(self.hass, weather_entity),
+            "zones": [
+                {
+                    "index": index,
+                    "name": zone.name,
+                    "soil_moisture_percent": self.zone_moisture(zone),
+                    "soil_volume_liters": zone.soil_volume,
+                    "exposure": zone.exposure,
+                    "flow_rate_liters_per_minute": zone.flow_rate,
+                    "min_minutes": zone.min_duration,
+                    "max_minutes": zone.max_duration,
+                    "formula_minutes": self.calculated_minutes(zone),
+                }
+                for index, zone in enumerate(self.zones.values(), start=1)
+            ],
+        }
+
+    async def async_analyze(self) -> AiResult:
+        """Chiede all'AI se e quanto irrigare. Solleva AiError se fallisce."""
+        if not self.ai_configured:
+            raise AiError("analisi AI non configurata")
+        if not self.zones:
+            raise AiError("nessuna zona configurata")
+        async with self._ai_lock:
+            try:
+                context = await self.async_build_ai_context()
+                prompt = build_prompt(
+                    context,
+                    self.hass.config.language or "en",
+                    self.config.get(CONF_AI_INSTRUCTIONS),
+                )
+                data = await async_query(self.hass, self.config, prompt, len(self.zones))
+                result = parse_result(
+                    data, list(self.zones.values()), self.config[CONF_AI_PROVIDER]
+                )
+            except AiError as err:
+                self.ai_error = str(err)
+                self.ai_error_at = dt_util.utcnow()
+                self.async_update_listeners()
+                _LOGGER.warning("Analisi AI non riuscita: %s", err)
+                raise
+            self.ai_result = result
+            self.ai_error = None
+            self.async_update_listeners()
+            return result
+
+    # ------------------------------------------------------------------
     # Programmazione
     # ------------------------------------------------------------------
     @callback
@@ -460,10 +558,40 @@ class IrrigationController:
             return False
 
         durations: dict[str, int] = {}
-        for zone_id, zone in self.zones.items():
-            minutes = duration if duration is not None else self.planned_minutes(zone)
-            if minutes > 0:
-                durations[zone_id] = int(minutes)
+        self.ai_last_used = False
+        use_ai = duration is None and self.manual_timer <= 0 and self.ai_active
+        if use_ai:
+            try:
+                result = await self.async_analyze()
+            except AiError as err:
+                if self.config.get(CONF_AI_ON_ERROR, DEFAULT_AI_ON_ERROR) != AI_ON_ERROR_FORMULA:
+                    self.last_block = "ai_error"
+                    self.last_block_at = dt_util.utcnow()
+                    self.async_update_listeners()
+                    await self._notify(f"Irrigazione annullata: l'analisi AI non è riuscita ({err}).")
+                    return False
+                await self._notify(
+                    f"Analisi AI non riuscita ({err}): uso la formula."
+                )
+            else:
+                if not result.irrigate:
+                    self.last_block = "ai"
+                    self.last_block_at = dt_util.utcnow()
+                    self.async_update_listeners()
+                    await self._notify(f"Irrigazione saltata dall'AI: {result.reason}")
+                    return False
+                durations = {
+                    zone_id: zr.minutes
+                    for zone_id, zr in result.zones.items()
+                    if zr.minutes > 0 and zone_id in self.zones
+                }
+                self.ai_last_used = True
+
+        if not self.ai_last_used:
+            for zone_id, zone in self.zones.items():
+                minutes = duration if duration is not None else self.planned_minutes(zone)
+                if minutes > 0:
+                    durations[zone_id] = int(minutes)
         if not durations:
             return False
 
@@ -476,7 +604,8 @@ class IrrigationController:
         details = ", ".join(
             f"{self.zones[zid].name}: {mins} min" for zid, mins in durations.items()
         )
-        await self._notify(f"Irrigazione avviata. {details}.")
+        origin = " (AI)" if self.ai_last_used else ""
+        await self._notify(f"Irrigazione avviata{origin}. {details}.")
 
         self._run_task = self.entry.async_create_background_task(
             self.hass, self._async_run(), name=f"{DOMAIN}_run_{self.entry.entry_id}"

@@ -5,16 +5,23 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from .ai import AiError
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
     ATTR_DURATION,
     ATTR_FORCE,
     DOMAIN,
+    SERVICE_ANALYZE,
     SERVICE_START,
     SERVICE_STOP,
     SOURCE_SERVICE,
@@ -71,7 +78,33 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         for controller in _controllers(hass, call):
             await controller.async_stop()
 
+    async def _analyze(call: ServiceCall) -> ServiceResponse:
+        results = {}
+        for controller in _controllers(hass, call):
+            if not controller.ai_configured:
+                continue
+            try:
+                result = await controller.async_analyze()
+            except AiError as err:
+                raise HomeAssistantError(f"Analisi AI non riuscita: {err}") from err
+            results[controller.entry.title] = {
+                "irrigate": result.irrigate,
+                "reason": result.reason,
+                "zones": {
+                    z.name: {"liters": z.liters, "minutes": z.minutes, "reason": z.reason}
+                    for z in result.zones.values()
+                },
+            }
+        return results
+
     hass.services.async_register(DOMAIN, SERVICE_START, _start, schema=START_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ANALYZE,
+        _analyze,
+        schema=STOP_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     hass.services.async_register(DOMAIN, SERVICE_STOP, _stop, schema=STOP_SCHEMA)
     return True
 

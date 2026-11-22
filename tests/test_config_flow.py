@@ -92,10 +92,15 @@ async def test_full_wizard(hass: HomeAssistant, valves) -> None:
     assert "**Secondo piano**: 40 min" in result["description_placeholders"]["preview"]
 
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"next_step_id": "finish"}
+        result["flow_id"], {"next_step_id": "ai"}
+    )
+    assert result["step_id"] == "ai"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"ai_provider": "none"}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     entry = result["result"]
+    assert entry.options["ai_provider"] == "none"
     assert entry.options["formula"] == "{{ 40 * coefficient }}"
     assert entry.title == "Terrazzo"
     assert entry.options[CONF_WEATHER] == WEATHER
@@ -164,7 +169,10 @@ async def test_options_flow(hass: HomeAssistant, valves) -> None:
     )
     assert result["step_id"] == "formula_preview"
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "finish"}
+        result["flow_id"], {"next_step_id": "ai"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"ai_provider": "none"}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -194,3 +202,31 @@ async def test_zone_formula_invalid(hass: HomeAssistant, valves) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert hass.states.get("sensor.orto_planned_duration").state == "33"
+
+
+async def test_wizard_without_weather(hass: HomeAssistant, valves) -> None:
+    """Il meteo è facoltativo."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"name": "Balcone"})
+    assert result["step_id"] == "zone"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], _zone_input("Fioriera", VALVE_1)
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "schedule"}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], SCHEDULE)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"formula": "{{ 20 }}"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "ai"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"ai_provider": "none"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.fioriera_planned_duration").state == "20"

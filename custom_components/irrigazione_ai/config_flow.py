@@ -17,8 +17,23 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
+from .ai import AiAuthError, AiConnectionError, AiError, async_validate
 from .calc import clamp_minutes, formula_variables
 from .const import (
+    AI_API_PROVIDERS,
+    AI_NONE,
+    AI_OLLAMA,
+    AI_ON_ERROR_FORMULA,
+    AI_ON_ERROR_SKIP,
+    AI_PROVIDERS,
+    AI_TASK,
+    CONF_AI_API_KEY,
+    CONF_AI_BASE_URL,
+    CONF_AI_INSTRUCTIONS,
+    CONF_AI_MODEL,
+    CONF_AI_ON_ERROR,
+    CONF_AI_PROVIDER,
+    CONF_AI_TASK_ENTITY,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
     CONF_EXPOSURE,
@@ -39,6 +54,8 @@ from .const import (
     CONF_WEATHER,
     CONF_WEEKLY_DAY,
     CONF_ZONE_NAME,
+    DEFAULT_AI_MODELS,
+    DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
     DEFAULT_COEFFICIENT,
     DEFAULT_EXPOSURE,
@@ -47,6 +64,7 @@ from .const import (
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
     DEFAULT_NAME,
+    DEFAULT_OLLAMA_URL,
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
     DEFAULT_SOIL_VOLUME,
@@ -72,8 +90,8 @@ def _system_schema(defaults: dict[str, Any]) -> vol.Schema:
     """Sensori dell'impianto."""
     return vol.Schema(
         {
-            vol.Required(
-                CONF_WEATHER, default=defaults.get(CONF_WEATHER, vol.UNDEFINED)
+            vol.Optional(
+                CONF_WEATHER, description={"suggested_value": defaults.get(CONF_WEATHER)}
             ): selector.EntitySelector(selector.EntitySelectorConfig(domain="weather")),
             vol.Optional(
                 CONF_TEMPERATURE,
@@ -349,12 +367,136 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+AI_KEYS = (
+    CONF_AI_PROVIDER,
+    CONF_AI_TASK_ENTITY,
+    CONF_AI_API_KEY,
+    CONF_AI_MODEL,
+    CONF_AI_BASE_URL,
+    CONF_AI_ON_ERROR,
+    CONF_AI_INSTRUCTIONS,
+)
+
+
+def _ai_provider_schema(current: str | None) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Required(CONF_AI_PROVIDER, default=current or AI_NONE): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=AI_PROVIDERS,
+                    translation_key="ai_provider",
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            )
+        }
+    )
+
+
+def _ai_details_schema(provider: str, defaults: dict[str, Any]) -> vol.Schema:
+    fields: dict[Any, Any] = {}
+    if provider == AI_TASK:
+        fields[
+            vol.Required(
+                CONF_AI_TASK_ENTITY, default=defaults.get(CONF_AI_TASK_ENTITY, vol.UNDEFINED)
+            )
+        ] = selector.EntitySelector(selector.EntitySelectorConfig(domain="ai_task"))
+    else:
+        if provider in AI_API_PROVIDERS:
+            fields[
+                vol.Required(
+                    CONF_AI_API_KEY, default=defaults.get(CONF_AI_API_KEY, vol.UNDEFINED)
+                )
+            ] = selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            )
+        if provider == AI_OLLAMA:
+            fields[
+                vol.Required(
+                    CONF_AI_BASE_URL, default=defaults.get(CONF_AI_BASE_URL, DEFAULT_OLLAMA_URL)
+                )
+            ] = selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.URL)
+            )
+        model_default = defaults.get(CONF_AI_MODEL)
+        if not model_default or defaults.get(CONF_AI_PROVIDER) != provider:
+            model_default = DEFAULT_AI_MODELS.get(provider, "")
+        fields[vol.Required(CONF_AI_MODEL, default=model_default)] = selector.TextSelector()
+    fields[
+        vol.Required(
+            CONF_AI_ON_ERROR, default=defaults.get(CONF_AI_ON_ERROR, DEFAULT_AI_ON_ERROR)
+        )
+    ] = selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[AI_ON_ERROR_SKIP, AI_ON_ERROR_FORMULA], translation_key="ai_on_error"
+        )
+    )
+    fields[
+        vol.Optional(
+            CONF_AI_INSTRUCTIONS,
+            description={"suggested_value": defaults.get(CONF_AI_INSTRUCTIONS)},
+        )
+    ] = selector.TextSelector(selector.TextSelectorConfig(multiline=True))
+    return vol.Schema(fields)
+
+
+class _AiStepsMixin:
+    """Passi AI condivisi da wizard e opzioni.
+
+    Chi la usa definisce `_ai` (dict di lavoro), `_ai_defaults()` e
+    `async_step_finish()`.
+    """
+
+    _ai: dict[str, Any]
+
+    def _ai_defaults(self) -> dict[str, Any]:
+        return {}
+
+    async def async_step_ai(self, user_input: dict[str, Any] | None = None):
+        """Scelta del provider AI."""
+        if user_input is not None:
+            provider = user_input[CONF_AI_PROVIDER]
+            self._ai = {CONF_AI_PROVIDER: provider}
+            if provider == AI_NONE:
+                return await self.async_step_finish()
+            return await self.async_step_ai_details()
+        current = self._ai.get(CONF_AI_PROVIDER) or self._ai_defaults().get(CONF_AI_PROVIDER)
+        return self.async_show_form(step_id="ai", data_schema=_ai_provider_schema(current))
+
+    async def async_step_ai_details(self, user_input: dict[str, Any] | None = None):
+        """Dati del provider, verificati con una richiesta di prova."""
+        provider = self._ai[CONF_AI_PROVIDER]
+        errors: dict[str, str] = {}
+        placeholders = {"error": "", "provider": provider}
+        if user_input is not None:
+            candidate = {CONF_AI_PROVIDER: provider, **user_input}
+            try:
+                await async_validate(self.hass, candidate)
+            except AiAuthError:
+                errors["base"] = "invalid_auth"
+            except AiConnectionError as err:
+                errors["base"] = "cannot_connect"
+                placeholders["error"] = str(err)
+            except AiError as err:
+                errors["base"] = "ai_failed"
+                placeholders["error"] = str(err)
+            else:
+                self._ai = candidate
+                return await self.async_step_finish()
+        defaults = {**self._ai_defaults(), **(user_input or {})}
+        return self.async_show_form(
+            step_id="ai_details",
+            data_schema=_ai_details_schema(provider, defaults),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+
 # ----------------------------------------------------------------------
 # Flusso principale
 # ----------------------------------------------------------------------
 
 
-class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
+class IrrigazioneConfigFlow(_AiStepsMixin, ConfigFlow, domain=DOMAIN):
     """Wizard: impianto -> zone -> programmazione -> formula."""
 
     VERSION = 1
@@ -367,6 +509,7 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         self._schedule: dict[str, Any] = {}
         self._formula: str = DEFAULT_FORMULA
         self._preview: str = ""
+        self._ai: dict[str, Any] = {}
 
     @staticmethod
     @callback
@@ -474,7 +617,7 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         """Anteprima: conferma o torna all'editor."""
         return self.async_show_menu(
             step_id="formula_preview",
-            menu_options=["finish", "formula"],
+            menu_options=["ai", "formula"],
             description_placeholders={"preview": self._preview},
         )
 
@@ -482,7 +625,12 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Crea l'impianto con le zone."""
-        options = {**self._system, **self._schedule, CONF_FORMULA: self._formula}
+        options = {
+            **self._system,
+            **self._schedule,
+            CONF_FORMULA: self._formula,
+            **self._ai,
+        }
         return self.async_create_entry(
             title=self._name,
             data={CONF_NAME: self._name},
@@ -504,13 +652,17 @@ class IrrigazioneConfigFlow(ConfigFlow, domain=DOMAIN):
 # ----------------------------------------------------------------------
 
 
-class IrrigazioneOptionsFlow(OptionsFlow):
+class IrrigazioneOptionsFlow(_AiStepsMixin, OptionsFlow):
     """Modifica sensori, programmazione e formula."""
 
     def __init__(self) -> None:
         """Inizializza."""
         self._options: dict[str, Any] = {}
         self._preview: str = ""
+        self._ai: dict[str, Any] = {}
+
+    def _ai_defaults(self) -> dict[str, Any]:
+        return {k: v for k, v in self.config_entry.options.items() if k in AI_KEYS}
 
     def _zones(self) -> list[dict[str, Any]]:
         return [
@@ -568,7 +720,7 @@ class IrrigazioneOptionsFlow(OptionsFlow):
         """Anteprima: salva o torna all'editor."""
         return self.async_show_menu(
             step_id="formula_preview",
-            menu_options=["finish", "formula"],
+            menu_options=["ai", "formula"],
             description_placeholders={"preview": self._preview},
         )
 
@@ -576,7 +728,8 @@ class IrrigazioneOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Salva."""
-        return self.async_create_entry(data=self._options)
+        options = {k: v for k, v in self._options.items() if k not in AI_KEYS}
+        return self.async_create_entry(data={**options, **self._ai})
 
 
 # ----------------------------------------------------------------------

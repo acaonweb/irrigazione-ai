@@ -15,7 +15,15 @@ from homeassistant.helpers.event import (
 )
 
 from . import IrrigazioneConfigEntry
-from .const import CONF_TEMPERATURE, CONF_WEATHER, STATUSES
+from .const import (
+    AI_RESULT_ERROR,
+    AI_RESULT_IRRIGATE,
+    AI_RESULT_SKIP,
+    AI_RESULTS,
+    CONF_TEMPERATURE,
+    CONF_WEATHER,
+    STATUSES,
+)
 from .controller import IrrigationController, ZoneConfig
 from .entity import IrrigazioneEntity, ZoneEntity
 
@@ -36,11 +44,16 @@ async def async_setup_entry(
             NextRunSensor(controller),
             LastBlockSensor(controller),
             LastRunSensor(controller),
+            AiDecisionSensor(controller),
         ]
     )
     for zone_id, zone in controller.zones.items():
         async_add_entities(
-            [ZoneDurationSensor(controller, zone), ZoneEndSensor(controller, zone)],
+            [
+                ZoneDurationSensor(controller, zone),
+                ZoneEndSensor(controller, zone),
+                ZoneAiSensor(controller, zone),
+            ],
             config_subentry_id=zone_id,
         )
 
@@ -251,3 +264,82 @@ class ZoneEndSensor(ZoneEntity, SensorEntity):
         if not c.running or run is None or run.done:
             return None
         return run.ends_at
+
+
+class AiDecisionSensor(IrrigazioneEntity, SensorEntity):
+    """Esito dell'ultima analisi AI: irrigare, saltare o errore."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = AI_RESULTS
+
+    def __init__(self, controller: IrrigationController) -> None:
+        """Inizializza."""
+        super().__init__(controller, "ai_decision")
+
+    @property
+    def available(self) -> bool:
+        """Disponibile solo se un provider AI è configurato."""
+        return self.controller.ai_configured
+
+    @property
+    def native_value(self) -> str | None:
+        """Esito più recente (errore se l'ultimo tentativo è fallito)."""
+        c = self.controller
+        result = c.ai_result
+        if c.ai_error and (result is None or (c.ai_error_at and c.ai_error_at > result.at)):
+            return AI_RESULT_ERROR
+        if result is None:
+            return None
+        return AI_RESULT_IRRIGATE if result.irrigate else AI_RESULT_SKIP
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Motivo, ora, provider, litri per zona."""
+        c = self.controller
+        result = c.ai_result
+        return {
+            "reason": result.reason if result else None,
+            "analyzed_at": result.at.isoformat() if result else None,
+            "provider": result.provider if result else None,
+            "error": c.ai_error,
+            "zones": {
+                z.name: {"liters": z.liters, "minutes": z.minutes, "reason": z.reason}
+                for z in result.zones.values()
+            }
+            if result
+            else {},
+        }
+
+
+class ZoneAiSensor(ZoneEntity, SensorEntity):
+    """Minuti decisi dall'AI per la zona nell'ultima analisi."""
+
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_device_class = SensorDeviceClass.DURATION
+
+    def __init__(self, controller: IrrigationController, zone: ZoneConfig) -> None:
+        """Inizializza."""
+        super().__init__(controller, zone, "zone_ai_duration")
+
+    @property
+    def available(self) -> bool:
+        """Disponibile solo se un provider AI è configurato."""
+        return self.controller.ai_configured
+
+    @property
+    def native_value(self) -> int | None:
+        """Minuti (None prima della prima analisi)."""
+        result = self.controller.ai_result
+        if result is None or self.zone.zone_id not in result.zones:
+            return None
+        return result.zones[self.zone.zone_id].minutes
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Litri e motivo."""
+        result = self.controller.ai_result
+        zr = result.zones.get(self.zone.zone_id) if result else None
+        return {
+            "liters": zr.liters if zr else None,
+            "reason": zr.reason if zr else None,
+        }

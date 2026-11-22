@@ -11,7 +11,7 @@
           "humidity_sensor": "Outdoor humidity sensor"
         },
         "data_description": {
-          "weather_entity": "Used for the formula and the rain block",
+          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used"
         }
@@ -86,8 +86,35 @@
         "title": "Formula preview",
         "description": "With the current values the formula gives:\n\n{preview}\n\nZones with their own formula are not shown.",
         "menu_options": {
-          "finish": "Looks good, save",
+          "ai": "Looks good, continue",
           "formula": "Edit the formula"
+        }
+      },
+      "ai": {
+        "title": "AI analysis",
+        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.",
+        "data": {
+          "ai_provider": "AI service"
+        }
+      },
+      "ai_details": {
+        "title": "AI service settings",
+        "description": "A small test request is sent to check the settings before saving.",
+        "data": {
+          "ai_task_entity": "AI Task entity",
+          "ai_api_key": "API key",
+          "ai_base_url": "Ollama address",
+          "ai_model": "Model",
+          "ai_on_error": "If the analysis fails",
+          "ai_instructions": "Notes for the AI"
+        },
+        "data_description": {
+          "ai_task_entity": "Created by an AI integration (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
+          "ai_api_key": "Stored in the Home Assistant configuration",
+          "ai_base_url": "e.g. http://192.168.1.10:11434",
+          "ai_model": "Model name as the service calls it",
+          "ai_on_error": "What to do if the AI does not answer or answers badly",
+          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
         }
       }
     },
@@ -95,7 +122,10 @@
       "name_required": "Enter a name.",
       "valve_in_use": "This valve is already used by another zone.",
       "min_greater_than_max": "The minimum duration is greater than the maximum.",
-      "formula_invalid": "The formula does not work: {error}"
+      "formula_invalid": "The formula does not work: {error}",
+      "invalid_auth": "The API key was rejected.",
+      "cannot_connect": "Cannot reach the service: {error}",
+      "ai_failed": "The test request failed: {error}"
     },
     "abort": {
       "already_configured": "A system with this name already exists."
@@ -118,7 +148,7 @@
           "notify_services": "Notifications"
         },
         "data_description": {
-          "weather_entity": "Used for the formula and the rain block",
+          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
           "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
@@ -142,13 +172,43 @@
         "title": "Formula preview",
         "description": "With the current values the formula gives:\n\n{preview}\n\nZones with their own formula are not shown.",
         "menu_options": {
-          "finish": "Looks good, save",
+          "ai": "Looks good, continue",
           "formula": "Edit the formula"
+        }
+      },
+      "ai": {
+        "title": "AI analysis",
+        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.",
+        "data": {
+          "ai_provider": "AI service"
+        }
+      },
+      "ai_details": {
+        "title": "AI service settings",
+        "description": "A small test request is sent to check the settings before saving.",
+        "data": {
+          "ai_task_entity": "AI Task entity",
+          "ai_api_key": "API key",
+          "ai_base_url": "Ollama address",
+          "ai_model": "Model",
+          "ai_on_error": "If the analysis fails",
+          "ai_instructions": "Notes for the AI"
+        },
+        "data_description": {
+          "ai_task_entity": "Created by an AI integration (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
+          "ai_api_key": "Stored in the Home Assistant configuration",
+          "ai_base_url": "e.g. http://192.168.1.10:11434",
+          "ai_model": "Model name as the service calls it",
+          "ai_on_error": "What to do if the AI does not answer or answers badly",
+          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
         }
       }
     },
     "error": {
-      "formula_invalid": "The formula does not work: {error}"
+      "formula_invalid": "The formula does not work: {error}",
+      "invalid_auth": "The API key was rejected.",
+      "cannot_connect": "Cannot reach the service: {error}",
+      "ai_failed": "The test request failed: {error}"
     }
   },
   "config_subentries": {
@@ -249,6 +309,22 @@
         "east": "East",
         "west": "West"
       }
+    },
+    "ai_provider": {
+      "options": {
+        "none": "No AI (formula only)",
+        "ai_task": "AI Task entity of Home Assistant",
+        "openai": "OpenAI (API key)",
+        "anthropic": "Anthropic Claude (API key)",
+        "gemini": "Google Gemini (API key)",
+        "ollama": "Ollama (local)"
+      }
+    },
+    "ai_on_error": {
+      "options": {
+        "skip": "Skip the cycle",
+        "formula": "Use the formula"
+      }
     }
   },
   "entity": {
@@ -258,6 +334,9 @@
       },
       "rain_block": {
         "name": "Rain block"
+      },
+      "ai_analysis": {
+        "name": "AI analysis"
       }
     },
     "select": {
@@ -286,6 +365,9 @@
       },
       "stop": {
         "name": "Stop"
+      },
+      "analyze": {
+        "name": "Analyze now"
       }
     },
     "sensor": {
@@ -314,6 +396,17 @@
       },
       "zone_end": {
         "name": "Expected end"
+      },
+      "ai_decision": {
+        "name": "AI decision",
+        "state": {
+          "irrigate": "Water",
+          "skip": "Skip",
+          "error": "Error"
+        }
+      },
+      "zone_ai_duration": {
+        "name": "AI duration"
       }
     }
   },
@@ -339,6 +432,16 @@
     "stop": {
       "name": "Stop irrigation",
       "description": "Stops the running cycle and closes the valves.",
+      "fields": {
+        "config_entry_id": {
+          "name": "System",
+          "description": "Leave empty for all systems."
+        }
+      }
+    },
+    "analyze": {
+      "name": "Analyze with AI",
+      "description": "Asks the AI whether and how much to water, without watering. Returns the result.",
       "fields": {
         "config_entry_id": {
           "name": "System",

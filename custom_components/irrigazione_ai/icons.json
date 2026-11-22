@@ -1,16 +1,34 @@
 {
   "entity": {
     "switch": {
-      "irrigation": { "default": "mdi:sprinkler-variant" },
-      "rain_block": { "default": "mdi:weather-rainy" }
+      "irrigation": {
+        "default": "mdi:sprinkler-variant"
+      },
+      "rain_block": {
+        "default": "mdi:weather-rainy"
+      },
+      "ai_analysis": {
+        "default": "mdi:robot-outline"
+      }
     },
     "select": {
-      "frequency": { "default": "mdi:calendar-week" },
-      "manual_timer": { "default": "mdi:timer-outline" }
+      "frequency": {
+        "default": "mdi:calendar-week"
+      },
+      "manual_timer": {
+        "default": "mdi:timer-outline"
+      }
     },
     "button": {
-      "start": { "default": "mdi:play" },
-      "stop": { "default": "mdi:stop" }
+      "start": {
+        "default": "mdi:play"
+      },
+      "stop": {
+        "default": "mdi:stop"
+      },
+      "analyze": {
+        "default": "mdi:robot"
+      }
     },
     "sensor": {
       "status": {
@@ -20,16 +38,46 @@
           "blocked": "mdi:water-off"
         }
       },
-      "remaining": { "default": "mdi:timer-sand" },
-      "next_run": { "default": "mdi:calendar-clock" },
-      "last_block": { "default": "mdi:water-off" },
-      "last_run": { "default": "mdi:history" },
-      "zone_duration": { "default": "mdi:timer-cog-outline" },
-      "zone_end": { "default": "mdi:clock-end" }
+      "remaining": {
+        "default": "mdi:timer-sand"
+      },
+      "next_run": {
+        "default": "mdi:calendar-clock"
+      },
+      "last_block": {
+        "default": "mdi:water-off"
+      },
+      "last_run": {
+        "default": "mdi:history"
+      },
+      "zone_duration": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "zone_end": {
+        "default": "mdi:clock-end"
+      },
+      "ai_decision": {
+        "default": "mdi:robot",
+        "state": {
+          "irrigate": "mdi:water-check",
+          "skip": "mdi:water-off",
+          "error": "mdi:robot-confused"
+        }
+      },
+      "zone_ai_duration": {
+        "default": "mdi:robot-outline"
+      }
     }
   },
   "services": {
-    "start": { "service": "mdi:play" },
-    "stop": { "service": "mdi:stop" }
+    "start": {
+      "service": "mdi:play"
+    },
+    "stop": {
+      "service": "mdi:stop"
+    },
+    "analyze": {
+      "service": "mdi:robot"
+    }
   }
 }

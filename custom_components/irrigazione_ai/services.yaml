@@ -22,3 +22,10 @@ stop:
       selector:
         config_entry:
           integration: irrigazione_ai
+
+analyze:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: irrigazione_ai
