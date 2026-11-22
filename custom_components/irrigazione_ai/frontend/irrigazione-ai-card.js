@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.7.2";
+const CARD_VERSION = "0.8.0";
 
 const TEXT = {
   it: {
@@ -21,6 +21,8 @@ const TEXT = {
     off: "Off", daily: "7/7", min: "min", skip: "salta",
     water7: "💧 Consumo acqua", soil: "Umidità terriccio", outdoor: "Esterno", temp: "Temperatura", hum: "Umidità",
     noData: "Nessun dato", noEntity: "Nessun impianto Irrigazione AI trovato.",
+    today: "Oggi", month: "Mese", total: "Totale", log: "📒 Registro irrigazioni", noEvents: "Nessun evento negli ultimi 14 giorni",
+    collecting: "Le colonne compaiono quando HA ha calcolato le statistiche (a fine ora)",
     days: { mon: "Lun", tue: "Mar", wed: "Mer", thu: "Gio", fri: "Ven", sat: "Sab", sun: "Dom" },
   },
   en: {
@@ -34,6 +36,8 @@ const TEXT = {
     off: "Off", daily: "7/7", min: "min", skip: "skip",
     water7: "💧 Water use", soil: "Soil moisture", outdoor: "Outdoor", temp: "Temperature", hum: "Humidity",
     noData: "No data", noEntity: "No Irrigazione AI system found.",
+    today: "Today", month: "Month", total: "Total", log: "📒 Irrigation log", noEvents: "No events in the last 14 days",
+    collecting: "Bars appear once HA has compiled the statistics (at the end of the hour)",
     days: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" },
   },
 };
@@ -94,6 +98,18 @@ const CHART_STYLE = `
   .axis { font-size: 10px; fill: var(--secondary-text-color); }
   .lbl { font-size: 10px; fill: var(--primary-text-color); font-weight: 600; }
   .empty { font-size: 12px; color: var(--secondary-text-color); padding: 20px 0; text-align: center; }
+  .stats3 { grid-column: span 12; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--ia-tile); border-radius: 12px; padding: 8px 12px; border: 1px solid var(--divider-color, rgba(0,0,0,.08)); }
+  .stat .k { font-size: 11px; color: var(--secondary-text-color); }
+  .stat .v { font-size: 16px; font-weight: 700; color: #0A84FF; }
+  .ev { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--divider-color, rgba(0,0,0,.08)); }
+  .ev:first-of-type { border-top: none; }
+  .ev .ico { font-size: 18px; line-height: 22px; width: 22px; text-align: center; flex: none; }
+  .ev .body { flex: 1; min-width: 0; }
+  .ev .t1 { font-size: 13px; font-weight: 600; }
+  .ev .t2 { font-size: 11px; color: var(--secondary-text-color); white-space: pre-line; }
+  .ev .lit { font-size: 13px; font-weight: 700; color: #0A84FF; white-space: nowrap; }
+  .ev.future { opacity: .75; }
 `;
 
 /* ------------------------------------------------------------------ */
@@ -347,9 +363,14 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
     const map = this._map();
     if (!map) { if (this._sig !== "none") { this._sig = "none"; this._empty(this._t().noEntity); } return; }
     const now = Date.now();
-    if (first || !this._loaded || now - this._loaded > 10 * 60 * 1000) {
+    const sig = this._signature([map.system.water_today, map.system.water_month, map.system.water_total,
+      map.system.last_run, map.system.last_block, this._statusId()]);
+    if (first || !this._loaded || now - this._loaded > 10 * 60 * 1000 || (this._sig && sig !== this._sig)) {
       this._loaded = now;
+      this._sig = sig;
       this._load(map);
+    } else if (!this._sig) {
+      this._sig = sig;
     }
   }
 
@@ -390,8 +411,44 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
         outIds.forEach((id) => { data.outdoor[id] = this._points(h[id]); });
       }
     } catch (e) { /* storico non disponibile */ }
+    try {
+      const cal = map.system.calendar;
+      if (cal && this._config.show_log !== false) {
+        const start = new Date(end - 14 * 86400e3).toISOString();
+        const stop = new Date(end.getTime() + 8 * 86400e3).toISOString();
+        data.events = await hass.callApi("GET", `calendars/${cal}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
+      }
+    } catch (e) { /* calendario non disponibile */ }
     this._data = data;
     this._render(map);
+  }
+
+  _log(events, t) {
+    const now = Date.now();
+    const parse = (x) => Date.parse((x && (x.dateTime || x.date)) || x);
+    const past = (events || []).filter((e) => parse(e.start) <= now && !/prevista|planned|in corso|running/i.test(e.summary))
+      .sort((a, b) => parse(b.start) - parse(a.start)).slice(0, this._config.log_items || 8);
+    const next = (events || []).filter((e) => parse(e.start) > now).sort((a, b) => parse(a.start) - parse(b.start))[0];
+    const fmt = (ms) => new Date(ms).toLocaleString(this._lang(), { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const liters = (desc) => {
+      if (!desc) return null;
+      const tot = desc.match(/(?:Totale|Total):\s*([\d.,]+)\s*L/);
+      if (tot) return parseFloat(tot[1].replace(",", "."));
+      const all = [...desc.matchAll(/([\d]+[.,]?[\d]*)\s*L\b/g)].map((m) => parseFloat(m[1].replace(",", ".")));
+      return all.length ? all.reduce((a, b) => a + b, 0) : null;
+    };
+    const icon = (e) => /saltata|skipped|pioggia|rain/i.test(e.summary) ? "🚫" : /manuale|manual/i.test(e.summary) ? "✋" : /interrotta|stopped/i.test(e.summary) ? "⏹️" : "💧";
+    const row = (e, future) => {
+      const s = parse(e.start), en = parse(e.end);
+      const mins = Math.max(0, Math.round((en - s) / 60000));
+      const l = future ? null : liters(e.description);
+      const detail = (e.description || "").split("\n").filter((x) => !/^(Totale|Total):/.test(x)).join("\n");
+      return `<div class="ev ${future ? "future" : ""}"><div class="ico">${future ? "📅" : icon(e)}</div>
+        <div class="body"><div class="t1">${e.summary}</div><div class="t2">${fmt(s)}${mins > 1 ? ` · ${mins} ${t.min || "min"}` : ""}${detail ? "\n" + detail : ""}</div></div>
+        ${l !== null && l > 0 ? `<div class="lit">${this._fmt(l)} L</div>` : ""}</div>`;
+    };
+    const body = (next ? row(next, true) : "") + (past.length ? past.map((e) => row(e, false)).join("") : `<div class="empty">${t.noEvents}</div>`);
+    return `<div class="tile chart" style="cursor:default"><div class="ctitle">${t.log}</div>${body}</div>`;
   }
 
   _points(rows) {
@@ -476,12 +533,21 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       </div>`;
     }
     const total = d.water.reduce((a, r) => a + r.value, 0);
+    const lit = (id) => { const v = this._num(id); return v === null ? "–" : `${this._fmt(v)} L`; };
+    const stats = `<div class="stats3">
+      <div class="stat"><div class="k">${t.today}</div><div class="v">${lit(map.system.water_today)}</div></div>
+      <div class="stat"><div class="k">${t.month}</div><div class="v">${lit(map.system.water_month)}</div></div>
+      <div class="stat"><div class="k">${t.total}</div><div class="v">${lit(map.system.water_total)}</div></div></div>`;
+    const bars = total ? this._bars(d.water, t) : `<div class="empty">${t.collecting}</div>`;
+    const log = this._config.show_log === false ? "" : this._log(d.events, t);
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CHART_STYLE}</style>
       <ha-card><div class="grid">
+        ${stats}
         <div class="tile chart" style="cursor:default">
           <div class="ctitle">${this._config.title || t.water7}${total ? ` · ${this._fmt(total)} L` : ""}</div>
-          ${this._bars(d.water, t)}</div>
+          ${bars}</div>
+        ${log}
         ${outdoor}
         ${soil}
       </div></ha-card>`;
@@ -493,6 +559,6 @@ customElements.define("irrigazione-ai-charts-card", IrrigazioneAiChartsCard);
 window.customCards = window.customCards || [];
 window.customCards.push(
   { type: "irrigazione-ai-card", name: "Irrigazione AI", description: "Comandi dell'impianto: generale, AI, pioggia, zone, timer, frequenza, durate.", preview: true },
-  { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici", description: "Consumo d'acqua degli ultimi 7 giorni, umidità del terriccio e meteo esterno.", preview: true },
+  { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici e registro", description: "Litri di oggi, del mese e totali, consumo degli ultimi 7 giorni, registro delle irrigazioni, umidità del terriccio e meteo esterno.", preview: true },
 );
 console.info(`%c IRRIGAZIONE-AI-CARD %c ${CARD_VERSION} `, "background:#26a69a;color:#fff", "");

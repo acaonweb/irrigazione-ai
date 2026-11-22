@@ -93,7 +93,7 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
   - una scheda per zona, con umidità (🔴 secco, 🟢 ottimale, 💧 umido), minuti previsti e AI, litri, ora di fine e batteria della valvola. Si illumina di blu con l'irrigatore che oscilla mentre irriga, e di rosso se il terriccio è secco;
   - le righe del timer (off/15/30/60) e della frequenza (Off, Dom, Gio-Dom, 7/7);
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
-- **`custom:irrigazione-ai-charts-card`, i grafici:** consumo d'acqua degli ultimi 7 giorni a colonne, con i litri; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
+- **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; il **registro delle irrigazioni** con gli ultimi eventi (cicli, aperture manuali, cicli saltati con il motivo), ciascuno con orario, minuti, dettaglio delle zone e litri, più la prossima irrigazione prevista; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
 
 ## 🔄 Come nasce un ciclo
 
@@ -145,8 +145,12 @@ entity: sensor.irrigazione_stato          # facoltativo, se hai più impianti
 ```
 
 ```yaml
-type: custom:irrigazione-ai-charts-card   # grafici
+type: custom:irrigazione-ai-charts-card   # grafici e registro
+log_items: 8                              # facoltativo: eventi mostrati nel registro
+show_log: true                            # facoltativo: false per nascondere il registro
 ```
+
+Le colonne dei 7 giorni usano le statistiche di Home Assistant, calcolate alla fine di ogni ora: su un'installazione nuova compaiono dopo il primo ciclo e la prima ora completa.
 
 **Vista pronta**, due colonne come nella foto in cima (modifica dashboard → ⋮ → *Editor di configurazione*, oppure una nuova vista in YAML):
 

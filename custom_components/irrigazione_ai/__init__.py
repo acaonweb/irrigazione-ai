@@ -44,7 +44,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 CARD_URL = f"/{DOMAIN}/irrigazione-ai-card.js"
 CARD_PATH = Path(__file__).parent / "frontend" / "irrigazione-ai-card.js"
-CARD_VERSION = "0.7.2"
+CARD_VERSION = "0.8.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
