@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
@@ -37,6 +40,27 @@ PLATFORMS: list[Platform] = [
 ]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+_LOGGER = logging.getLogger(__name__)
+CARD_URL = f"/{DOMAIN}/irrigazione-ai-card.js"
+CARD_PATH = Path(__file__).parent / "frontend" / "irrigazione-ai-card.js"
+CARD_VERSION = "0.5.0"
+
+
+async def _async_register_card(hass: HomeAssistant) -> None:
+    """Rende disponibile la card Lovelace senza aggiungere risorse a mano."""
+    if getattr(hass, "http", None) is None:
+        return
+    try:
+        from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
+        from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
+
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(CARD_URL, str(CARD_PATH), False)]
+        )
+        add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
+    except Exception:  # noqa: BLE001 - la card è un extra, l'integrazione funziona comunque
+        _LOGGER.warning("Impossibile registrare la card Lovelace", exc_info=True)
 
 type IrrigazioneConfigEntry = ConfigEntry[IrrigationController]
 
@@ -98,6 +122,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             }
         return results
 
+    await _async_register_card(hass)
     hass.services.async_register(DOMAIN, SERVICE_START, _start, schema=START_SCHEMA)
     hass.services.async_register(
         DOMAIN,
@@ -118,6 +143,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) 
     await controller.history.async_load()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await controller.async_setup()
+    # Ora che tutte le entità esistono, aggiorna (es. la mappa per la card)
+    controller.async_update_listeners()
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

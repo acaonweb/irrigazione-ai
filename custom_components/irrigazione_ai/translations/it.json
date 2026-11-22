@@ -62,14 +62,18 @@
           "run_mode": "Zone",
           "safety_minutes": "Chiusura di sicurezza",
           "close_on_startup": "Chiudi le valvole all'avvio",
-          "notify_services": "Notifiche"
+          "live_devices": "Dispositivi per la Live Activity",
+          "live_url": "Pagina da aprire al tocco",
+          "notify_services": "Altre notifiche"
         },
         "data_description": {
           "sunset_offset": "Quando parte il ciclo programmato; negativo = prima del tramonto",
           "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
           "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
-          "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
+          "live_devices": "Telefoni e tablet con l'app Home Assistant: durante l'irrigazione mostrano una Live Activity (iPhone, Dynamic Island) o un Live Update (Android 16+) con ogni zona e la sua ora di fine",
+          "live_url": "Facoltativa: dashboard aperta toccando la Live Activity, per esempio /lovelace/irrigazione",
+          "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, errori), per esempio notify.pushover"
         }
       },
       "formula": {
@@ -145,7 +149,9 @@
           "run_mode": "Zone",
           "safety_minutes": "Chiusura di sicurezza",
           "close_on_startup": "Chiudi le valvole all'avvio",
-          "notify_services": "Notifiche"
+          "live_devices": "Dispositivi per la Live Activity",
+          "live_url": "Pagina da aprire al tocco",
+          "notify_services": "Altre notifiche"
         },
         "data_description": {
           "weather_entity": "Facoltativa: usata dalla formula, dal blocco pioggia e dall'analisi AI. Senza, il blocco pioggia resta inattivo",
@@ -155,7 +161,9 @@
           "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
           "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
-          "notify_services": "Azioni di notifica da chiamare, per esempio notify.pushover o notify.mobile_app_iphone"
+          "live_devices": "Telefoni e tablet con l'app Home Assistant: durante l'irrigazione mostrano una Live Activity (iPhone, Dynamic Island) o un Live Update (Android 16+) con ogni zona e la sua ora di fine",
+          "live_url": "Facoltativa: dashboard aperta toccando la Live Activity, per esempio /lovelace/irrigazione",
+          "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, errori), per esempio notify.pushover"
         }
       },
       "formula": {

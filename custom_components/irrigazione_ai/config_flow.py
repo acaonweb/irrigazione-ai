@@ -39,6 +39,8 @@ from .const import (
     CONF_FLOW_RATE,
     CONF_FORMULA,
     CONF_HUMIDITY,
+    CONF_LIVE_DEVICES,
+    CONF_LIVE_URL,
     CONF_MAX_DURATION,
     CONF_MIN_DURATION,
     CONF_MOISTURE,
@@ -108,8 +110,17 @@ def _system_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
-def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Programmazione e comportamento."""
+def _mobile_devices(hass: HomeAssistant | None) -> list[str]:
+    """Azioni notify delle app companion (iPhone, iPad, Android)."""
+    if hass is None:
+        return []
+    services = hass.services.async_services().get("notify", {})
+    return sorted(f"notify.{name}" for name in services if name.startswith("mobile_app_"))
+
+
+def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None) -> vol.Schema:
+    """Programmazione, sicurezza e notifiche."""
+    devices = sorted(set(_mobile_devices(hass)) | set(defaults.get(CONF_LIVE_DEVICES, [])))
     return vol.Schema(
         {
             vol.Required(
@@ -155,6 +166,17 @@ def _schedule_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_CLOSE_ON_STARTUP,
                 default=defaults.get(CONF_CLOSE_ON_STARTUP, DEFAULT_CLOSE_ON_STARTUP),
             ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_LIVE_DEVICES, default=defaults.get(CONF_LIVE_DEVICES, [])
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=devices, multiple=True, custom_value=True
+                )
+            ),
+            vol.Optional(
+                CONF_LIVE_URL,
+                description={"suggested_value": defaults.get(CONF_LIVE_URL)},
+            ): selector.TextSelector(),
             vol.Optional(
                 CONF_NOTIFY, default=defaults.get(CONF_NOTIFY, [])
             ): selector.TextSelector(selector.TextSelectorConfig(multiple=True)),
@@ -363,6 +385,16 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_SUNSET_OFFSET] = int(data[CONF_SUNSET_OFFSET])
     data[CONF_SAFETY_MINUTES] = int(data[CONF_SAFETY_MINUTES])
     data[CONF_NOTIFY] = [s.strip() for s in data.get(CONF_NOTIFY, []) if s.strip()]
+    data[CONF_LIVE_DEVICES] = [
+        d if d.startswith("notify.") else f"notify.{d}"
+        for d in (x.strip() for x in data.get(CONF_LIVE_DEVICES, []))
+        if d
+    ]
+    url = (data.get(CONF_LIVE_URL) or "").strip()
+    if url:
+        data[CONF_LIVE_URL] = url
+    else:
+        data.pop(CONF_LIVE_URL, None)
     return data
 
 
@@ -580,7 +612,9 @@ class IrrigazioneConfigFlow(_AiStepsMixin, ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._schedule = _clean_schedule(user_input)
             return await self.async_step_formula()
-        return self.async_show_form(step_id="schedule", data_schema=_schedule_schema({}))
+        return self.async_show_form(
+            step_id="schedule", data_schema=_schedule_schema({}, self.hass)
+        )
 
     async def async_step_formula(
         self, user_input: dict[str, Any] | None = None
@@ -678,7 +712,7 @@ class IrrigazioneOptionsFlow(_AiStepsMixin, OptionsFlow):
             self._options = _clean_schedule(user_input)
             return await self.async_step_formula()
         current = dict(self.config_entry.options)
-        schema = _system_schema(current).extend(_schedule_schema(current).schema)
+        schema = _system_schema(current).extend(_schedule_schema(current, self.hass).schema)
         return self.async_show_form(step_id="init", data_schema=schema)
 
     async def async_step_formula(

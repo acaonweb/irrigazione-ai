@@ -148,3 +148,9 @@ AI_RESULTS: Final = [AI_RESULT_IRRIGATE, AI_RESULT_SKIP, AI_RESULT_ERROR]
 
 SERVICE_ANALYZE: Final = "analyze"
 SOURCE_AI: Final = "ai"
+
+# --- Notifiche / Live Activity ---
+CONF_LIVE_DEVICES: Final = "live_devices"
+CONF_LIVE_URL: Final = "live_url"
+LIVE_CLEAR_DELAY: Final = 300
+ZONE_NUMBERS: Final = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]

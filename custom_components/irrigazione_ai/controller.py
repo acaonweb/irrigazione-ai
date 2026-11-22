@@ -109,6 +109,7 @@ from .const import (
 )
 from .formula import FormulaError, render_formula
 from .history import IrrigationHistory
+from .live import LiveActivity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -215,6 +216,8 @@ class IrrigationController:
         self._ai_lock = asyncio.Lock()
 
         self.history = IrrigationHistory(hass, entry.entry_id)
+        self.live = LiveActivity(self)
+        self.manual_close_at: dict[str, datetime] = {}
 
         self._run_task: asyncio.Task | None = None
         self._unsubs: list[Callable[[], None]] = []
@@ -298,6 +301,7 @@ class IrrigationController:
         for cancel in self._safety_timers.values():
             cancel()
         self._safety_timers.clear()
+        self.live.shutdown()
         if self.running:
             await self.async_stop(notify=False)
         self._count_water()
@@ -680,6 +684,7 @@ class IrrigationController:
             f"{self.zones[zid].name}: {mins} min" for zid, mins in durations.items()
         )
         origin = " (AI)" if self.ai_last_used else ""
+        await self.live.async_update(silent=False)
         await self._notify(f"Irrigazione avviata{origin}. {details}.")
 
         self._run_task = self.entry.async_create_background_task(
@@ -715,11 +720,12 @@ class IrrigationController:
             _LOGGER.exception("Errore durante il ciclo di irrigazione")
             await self._close_all()
         self._count_water()
-        self.history.cycle_finished(interrupted=False)
+        event = self.history.cycle_finished(interrupted=False)
         self.running = False
         self.last_run_end = dt_util.utcnow()
         self._run_task = None
         self.async_update_listeners()
+        await self.live.async_finish(event, interrupted=False)
         await self._notify("Irrigazione terminata.")
 
     async def _async_run_zone(self, zone_id: str) -> None:
@@ -740,6 +746,8 @@ class IrrigationController:
         if self._is_open(zone.valve):
             await self._close_valve(zone.valve)
         self.async_update_listeners()
+        if any(not r.done for r in self.zone_runs.values()):
+            await self.live.async_update(silent=True)
 
     async def async_stop(self, notify: bool = True) -> None:
         """Interrompe il ciclo in corso e chiude le valvole."""
@@ -758,8 +766,9 @@ class IrrigationController:
         self.running = False
         if was_running:
             self._count_water()
-            self.history.cycle_finished(interrupted=True)
+            event = self.history.cycle_finished(interrupted=True)
             self.last_run_end = dt_util.utcnow()
+            await self.live.async_finish(event, interrupted=True)
         self.async_update_listeners()
         if was_running and notify:
             await self._notify("Irrigazione interrotta.")
@@ -811,43 +820,48 @@ class IrrigationController:
             return
         is_open = new_state.state in OPEN_STATES
         run = self.zone_runs.get(zone.zone_id) if self.running else None
-
-        if is_open:
-            self.history.valve_opened(
-                zone.zone_id,
-                new_state.last_changed,
-                manual=not (run is not None and run.active),
-            )
-        else:
-            self.history.valve_closed(
-                zone.zone_id, zone.name, zone.flow_rate, new_state.last_changed
-            )
+        by_cycle = run is not None and run.active
 
         if not is_open:
+            manual_event = self.history.valve_closed(
+                zone.zone_id, zone.name, zone.flow_rate, new_state.last_changed
+            )
             if cancel := self._safety_timers.pop(entity_id, None):
                 cancel()
+            self.manual_close_at.pop(entity_id, None)
             self.async_update_listeners()
+            if not self.running and self.live.active:
+                if any(self.history.is_open(z) for z in self.zones):
+                    self.hass.async_create_task(self.live.async_update(silent=True))
+                else:
+                    self.hass.async_create_task(
+                        self.live.async_finish(manual_event, interrupted=False)
+                    )
             return
 
-        if run is not None and run.active:
-            return  # aperta dal ciclo
-        if entity_id in self._safety_timers:
-            return
+        was_counting = self.history.is_open(zone.zone_id)
+        self.history.valve_opened(zone.zone_id, new_state.last_changed, manual=not by_cycle)
+        if by_cycle or was_counting:
+            return  # aperta dal ciclo, o già nota
+
         minutes = int(self.config.get(CONF_SAFETY_MINUTES, DEFAULT_SAFETY_MINUTES))
-        if minutes <= 0:
-            return
+        if minutes > 0 and entity_id not in self._safety_timers:
 
-        async def _safety_close(_now: datetime) -> None:
-            self._safety_timers.pop(entity_id, None)
-            if self._is_open(entity_id):
-                await self._close_valve(entity_id)
-                await self._notify(
-                    f"{zone.name} chiusa automaticamente dopo {minutes} minuti (sicurezza)."
-                )
+            async def _safety_close(_now: datetime) -> None:
+                self._safety_timers.pop(entity_id, None)
+                if self._is_open(entity_id):
+                    await self._close_valve(entity_id)
+                    await self._notify(
+                        f"{zone.name} chiusa automaticamente dopo {minutes} minuti (sicurezza)."
+                    )
 
-        self._safety_timers[entity_id] = async_call_later(
-            self.hass, minutes * 60, _safety_close
-        )
+            self._safety_timers[entity_id] = async_call_later(
+                self.hass, minutes * 60, _safety_close
+            )
+            self.manual_close_at[entity_id] = dt_util.utcnow() + timedelta(minutes=minutes)
+        self.async_update_listeners()
+        if not self.running:
+            self.hass.async_create_task(self.live.async_update(silent=self.live.active))
 
     # ------------------------------------------------------------------
     # Notifiche

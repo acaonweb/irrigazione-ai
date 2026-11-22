@@ -12,6 +12,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfTime, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import (
     async_track_state_change_event,
@@ -26,6 +27,7 @@ from .const import (
     AI_RESULTS,
     CONF_TEMPERATURE,
     CONF_WEATHER,
+    DOMAIN,
     STATUSES,
 )
 from .controller import IrrigationController, ZoneConfig
@@ -98,11 +100,57 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
         """Stato."""
         return self.controller.status
 
+    def _entity_map(self) -> dict[str, Any]:
+        """Entità dell'impianto e delle zone (usate dalla card Lovelace)."""
+        reg = er.async_get(self.hass)
+        c = self.controller
+        entry_id = c.entry.entry_id
+
+        def find(domain: str, unique_id: str) -> str | None:
+            return reg.async_get_entity_id(domain, DOMAIN, unique_id)
+
+        system = {
+            key: find(domain, f"{entry_id}_{key}")
+            for domain, key in (
+                ("switch", "irrigation"),
+                ("switch", "rain_block"),
+                ("switch", "ai_analysis"),
+                ("select", "frequency"),
+                ("select", "manual_timer"),
+                ("button", "start"),
+                ("button", "stop"),
+                ("button", "analyze"),
+                ("sensor", "remaining"),
+                ("sensor", "next_run"),
+                ("sensor", "last_run"),
+                ("sensor", "last_block"),
+                ("sensor", "ai_decision"),
+                ("sensor", "water_today"),
+                ("sensor", "water_month"),
+                ("calendar", "calendar"),
+            )
+        }
+        zones = [
+            {
+                "name": zone.name,
+                "valve": zone.valve,
+                "moisture": zone.moisture_sensor,
+                "duration": find("sensor", f"{zone_id}_zone_duration"),
+                "end": find("sensor", f"{zone_id}_zone_end"),
+                "ai": find("sensor", f"{zone_id}_zone_ai_duration"),
+                "water_today": find("sensor", f"{zone_id}_zone_water_today"),
+                "water_total": find("sensor", f"{zone_id}_zone_water_total"),
+            }
+            for zone_id, zone in c.zones.items()
+        ]
+        return {"system": system, "zones": zones, "ai": c.ai_configured}
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Dettagli del ciclo."""
+        """Dettagli del ciclo ed entità per la card."""
         c = self.controller
         return {
+            "card": self._entity_map(),
             "source": c.run_source if c.running else None,
             "zones": {
                 c.zones[zid].name: {

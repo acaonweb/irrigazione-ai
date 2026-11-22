@@ -62,14 +62,18 @@
           "run_mode": "Zones",
           "safety_minutes": "Safety close",
           "close_on_startup": "Close valves on startup",
-          "notify_services": "Notifications"
+          "live_devices": "Live Activity devices",
+          "live_url": "Page to open on tap",
+          "notify_services": "Other notifications"
         },
         "data_description": {
           "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
           "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
           "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
-          "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
+          "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
+          "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
+          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, errors), e.g. notify.pushover"
         }
       },
       "formula": {
@@ -145,7 +149,9 @@
           "run_mode": "Zones",
           "safety_minutes": "Safety close",
           "close_on_startup": "Close valves on startup",
-          "notify_services": "Notifications"
+          "live_devices": "Live Activity devices",
+          "live_url": "Page to open on tap",
+          "notify_services": "Other notifications"
         },
         "data_description": {
           "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
@@ -155,7 +161,9 @@
           "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
           "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
-          "notify_services": "Notify actions to call, e.g. notify.pushover or notify.mobile_app_iphone"
+          "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
+          "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
+          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, errors), e.g. notify.pushover"
         }
       },
       "formula": {

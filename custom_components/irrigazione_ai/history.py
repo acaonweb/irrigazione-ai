@@ -177,18 +177,18 @@ class IrrigationHistory:
 
     def valve_closed(
         self, zone_id: str, zone_name: str, flow_rate: float, when: datetime
-    ) -> None:
+    ) -> HistoryEvent | None:
         """Una valvola si è chiusa: conteggio finale ed eventuale evento manuale."""
+        event: HistoryEvent | None = None
         if zone_id not in self._open_since:
-            return
+            return None
         self.accumulate(zone_id, flow_rate, when)
         del self._open_since[zone_id]
         if (manual := self._manual.pop(zone_id, None)) is not None:
             start, liters_before = manual
             liters = self.zone(zone_id).total - liters_before
             minutes = max(0, round((when - start).total_seconds() / 60))
-            self._add_event(
-                HistoryEvent(
+            event = HistoryEvent(
                     uid=uuid.uuid4().hex,
                     kind=KIND_MANUAL,
                     start=start.isoformat(),
@@ -197,8 +197,9 @@ class IrrigationHistory:
                     description=f"{zone_name}: {minutes} min, {liters:.1f} L",
                     zones={zone_id: {"name": zone_name, "minutes": minutes, "liters": round(liters, 1)}},
                 )
-            )
+            self._add_event(event)
         self.schedule_save()
+        return event
 
     # ------------------------------------------------------------------
     # Eventi
