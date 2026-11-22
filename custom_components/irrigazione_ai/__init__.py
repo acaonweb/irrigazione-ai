@@ -30,6 +30,7 @@ from .controller import IrrigationController
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
+    Platform.CALENDAR,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
@@ -113,6 +114,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) 
     """Configura un impianto."""
     controller = IrrigationController(hass, entry)
     entry.runtime_data = controller
+    # Lo storico va caricato prima delle entità, che leggono i litri salvati
+    await controller.history.async_load()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await controller.async_setup()
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
@@ -128,3 +131,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry)
     """Scarica un impianto."""
     await entry.runtime_data.async_shutdown()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> None:
+    """Rimozione dell'impianto: cancella storico e consumi salvati."""
+    from homeassistant.helpers.storage import Store  # noqa: PLC0415
+
+    await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()

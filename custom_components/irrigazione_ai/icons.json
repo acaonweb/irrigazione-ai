@@ -66,6 +66,26 @@
       },
       "zone_ai_duration": {
         "default": "mdi:robot-outline"
+      },
+      "water_today": {
+        "default": "mdi:water"
+      },
+      "water_month": {
+        "default": "mdi:water"
+      },
+      "water_total": {
+        "default": "mdi:water"
+      },
+      "zone_water_today": {
+        "default": "mdi:water"
+      },
+      "zone_water_total": {
+        "default": "mdi:water"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "default": "mdi:calendar-clock"
       }
     }
   },

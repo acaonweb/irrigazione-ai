@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
-from homeassistant.const import UnitOfTime
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import UnitOfTime, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import (
@@ -45,6 +49,9 @@ async def async_setup_entry(
             LastBlockSensor(controller),
             LastRunSensor(controller),
             AiDecisionSensor(controller),
+            WaterSensor(controller, "water_today", "day"),
+            WaterSensor(controller, "water_month", "month"),
+            WaterSensor(controller, "water_total", "total"),
         ]
     )
     for zone_id, zone in controller.zones.items():
@@ -53,6 +60,8 @@ async def async_setup_entry(
                 ZoneDurationSensor(controller, zone),
                 ZoneEndSensor(controller, zone),
                 ZoneAiSensor(controller, zone),
+                ZoneWaterSensor(controller, zone, "zone_water_today", "day"),
+                ZoneWaterSensor(controller, zone, "zone_water_total", "total"),
             ],
             config_subentry_id=zone_id,
         )
@@ -343,3 +352,50 @@ class ZoneAiSensor(ZoneEntity, SensorEntity):
             "liters": zr.liters if zr else None,
             "reason": zr.reason if zr else None,
         }
+
+
+class _WaterMixin:
+    """Litri erogati (contatore che si azzera a inizio giorno/mese)."""
+
+    _attr_device_class = SensorDeviceClass.WATER
+    _attr_native_unit_of_measurement = UnitOfVolume.LITERS
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 1
+
+
+class WaterSensor(_WaterMixin, IrrigazioneEntity, SensorEntity):
+    """Acqua di tutte le zone: oggi, questo mese, totale."""
+
+    def __init__(self, controller: IrrigationController, key: str, period: str) -> None:
+        """Inizializza."""
+        super().__init__(controller, key)
+        self._period = period
+
+    @property
+    def native_value(self) -> float:
+        """Litri."""
+        c = self.controller
+        return getattr(c.history.totals(list(c.zones)), self._period)
+
+
+class ZoneWaterSensor(_WaterMixin, ZoneEntity, SensorEntity):
+    """Acqua di una zona: oggi o totale."""
+
+    def __init__(
+        self, controller: IrrigationController, zone: ZoneConfig, key: str, period: str
+    ) -> None:
+        """Inizializza."""
+        super().__init__(controller, zone, key)
+        self._period = period
+
+    @property
+    def native_value(self) -> float:
+        """Litri."""
+        return round(getattr(self.controller.history.zone(self.zone.zone_id), self._period), 1)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Per il totale: anche il mese in corso."""
+        if self._period != "total":
+            return None
+        return {"month": round(self.controller.history.zone(self.zone.zone_id).month, 1)}

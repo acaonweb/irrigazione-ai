@@ -31,6 +31,8 @@ from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
     async_track_sunset,
+    async_track_time_change,
+    async_track_time_interval,
 )
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt as dt_util
@@ -98,6 +100,7 @@ from .const import (
     RAIN_STATES,
     RUN_MODE_SEQUENTIAL,
     SOURCE_SCHEDULE,
+    SOURCE_SERVICE,
     STARTUP_CLOSE_DELAY,
     STATUS_BLOCKED,
     STATUS_IDLE,
@@ -105,6 +108,7 @@ from .const import (
     SUBENTRY_ZONE,
 )
 from .formula import FormulaError, render_formula
+from .history import IrrigationHistory
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -210,6 +214,8 @@ class IrrigationController:
         self.ai_last_used: bool = False
         self._ai_lock = asyncio.Lock()
 
+        self.history = IrrigationHistory(hass, entry.entry_id)
+
         self._run_task: asyncio.Task | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._safety_timers: dict[str, Callable[[], None]] = {}
@@ -246,7 +252,20 @@ class IrrigationController:
     # Ciclo di vita
     # ------------------------------------------------------------------
     async def async_setup(self) -> None:
-        """Avvia ascoltatori e programmazione."""
+        """Avvia ascoltatori e programmazione (storico già caricato)."""
+        now = dt_util.utcnow()
+        for zone in self.zones.values():
+            if self._is_open(zone.valve):
+                # Valvola già aperta (es. riavvio): si conta da adesso
+                self.history.valve_opened(zone.zone_id, now, manual=False)
+        self._unsubs.append(
+            async_track_time_interval(self.hass, self._handle_tick, timedelta(seconds=30))
+        )
+        self._unsubs.append(
+            async_track_time_change(
+                self.hass, self._handle_midnight, hour=0, minute=0, second=5
+            )
+        )
         offset = timedelta(
             minutes=int(self.config.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET))
         )
@@ -281,6 +300,33 @@ class IrrigationController:
         self._safety_timers.clear()
         if self.running:
             await self.async_stop(notify=False)
+        self._count_water()
+        await self.history.async_save()
+
+    @callback
+    def _handle_tick(self, _now: datetime) -> None:
+        """Aggiorna i litri delle valvole aperte."""
+        if self._count_water():
+            self.history.schedule_save()
+            self.async_update_listeners()
+
+    @callback
+    def _handle_midnight(self, _now: datetime) -> None:
+        """Nuovo giorno (e forse nuovo mese): azzera i contatori parziali."""
+        self._count_water()
+        self.history.rollover()
+        self.history.schedule_save()
+        self.async_update_listeners()
+
+    def _count_water(self) -> bool:
+        """Conta l'acqua delle valvole aperte fino ad ora."""
+        now = dt_util.utcnow()
+        counted = False
+        for zone in self.zones.values():
+            if self.history.is_open(zone.zone_id):
+                self.history.accumulate(zone.zone_id, zone.flow_rate, now)
+                counted = True
+        return counted
 
     @callback
     def _schedule_startup_close(self) -> None:
@@ -552,6 +598,10 @@ class IrrigationController:
         if self.rain_block and not force and self.is_raining():
             self.last_block = "rain"
             self.last_block_at = dt_util.utcnow()
+            self.history.add_block(
+                "Irrigazione saltata: pioggia",
+                f"Meteo: {self.weather_state()}. Blocco pioggia attivo.",
+            )
             self.async_update_listeners()
             await self._notify(
                 "Irrigazione bloccata: il meteo indica pioggia e il blocco pioggia è attivo."
@@ -569,6 +619,7 @@ class IrrigationController:
                 if on_error == AI_ON_ERROR_SKIP:
                     self.last_block = "ai_error"
                     self.last_block_at = dt_util.utcnow()
+                    self.history.add_block("Irrigazione saltata: AI non riuscita", str(err))
                     self.async_update_listeners()
                     await self._notify(f"Irrigazione annullata: l'analisi AI non è riuscita ({err}).")
                     return False
@@ -584,6 +635,7 @@ class IrrigationController:
                 if not result.irrigate:
                     self.last_block = "ai"
                     self.last_block_at = dt_util.utcnow()
+                    self.history.add_block("Irrigazione saltata dall'AI", result.reason)
                     self.async_update_listeners()
                     await self._notify(f"Irrigazione saltata dall'AI: {result.reason}")
                     return False
@@ -603,6 +655,22 @@ class IrrigationController:
             return False
 
         self._plan(durations)
+        titles = {
+            SOURCE_SCHEDULE: "Irrigazione programmata",
+            SOURCE_SERVICE: "Irrigazione (servizio)",
+        }
+        summary = titles.get(source, "Irrigazione manuale")
+        note = None
+        if self.ai_last_used and self.ai_result is not None:
+            summary += " · AI"
+            note = f"AI: {self.ai_result.reason}" if self.ai_result.reason else None
+        elif duration is None and self.manual_timer > 0:
+            note = f"Timer manuale: {self.manual_timer} min"
+        self.history.cycle_started(
+            summary,
+            {zid: (self.zones[zid].name, mins) for zid, mins in durations.items()},
+            note,
+        )
         self.last_block = None
         self.running = True
         self.run_source = source
@@ -646,6 +714,8 @@ class IrrigationController:
         except Exception:
             _LOGGER.exception("Errore durante il ciclo di irrigazione")
             await self._close_all()
+        self._count_water()
+        self.history.cycle_finished(interrupted=False)
         self.running = False
         self.last_run_end = dt_util.utcnow()
         self._run_task = None
@@ -687,6 +757,8 @@ class IrrigationController:
         await self._close_all()
         self.running = False
         if was_running:
+            self._count_water()
+            self.history.cycle_finished(interrupted=True)
             self.last_run_end = dt_util.utcnow()
         self.async_update_listeners()
         if was_running and notify:
@@ -739,6 +811,17 @@ class IrrigationController:
             return
         is_open = new_state.state in OPEN_STATES
         run = self.zone_runs.get(zone.zone_id) if self.running else None
+
+        if is_open:
+            self.history.valve_opened(
+                zone.zone_id,
+                new_state.last_changed,
+                manual=not (run is not None and run.active),
+            )
+        else:
+            self.history.valve_closed(
+                zone.zone_id, zone.name, zone.flow_rate, new_state.last_changed
+            )
 
         if not is_open:
             if cancel := self._safety_timers.pop(entity_id, None):

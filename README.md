@@ -4,7 +4,7 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 
 *English summary below.*
 
-> **Stato:** motore, wizard, formula personalizzata e analisi AI. Storico/consumi, notifiche avanzate e card arriveranno nelle prossime versioni.
+> **Stato:** motore, wizard, formula personalizzata, analisi AI, storico e consumi. Notifiche avanzate e card arriveranno nelle prossime versioni.
 
 ## Installazione
 
@@ -33,8 +33,10 @@ Integrazione per Home Assistant che gestisce un impianto di irrigazione multi-zo
 | Interruttore *Analisi AI* | Se acceso, a ogni ciclo l'AI decide se irrigare e quanto |
 | Pulsante *Analizza ora* | Chiede subito una valutazione all'AI, senza irrigare |
 | Sensore *Decisione AI* | Irrigare / Saltare / Errore, con motivo e litri per zona negli attributi |
+| Calendario *Registro irrigazioni* | Cicli eseguiti, aperture manuali, cicli saltati e prossima irrigazione prevista |
+| Sensori *Acqua oggi*, *Acqua questo mese*, *Acqua totale* | Litri di tutte le zone (utilizzabili nella dashboard Energia come consumo d'acqua) |
 | Sensori *Stato*, *Tempo rimanente*, *Prossima irrigazione*, *Ultima irrigazione*, *Ultimo blocco* | Stato dell'impianto |
-| Per zona: *Durata prevista*, *Fine prevista*, *Durata AI* | Minuti calcolati ora (con litri, formula usata ed eventuale errore negli attributi) e ora di fine durante il ciclo |
+| Per zona: *Durata prevista*, *Fine prevista*, *Durata AI*, *Acqua oggi*, *Acqua totale* | Minuti calcolati ora (con litri, formula usata ed eventuale errore negli attributi) e ora di fine durante il ciclo |
 
 ## Servizi
 
@@ -100,6 +102,16 @@ Con l'interruttore *Analisi AI* acceso, prima di ogni ciclo l'integrazione chied
 - *Salta il ciclo*: non si irriga.
 
 Con il timer manuale, o con una durata passata a `irrigazione_ai.start`, l'AI non viene interpellata.
+
+## Storico e consumi
+
+**Registro irrigazioni** (entità calendario) mostra:
+- ogni ciclo, con orari reali, minuti e litri per zona, origine (programmato, manuale, servizio, AI) ed eventuale motivo dell'AI; i cicli fermati a metà sono segnati "(interrotta)";
+- le aperture manuali delle valvole (fuori da un ciclo), con durata e litri;
+- i cicli saltati (pioggia, decisione dell'AI, AI non riuscita) con il motivo;
+- la prossima irrigazione prevista, con la stima dei minuti per zona.
+
+**Consumi:** i litri sono calcolati come tempo di apertura × portata della zona, per ogni apertura (cicli e manuali), e si aggiornano ogni 30 secondi mentre una valvola è aperta. "Oggi" si azzera a mezzanotte, "questo mese" il primo del mese. Storico e contatori restano dopo i riavvii (sono salvati in `.storage`) e vengono cancellati se rimuovi l'integrazione. Il registro conserva gli ultimi 1000 eventi.
 
 ## Sicurezza
 

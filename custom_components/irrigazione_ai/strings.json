@@ -408,6 +408,26 @@
       },
       "zone_ai_duration": {
         "name": "AI duration"
+      },
+      "water_today": {
+        "name": "Water today"
+      },
+      "water_month": {
+        "name": "Water this month"
+      },
+      "water_total": {
+        "name": "Water total"
+      },
+      "zone_water_today": {
+        "name": "Water today"
+      },
+      "zone_water_total": {
+        "name": "Water total"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "name": "Irrigation log"
       }
     }
   },

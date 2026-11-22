@@ -408,6 +408,26 @@
       },
       "zone_ai_duration": {
         "name": "Durata AI"
+      },
+      "water_today": {
+        "name": "Acqua oggi"
+      },
+      "water_month": {
+        "name": "Acqua questo mese"
+      },
+      "water_total": {
+        "name": "Acqua totale"
+      },
+      "zone_water_today": {
+        "name": "Acqua oggi"
+      },
+      "zone_water_total": {
+        "name": "Acqua totale"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "name": "Registro irrigazioni"
       }
     }
   },
