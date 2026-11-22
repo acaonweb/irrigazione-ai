@@ -110,7 +110,8 @@
           "ai_base_url": "Ollama address",
           "ai_model": "Model",
           "ai_on_error": "If the analysis fails",
-          "ai_instructions": "Notes for the AI"
+          "ai_instructions": "Notes for the AI",
+          "ai_prompt": "AI prompt"
         },
         "data_description": {
           "ai_task_entity": "Created by an AI integration (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
@@ -118,7 +119,8 @@
           "ai_base_url": "e.g. http://192.168.1.10:11434",
           "ai_model": "Model name as the service calls it",
           "ai_on_error": "What to do if the AI does not answer or answers badly. You always get a notification",
-          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
+          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'",
+          "ai_prompt": "Jinja template with the instructions for the AI. Variables: data_json (all the data), zones, weather_now, rain_last_hours, forecast_next_hours, notes, language. The answer format is always added at the end. Empty it to go back to the default prompt"
         }
       }
     },
@@ -129,7 +131,8 @@
       "formula_invalid": "The formula does not work: {error}",
       "invalid_auth": "The API key was rejected.",
       "cannot_connect": "Cannot reach the service: {error}",
-      "ai_failed": "The test request failed: {error}"
+      "ai_failed": "The test request failed: {error}",
+      "prompt_invalid": "The prompt does not work: {error}"
     },
     "abort": {
       "already_configured": "A system with this name already exists."
@@ -200,7 +203,8 @@
           "ai_base_url": "Ollama address",
           "ai_model": "Model",
           "ai_on_error": "If the analysis fails",
-          "ai_instructions": "Notes for the AI"
+          "ai_instructions": "Notes for the AI",
+          "ai_prompt": "AI prompt"
         },
         "data_description": {
           "ai_task_entity": "Created by an AI integration (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
@@ -208,7 +212,8 @@
           "ai_base_url": "e.g. http://192.168.1.10:11434",
           "ai_model": "Model name as the service calls it",
           "ai_on_error": "What to do if the AI does not answer or answers badly. You always get a notification",
-          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'"
+          "ai_instructions": "Optional: plants, pots, local climate... e.g. 'tomatoes in 40 L pots, windy terrace'",
+          "ai_prompt": "Jinja template with the instructions for the AI. Variables: data_json (all the data), zones, weather_now, rain_last_hours, forecast_next_hours, notes, language. The answer format is always added at the end. Empty it to go back to the default prompt"
         }
       }
     },
@@ -216,7 +221,8 @@
       "formula_invalid": "The formula does not work: {error}",
       "invalid_auth": "The API key was rejected.",
       "cannot_connect": "Cannot reach the service: {error}",
-      "ai_failed": "The test request failed: {error}"
+      "ai_failed": "The test request failed: {error}",
+      "prompt_invalid": "The prompt does not work: {error}"
     }
   },
   "config_subentries": {

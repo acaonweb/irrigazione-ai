@@ -60,6 +60,7 @@ from .const import (
     CLOSE_RETRY_DELAY,
     CONF_AI_INSTRUCTIONS,
     CONF_AI_ON_ERROR,
+    CONF_AI_PROMPT,
     CONF_AI_PROVIDER,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
@@ -554,9 +555,11 @@ class IrrigationController:
             try:
                 context = await self.async_build_ai_context()
                 prompt = build_prompt(
+                    self.hass,
                     context,
                     self.hass.config.language or "en",
                     self.config.get(CONF_AI_INSTRUCTIONS),
+                    self.config.get(CONF_AI_PROMPT),
                 )
                 data = await async_query(self.hass, self.config, prompt, len(self.zones))
                 result = parse_result(

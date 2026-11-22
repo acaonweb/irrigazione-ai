@@ -110,7 +110,8 @@
           "ai_base_url": "Indirizzo di Ollama",
           "ai_model": "Modello",
           "ai_on_error": "Se l'analisi non riesce",
-          "ai_instructions": "Note per l'AI"
+          "ai_instructions": "Note per l'AI",
+          "ai_prompt": "Prompt dell'AI"
         },
         "data_description": {
           "ai_task_entity": "Creata da un'integrazione AI (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
@@ -118,7 +119,8 @@
           "ai_base_url": "Per esempio http://192.168.1.10:11434",
           "ai_model": "Nome del modello come lo chiama il servizio",
           "ai_on_error": "Cosa fare se l'AI non risponde o risponde male. In ogni caso arriva una notifica",
-          "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'"
+          "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'",
+          "ai_prompt": "Template Jinja con le istruzioni per l'AI. Variabili: data_json (tutti i dati), zones, weather_now, rain_last_hours, forecast_next_hours, notes, language. Il formato della risposta viene sempre aggiunto in fondo. Svuotalo per tornare al prompt predefinito"
         }
       }
     },
@@ -129,7 +131,8 @@
       "formula_invalid": "La formula non funziona: {error}",
       "invalid_auth": "La API key è stata rifiutata.",
       "cannot_connect": "Servizio non raggiungibile: {error}",
-      "ai_failed": "La richiesta di prova non è riuscita: {error}"
+      "ai_failed": "La richiesta di prova non è riuscita: {error}",
+      "prompt_invalid": "Il prompt non funziona: {error}"
     },
     "abort": {
       "already_configured": "Esiste già un impianto con questo nome."
@@ -200,7 +203,8 @@
           "ai_base_url": "Indirizzo di Ollama",
           "ai_model": "Modello",
           "ai_on_error": "Se l'analisi non riesce",
-          "ai_instructions": "Note per l'AI"
+          "ai_instructions": "Note per l'AI",
+          "ai_prompt": "Prompt dell'AI"
         },
         "data_description": {
           "ai_task_entity": "Creata da un'integrazione AI (OpenAI, Anthropic, Google, Ollama...) in Home Assistant",
@@ -208,7 +212,8 @@
           "ai_base_url": "Per esempio http://192.168.1.10:11434",
           "ai_model": "Nome del modello come lo chiama il servizio",
           "ai_on_error": "Cosa fare se l'AI non risponde o risponde male. In ogni caso arriva una notifica",
-          "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'"
+          "ai_instructions": "Facoltative: piante, vasi, clima della zona... per esempio 'pomodori in vasi da 40 L, terrazzo ventoso'",
+          "ai_prompt": "Template Jinja con le istruzioni per l'AI. Variabili: data_json (tutti i dati), zones, weather_now, rain_last_hours, forecast_next_hours, notes, language. Il formato della risposta viene sempre aggiunto in fondo. Svuotalo per tornare al prompt predefinito"
         }
       }
     },
@@ -216,7 +221,8 @@
       "formula_invalid": "La formula non funziona: {error}",
       "invalid_auth": "La API key è stata rifiutata.",
       "cannot_connect": "Servizio non raggiungibile: {error}",
-      "ai_failed": "La richiesta di prova non è riuscita: {error}"
+      "ai_failed": "La richiesta di prova non è riuscita: {error}",
+      "prompt_invalid": "Il prompt non funziona: {error}"
     }
   },
   "config_subentries": {

@@ -112,6 +112,7 @@ CONF_AI_MODEL: Final = "ai_model"
 CONF_AI_BASE_URL: Final = "ai_base_url"
 CONF_AI_ON_ERROR: Final = "ai_on_error"
 CONF_AI_INSTRUCTIONS: Final = "ai_instructions"
+CONF_AI_PROMPT: Final = "ai_prompt"
 
 AI_NONE: Final = "none"
 AI_TASK: Final = "ai_task"

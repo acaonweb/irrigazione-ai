@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-custom-orange" alt="Marketplace / HACS">
   <img src="https://img.shields.io/badge/lingue-IT%20%7C%20EN-blue" alt="Italiano e inglese">
   <img src="https://img.shields.io/badge/licenza-MIT-green" alt="MIT">
+  <a href="https://buymeacoffee.com/acaonweb"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-acaonweb-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 </p>
 
 ---
@@ -48,6 +49,8 @@ Accendi *Analisi AI* e prima di ogni ciclo un modello decide **se irrigare e qua
 - esposizione e volume del terriccio.
 
 Funziona con un'**entità AI Task** già configurata in Home Assistant oppure con la **tua API key** (OpenAI, Anthropic Claude, Google Gemini), o con **Ollama in locale**. Prima di salvare la chiave viene verificata con una richiesta di prova. Il pulsante *Analizza ora* ti fa vedere cosa farebbe l'AI senza aprire una valvola.
+
+E il **prompt è tuo**: si modifica nelle opzioni come template Jinja, con tutti i dati a disposizione. Il formato della risposta lo aggiunge sempre l'integrazione, quindi nessuna modifica può rompere il calcolo dei litri.
 
 ### 📱 Live Activity su iPhone e Android
 Durante l'irrigazione il telefono mostra una **Live Activity** (schermata di blocco e Dynamic Island su iPhone) o un **Live Update** (Android 16+):
@@ -121,7 +124,7 @@ flowchart LR
 | 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, formula propria facoltativa |
 | 3. Programmazione | Minuti dopo il tramonto, giorni per le frequenze, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
-| 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima) |
+| 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 
 Tutto si può cambiare dopo da **Configura** (opzioni) e da **Aggiungi zona / Riconfigura** sulle singole zone.
 
@@ -212,6 +215,25 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 - se ha piovuto meno di metà delle ore, riduce i litri in proporzione;
 - con l'esposizione a sud aumenta l'acqua, a nord la riduce.
 
+**Il prompt è modificabile.** Nelle opzioni AI c'è l'editor (template Jinja), già compilato con il prompt predefinito. Variabili:
+
+| Variabile | Contenuto |
+| --- | --- |
+| `data_json` | Tutti i dati qui sopra in JSON (se il tuo prompt non usa i dati, vengono aggiunti in fondo da soli) |
+| `data` | Gli stessi dati come oggetto, per esempio `data.weather_now.temperature_c` |
+| `zones`, `weather_now`, `rain_last_hours`, `forecast_next_hours` | Le singole parti dei dati |
+| `notes` | Le tue note per l'AI |
+| `language` | La lingua in cui l'AI deve rispondere |
+
+In fondo l'integrazione aggiunge sempre le istruzioni sul formato della risposta (chiavi JSON e lingua dei motivi), perché è da lì che ricava i litri. Un prompt che non funziona viene rifiutato prima di salvare. Svuotando il campo torni al prompt predefinito, che riceve i miglioramenti delle nuove versioni.
+
+```jinja
+Sei un agronomo esperto di piante in vaso su un terrazzo ventoso.
+{% for z in zones %}- {{ z.name }}: {{ z.soil_moisture_percent }}% di umidità, {{ z.soil_volume_liters }} L
+{% endfor %}
+Oggi ci sono {{ weather_now.temperature_c }} °C. Dati completi: {{ data_json }}
+```
+
 **Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e, per ogni zona, i litri e un breve riassunto tecnico ("ha piovuto a sufficienza" quando i litri sono 0 per la pioggia). I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Una zona con 0 litri resta chiusa.
 
 **Se qualcosa va storto:**
@@ -235,20 +257,28 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 
 **Posso avere più impianti?** Sì: aggiungi l'integrazione più volte, una per impianto (per esempio terrazzo e giardino).
 
+## ☕ Ti piace?
+
+Se Irrigazione AI ti fa risparmiare acqua (e automazioni), puoi offrirmi un caffè:
+
+<a href="https://buymeacoffee.com/acaonweb"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="45"></a>
+
+Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irrigazione-ai/issues).
+
 ---
 
 ## English
 
 **Irrigazione AI** turns a messy pile of helpers and automations into one Home Assistant integration, set up through a wizard:
 - per-zone durations from a **Jinja formula you write**, with a live preview;
-- an optional **AI agronomist** (Home Assistant AI Task, OpenAI, Anthropic, Gemini or local Ollama) that decides liters per zone from rain history, forecast and soil data;
+- an optional **AI agronomist** (Home Assistant AI Task, OpenAI, Anthropic, Gemini or local Ollama) that decides liters per zone from rain history, forecast and soil data, with an **editable Jinja prompt**;
 - **Live Activities on iPhone and Live Updates on Android 16+**;
 - a **calendar log** with real liters per zone;
 - **water sensors** for the Energy dashboard;
 - **safety closing** of valves;
 - a ready-made **Lovelace card**.
 
-Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI in Italian and English.
+Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI in Italian and English. Like it? [Buy me a coffee](https://buymeacoffee.com/acaonweb) ☕
 
 ## Licenza
 

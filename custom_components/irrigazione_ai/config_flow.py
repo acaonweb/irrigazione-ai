@@ -17,7 +17,14 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
-from .ai import AiAuthError, AiConnectionError, AiError, async_validate
+from .ai import (
+    DEFAULT_AI_PROMPT,
+    AiAuthError,
+    AiConnectionError,
+    AiError,
+    async_validate,
+    build_prompt,
+)
 from .calc import clamp_minutes, formula_variables
 from .const import (
     AI_API_PROVIDERS,
@@ -31,6 +38,7 @@ from .const import (
     CONF_AI_INSTRUCTIONS,
     CONF_AI_MODEL,
     CONF_AI_ON_ERROR,
+    CONF_AI_PROMPT,
     CONF_AI_PROVIDER,
     CONF_AI_TASK_ENTITY,
     CONF_CLOSE_ON_STARTUP,
@@ -399,6 +407,7 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 AI_KEYS = (
+    CONF_AI_PROMPT,
     CONF_AI_PROVIDER,
     CONF_AI_TASK_ENTITY,
     CONF_AI_API_KEY,
@@ -467,7 +476,43 @@ def _ai_details_schema(provider: str, defaults: dict[str, Any]) -> vol.Schema:
             description={"suggested_value": defaults.get(CONF_AI_INSTRUCTIONS)},
         )
     ] = selector.TextSelector(selector.TextSelectorConfig(multiline=True))
+    fields[
+        vol.Optional(
+            CONF_AI_PROMPT, default=defaults.get(CONF_AI_PROMPT) or DEFAULT_AI_PROMPT
+        )
+    ] = selector.TemplateSelector()
     return vol.Schema(fields)
+
+
+SAMPLE_CONTEXT: dict[str, Any] = {
+    "now": "2026-07-15T20:30+02:00",
+    "weather_now": {"condition": "sunny", "temperature_c": 28, "humidity_percent": 45},
+    "rain_last_hours": {"hours": 12, "rain_hours": 0, "rain_percent": 0, "rained": False},
+    "forecast_next_hours": [],
+    "zones": [
+        {
+            "index": 1,
+            "name": "Zona",
+            "soil_moisture_percent": 35,
+            "soil_volume_liters": 100,
+            "exposure": "south",
+            "flow_rate_liters_per_minute": 0.726,
+            "min_minutes": 15,
+            "max_minutes": 120,
+            "formula_minutes": 40,
+        }
+    ],
+}
+
+
+def _clean_prompt(data: dict[str, Any]) -> dict[str, Any]:
+    """Il prompt uguale al predefinito non si salva (così riceve i miglioramenti)."""
+    prompt = (data.get(CONF_AI_PROMPT) or "").strip()
+    if not prompt or prompt == DEFAULT_AI_PROMPT.strip():
+        data.pop(CONF_AI_PROMPT, None)
+    else:
+        data[CONF_AI_PROMPT] = prompt
+    return data
 
 
 class _AiStepsMixin:
@@ -499,7 +544,19 @@ class _AiStepsMixin:
         errors: dict[str, str] = {}
         placeholders = {"error": "", "provider": provider}
         if user_input is not None:
-            candidate = {CONF_AI_PROVIDER: provider, **user_input}
+            candidate = _clean_prompt({CONF_AI_PROVIDER: provider, **user_input})
+            try:
+                build_prompt(
+                    self.hass,
+                    SAMPLE_CONTEXT,
+                    self.hass.config.language or "en",
+                    candidate.get(CONF_AI_INSTRUCTIONS),
+                    candidate.get(CONF_AI_PROMPT),
+                )
+            except AiError as err:
+                errors[CONF_AI_PROMPT] = "prompt_invalid"
+                placeholders["error"] = str(err)
+        if user_input is not None and not errors:
             try:
                 await async_validate(self.hass, candidate)
             except AiAuthError:

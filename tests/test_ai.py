@@ -230,3 +230,63 @@ async def test_ai_wizard_step(hass: HomeAssistant, valves, aioclient_mock) -> No
     assert entry.options["ai_provider"] == "openai"
     assert entry.options["ai_api_key"] == "sk-good"
     assert hass.states.get("switch.irrigazione_ai_analysis").state == "off"
+
+
+async def test_custom_prompt(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Prompt personalizzato: usato, con il formato della risposta aggiunto in fondo."""
+    aioclient_mock.post(
+        OPENAI_URL, json=_openai_reply({"irrigate": False, "reason": "ok"})
+    )
+    await _setup(
+        hass, valves,
+        ai_prompt="Sei un giardiniere. Zone: {{ zones | length }}. Dati: {{ data_json }}",
+    )
+    await hass.services.async_call(DOMAIN, "analyze", {}, blocking=True, return_response=True)
+    prompt = aioclient_mock.mock_calls[-1][2]["messages"][0]["content"]
+    assert prompt.startswith("Sei un giardiniere. Zone: 2. Dati: {")
+    assert '"zone_2_liters"' in prompt
+    assert "Write every reason in English" in prompt
+
+
+async def test_prompt_without_data_gets_data(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Un prompt che non usa i dati li riceve comunque in fondo."""
+    aioclient_mock.post(OPENAI_URL, json=_openai_reply({"irrigate": False, "reason": "ok"}))
+    await _setup(hass, valves, ai_prompt="Decidi tu.")
+    await hass.services.async_call(DOMAIN, "analyze", {}, blocking=True, return_response=True)
+    prompt = aioclient_mock.mock_calls[-1][2]["messages"][0]["content"]
+    assert prompt.startswith("Decidi tu.\n\nData (JSON):\n{")
+
+
+async def test_prompt_editor_in_options(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Prompt non valido rifiutato; prompt uguale al predefinito non salvato."""
+    from custom_components.irrigazione_ai.ai import DEFAULT_AI_PROMPT
+
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    aioclient_mock.post(OPENAI_URL, json=_openai_reply({"ok": True}))
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"weather_entity": WEATHER, "sunset_offset": 5, "weekly_day": "sun",
+                            "twice_weekly_days": ["thu", "sun"], "run_mode": "parallel",
+                            "safety_minutes": 60, "close_on_startup": True, "notify_services": []},
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"formula": "{{ 20 }}"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "ai"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"ai_provider": "openai"})
+    base = {"ai_api_key": "sk", "ai_model": "gpt-4.1-mini", "ai_on_error": "formula"}
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], base | {"ai_prompt": "{{ data.zones[0].inesistente * 2 }}"}
+    )
+    assert result["errors"] == {"ai_prompt": "prompt_invalid"}
+    assert aioclient_mock.call_count == 0  # nessuna chiamata con un prompt rotto
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], base | {"ai_prompt": DEFAULT_AI_PROMPT}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert "ai_prompt" not in entry.options

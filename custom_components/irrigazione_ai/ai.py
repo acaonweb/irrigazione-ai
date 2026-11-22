@@ -165,46 +165,48 @@ async def async_forecast(
 # ----------------------------------------------------------------------
 
 
-def build_prompt(context: dict[str, Any], language: str, extra: str | None) -> str:
-    """Istruzioni per il modello (agente meteo + agronomo in una richiesta)."""
+# Prompt predefinito (template Jinja). Variabili: data_json (tutti i dati in
+# JSON), data (gli stessi come dizionario), zones, weather_now,
+# rain_last_hours, forecast_next_hours, notes (note del proprietario),
+# language (lingua delle risposte). Il formato della risposta viene sempre
+# aggiunto in fondo dall'integrazione.
+DEFAULT_AI_PROMPT = """You are an agronomist expert in precision irrigation and a meteorologist.
+Decide whether the garden should be watered now and how many liters each zone needs.
+
+Data fields:
+- weather_now: current condition, outdoor temperature (°C) and outdoor air humidity (%).
+- rain_last_hours: hours and percentage of time it rained in the recent hours, and whether it rained at all.
+- forecast_next_hours: hourly forecast (condition, temperature, precipitation in mm and its probability).
+- zones: for each zone, soil_moisture_percent (0-100%), soil_volume_liters (liters of substrate to water), exposure (north/south/east/west: affects evaporation and sun), flow_rate_liters_per_minute, min_minutes/max_minutes and formula_minutes (the duration of the classic formula, for reference).
+
+Data (JSON):
+{{ data_json }}
+
+Your goal, for each zone:
+1. Estimate the expected evapotranspiration of the substrate.
+2. Estimate how much water is already present thanks to rain (fallen and expected).
+3. Compute the liters of water to add, sized on the soil volume: a larger substrate needs more liters to reach the same moisture.
+
+Rules:
+- If it rained for more than 50% of the recent hours, or significant rain is expected in the next hours, set irrigate to false; if it rained less, reduce the liters proportionally.
+- If the soil moisture of a zone is above 70%, give that zone 0 liters.
+- If the soil moisture is between 50% and 65%, still give a small maintenance amount, even for large soil volumes (over 1000 L).
+- South exposure increases evaporation, north exposure reduces it.
+- Higher temperatures increase the water need.
+- Do not invent missing data: if something is missing or unclear, make a prudent estimate.
+{%- if notes %}
+- Notes from the owner: {{ notes }}
+{%- endif %}"""
+
+
+def output_instructions(zone_count: int, language: str) -> str:
+    """Formato della risposta (sempre in fondo al prompt, non modificabile)."""
     lang = LANGUAGES.get(language.split("-")[0], "English")
-    zones = context["zones"]
     keys = ", ".join(
         f'"zone_{i}_liters": number, "zone_{i}_reason": "string"'
-        for i in range(1, len(zones) + 1)
+        for i in range(1, zone_count + 1)
     )
-    extra_rule = f"\n- Notes from the owner: {extra.strip()}" if extra and extra.strip() else ""
     return (
-        "You are an agronomist expert in precision irrigation and a meteorologist. "
-        "Decide whether the garden should be watered now and how many liters each zone needs.\n\n"
-        "Data fields:\n"
-        "- weather_now: current condition, outdoor temperature (°C) and outdoor air humidity (%).\n"
-        "- rain_last_hours: hours and percentage of time it rained in the recent hours, and "
-        "whether it rained at all.\n"
-        "- forecast_next_hours: hourly forecast (condition, temperature, precipitation in mm "
-        "and its probability).\n"
-        "- zones: for each zone, soil_moisture_percent (0-100%), soil_volume_liters (liters of "
-        "substrate to water), exposure (north/south/east/west: affects evaporation and sun), "
-        "flow_rate_liters_per_minute, min_minutes/max_minutes and formula_minutes (the "
-        "duration of the classic formula, for reference).\n\n"
-        f"Data (JSON):\n{json.dumps(context, ensure_ascii=False, default=str)}\n\n"
-        "Your goal, for each zone:\n"
-        "1. Estimate the expected evapotranspiration of the substrate.\n"
-        "2. Estimate how much water is already present thanks to rain (fallen and expected).\n"
-        "3. Compute the liters of water to add, sized on the soil volume: a larger "
-        "substrate needs more liters to reach the same moisture.\n\n"
-        "Rules:\n"
-        "- If it rained for more than 50% of the recent hours, or significant rain is "
-        "expected in the next hours, set irrigate to false; if it rained less, reduce the "
-        "liters proportionally.\n"
-        "- If the soil moisture of a zone is above 70%, give that zone 0 liters.\n"
-        "- If the soil moisture is between 50% and 65%, still give a small maintenance "
-        "amount, even for large soil volumes (over 1000 L).\n"
-        "- South exposure increases evaporation, north exposure reduces it.\n"
-        "- Higher temperatures increase the water need.\n"
-        "- Do not invent missing data: if something is missing or unclear, make a prudent "
-        "estimate."
-        f"{extra_rule}\n\n"
         "Answer ONLY with a JSON object with exactly these keys:\n"
         f'{{"irrigate": true or false, "reason": "string", {keys}}}\n'
         "The zone numbers refer to the 'index' field of each zone. "
@@ -213,6 +215,47 @@ def build_prompt(context: dict[str, Any], language: str, extra: str | None) -> s
         "at most 15 words. If a zone gets 0 liters because of rain, its reason must only "
         "say that it rained enough. If irrigate is false, every zone gets 0 liters."
     )
+
+
+def build_prompt(
+    hass: HomeAssistant,
+    context: dict[str, Any],
+    language: str,
+    notes: str | None,
+    template: str | None = None,
+) -> str:
+    """Prompt completo: istruzioni (predefinite o personalizzate) + formato risposta.
+
+    Solleva AiError se il template personalizzato non funziona.
+    """
+    from homeassistant.exceptions import TemplateError  # noqa: PLC0415
+    from homeassistant.helpers.template import Template  # noqa: PLC0415
+
+    source = (template or "").strip() or DEFAULT_AI_PROMPT
+    data_json = json.dumps(context, ensure_ascii=False, default=str)
+    variables = {
+        "data": context,
+        "data_json": data_json,
+        "zones": context.get("zones", []),
+        "weather_now": context.get("weather_now"),
+        "rain_last_hours": context.get("rain_last_hours"),
+        "forecast_next_hours": context.get("forecast_next_hours"),
+        "notes": (notes or "").strip(),
+        "language": LANGUAGES.get(language.split("-")[0], "English"),
+    }
+    try:
+        instructions = Template(source, hass).async_render(variables, parse_result=False)
+    except TemplateError as err:
+        raise AiError(f"prompt non valido: {err}") from err
+    except Exception as err:  # noqa: BLE001
+        raise AiError(f"prompt non valido: {err}") from err
+    instructions = str(instructions).strip()
+    if not instructions:
+        raise AiError("il prompt è vuoto")
+    if "data" not in source:
+        # Il prompt personalizzato non usa i dati: li aggiungiamo noi
+        instructions += f"\n\nData (JSON):\n{data_json}"
+    return f"{instructions}\n\n{output_instructions(len(context.get('zones', [])), language)}"
 
 
 def build_structure(zone_count: int) -> dict[str, Any]:
