@@ -203,14 +203,16 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 - le tue note.
 
 **Le regole che segue:**
-- stima l'evapotraspirazione;
+- stima l'evapotraspirazione del substrato;
 - sottrae la pioggia caduta e quella prevista;
+- dimensiona i litri sul **volume del terriccio** di ogni zona: più substrato, più acqua per arrivare alla stessa umidità;
 - non irriga se ha piovuto per più di metà delle ore recenti o se è attesa pioggia significativa;
 - dà 0 litri sopra il 70% di umidità del terriccio;
-- dà un minimo di mantenimento tra 50% e 65%;
+- dà un minimo di mantenimento tra 50% e 65%, anche con volumi grandi (oltre 1000 L);
+- se ha piovuto meno di metà delle ore, riduce i litri in proporzione;
 - con l'esposizione a sud aumenta l'acqua, a nord la riduce.
 
-**Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e litri e motivo per ogni zona. I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Una zona con 0 litri resta chiusa.
+**Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e, per ogni zona, i litri e un breve riassunto tecnico ("ha piovuto a sufficienza" quando i litri sono 0 per la pioggia). I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Una zona con 0 litri resta chiusa.
 
 **Se qualcosa va storto:**
 - *irriga con la formula* (predefinito);
