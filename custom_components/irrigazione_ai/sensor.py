@@ -25,8 +25,13 @@ from .const import (
     AI_RESULT_IRRIGATE,
     AI_RESULT_SKIP,
     AI_RESULTS,
+    CONF_HUMIDITY,
     CONF_TEMPERATURE,
+    CONF_TWICE_WEEKLY_DAYS,
     CONF_WEATHER,
+    CONF_WEEKLY_DAY,
+    DEFAULT_TWICE_WEEKLY_DAYS,
+    DEFAULT_WEEKLY_DAY,
     DOMAIN,
     STATUSES,
 )
@@ -143,7 +148,18 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
             }
             for zone_id, zone in c.zones.items()
         ]
-        return {"system": system, "zones": zones, "ai": c.ai_configured}
+        cfg = c.config
+        system["water_total"] = find("sensor", f"{entry_id}_water_total")
+        return {
+            "system": system,
+            "zones": zones,
+            "ai": c.ai_configured,
+            "weather": cfg.get(CONF_WEATHER),
+            "temperature": cfg.get(CONF_TEMPERATURE),
+            "humidity": cfg.get(CONF_HUMIDITY),
+            "weekly_day": cfg.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY),
+            "twice_weekly_days": list(cfg.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS)),
+        }
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

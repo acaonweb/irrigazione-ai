@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/card.png" alt="Card Irrigazione AI: a sinistra a riposo, a destra durante un ciclo" width="900">
+  <img src="docs/card.png" alt="Card Irrigazione AI: comandi a riposo, comandi durante un ciclo con AI, grafici" width="900">
 </p>
 
 <h1 align="center">💧 Irrigazione AI</h1>
@@ -79,15 +79,16 @@ I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, s
 - **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
 - Se l'AI non risponde scegli tu se irrigare con la formula, spegnere l'AI o saltare il ciclo. In ogni caso ricevi una notifica.
 
-### 🎛️ Una card pronta all'uso
-La card `custom:irrigazione-ai-card` si registra da sola. Mostra:
-- stato e avvio/stop;
-- prossima irrigazione o tempo rimanente;
-- litri di oggi e del mese;
-- la decisione dell'AI;
-- per ogni zona: umidità, minuti previsti e AI, litri e ora di fine (con le gocce che cadono mentre irriga).
+### 🎛️ Due card pronte all'uso
+Si registrano da sole all'installazione e non richiedono mushroom, button-card o apexcharts.
 
-Dalla card si cambiano anche frequenza, timer, blocco pioggia e AI.
+- **`custom:irrigazione-ai-card`, i comandi:**
+  - il riquadro *Irrigazione Generale*, con lo stato (attiva, inattiva con la prossima irrigazione, saltata per pioggia o dall'AI);
+  - i pulsanti gialli *AI* e *Pioggia*;
+  - una scheda per zona, con umidità (🔴 secco, 🟢 ottimale, 💧 umido), minuti previsti e AI, litri, ora di fine e batteria della valvola. Si illumina di blu con l'irrigatore che oscilla mentre irriga, e di rosso se il terriccio è secco;
+  - le righe del timer (off/15/30/60) e della frequenza (Off, Dom, Gio-Dom, 7/7);
+  - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
+- **`custom:irrigazione-ai-charts-card`, i grafici:** consumo d'acqua degli ultimi 7 giorni a colonne, con i litri; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
 
 ## 🔄 Come nasce un ciclo
 
@@ -130,13 +131,41 @@ Tutto si può cambiare dopo da **Configura** (opzioni) e da **Aggiungi zona / Ri
 
 ## 🎛️ Card
 
+Le trovi in *Aggiungi scheda* cercando **"Irrigazione AI"**, oppure in YAML:
+
 ```yaml
-type: custom:irrigazione-ai-card
-entity: sensor.irrigazione_stato   # facoltativo: il sensore "Stato" dell'impianto
-title: Terrazzo                    # facoltativo
+type: custom:irrigazione-ai-card          # comandi
+title: Irrigazione Generale               # facoltativo
+entity: sensor.irrigazione_stato          # facoltativo, se hai più impianti
 ```
 
-Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza).
+```yaml
+type: custom:irrigazione-ai-charts-card   # grafici
+```
+
+**Vista pronta**, due colonne come nella foto in cima (modifica dashboard → ⋮ → *Editor di configurazione*, oppure una nuova vista in YAML):
+
+```yaml
+title: Irrigazione
+path: irrigazione
+icon: mdi:sprinkler
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: custom:irrigazione-ai-card
+        grid_options: { columns: full }
+  - type: grid
+    cards:
+      - type: custom:irrigazione-ai-charts-card
+        grid_options: { columns: full }
+      - type: calendar
+        entities: [calendar.irrigazione_registro_irrigazioni]
+        grid_options: { columns: full }
+```
+
+Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). Toccando una durata si aprono i dettagli del sensore. La batteria della valvola viene trovata da sola, se il dispositivo della valvola ha un sensore batteria. I grafici si aggiornano ogni 10 minuti.
 
 ## 🧩 Entità
 
@@ -276,7 +305,7 @@ Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irr
 - a **calendar log** with real liters per zone;
 - **water sensors** for the Energy dashboard;
 - **safety closing** of valves;
-- a ready-made **Lovelace card**.
+- two ready-made **Lovelace cards** (controls and charts), no extra frontend dependencies.
 
 Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI in Italian and English. Like it? [Buy me a coffee](https://buymeacoffee.com/acaonweb) ☕
 
