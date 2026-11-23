@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.9.0";
+const CARD_VERSION = "0.9.2";
 
 const TEXT = {
   it: {
@@ -15,7 +15,7 @@ const TEXT = {
     blocked: { rain: "Saltata per pioggia", ai: "Saltata dall'AI", ai_error: "AI non riuscita" },
     next: "prossima", ends: "fine", remaining: "Tempo rimanente", zone: "Zona",
     moisture: "Umidità", dry: "🔴 Secco", ok: "🟢 Ottimale", wet: "💧 Umido",
-    planned: "Prevista", battery: "Batteria", ai: "AI", rain: "Pioggia", setup: "Configura",
+    planned: "Prevista", noSensor: "nessun sensore", unavailable: "non disponibile", battery: "Batteria", ai: "AI", rain: "Pioggia", setup: "Configura",
     aiTitle: "🤖 Decisione AI", analyze: "Analizza", durations: "Durate previste", aiDurations: "Durate AI",
     decision: { irrigate: "Irrigare", skip: "Saltare", error: "Errore", unknown: "Nessuna analisi" },
     off: "Off", daily: "7/7", min: "min", skip: "salta",
@@ -30,7 +30,7 @@ const TEXT = {
     blocked: { rain: "Skipped for rain", ai: "Skipped by AI", ai_error: "AI failed" },
     next: "next", ends: "ends", remaining: "Time remaining", zone: "Zone",
     moisture: "Moisture", dry: "🔴 Dry", ok: "🟢 Good", wet: "💧 Wet",
-    planned: "Planned", battery: "Battery", ai: "AI", rain: "Rain", setup: "Set up",
+    planned: "Planned", noSensor: "no sensor", unavailable: "unavailable", battery: "Battery", ai: "AI", rain: "Rain", setup: "Set up",
     aiTitle: "🤖 AI decision", analyze: "Analyze", durations: "Planned durations", aiDurations: "AI durations",
     decision: { irrigate: "Water", skip: "Skip", error: "Error", unknown: "No analysis yet" },
     off: "Off", daily: "7/7", min: "min", skip: "skip",
@@ -211,13 +211,14 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const ai = this._num(z.ai);
     const water = this._num(z.water_today);
     const end = this._s(z.end);
-    const secondary = m === null
-      ? `${t.planned} ${planned === null ? "–" : planned + " " + t.min}`
-      : `${t.moisture} ${Math.round(m)}% · ${m < 25 ? t.dry : m <= 50 ? t.ok : t.wet}`;
+    // Stesse informazioni per ogni zona: umidità (o il motivo per cui manca) e durata prevista
+    const secondary = m !== null
+      ? `${t.moisture} ${Math.round(m)}% · ${m < 25 ? t.dry : m <= 50 ? t.ok : t.wet}`
+      : `${t.moisture}: ${z.moisture ? t.unavailable : t.noSensor}`;
     const glow = on ? "glow-blue" : (m !== null && m < 25 ? "glow-red" : "");
     const chips = [];
     if (on && end && this._time(end.state)) chips.push(`<span class="chip blue">${t.ends} ${this._time(end.state)}</span>`);
-    if (planned !== null && m !== null) chips.push(`<span class="chip">⏱ ${planned} ${t.min}</span>`);
+    chips.push(`<span class="chip">⏱ ${planned === null ? "–" : planned + " " + t.min}</span>`);
     if (ai !== null) chips.push(`<span class="chip">🤖 ${ai === 0 ? t.skip : ai + " " + t.min}</span>`);
     if (water) chips.push(`<span class="chip">💧 ${this._fmt(water)} L</span>`);
     const bat = battery ? this._num(battery) : null;
