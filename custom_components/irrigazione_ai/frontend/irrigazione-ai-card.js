@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.9.2";
+const CARD_VERSION = "0.9.4";
 
 const TEXT = {
   it: {
@@ -203,7 +203,12 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     this._render(map, batteries);
   }
 
-  _zoneTile(z, i, t, battery) {
+  // Due per riga; se il numero è dispari l'ultima occupa tutta la larghezza
+  _span(i, count) {
+    return count % 2 === 1 && i === count - 1 ? "span12" : "span6";
+  }
+
+  _zoneTile(z, i, t, battery, count) {
     const valve = this._s(z.valve);
     const on = valve && ["on", "open", "opening"].includes(valve.state);
     const m = this._num(z.moisture);
@@ -224,7 +229,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const bat = battery ? this._num(battery) : null;
     if (bat !== null) chips.push(`<span class="chip">${bat > 80 ? "🟢" : bat > 40 ? "🟡" : "🔴"} ${t.battery} ${Math.round(bat)}%</span>`);
     return `
-      <div class="tile span6 ${glow} ${on ? "spray" : ""}" data-valve="${z.valve}" data-on="${on ? 1 : 0}">
+      <div class="tile ${this._span(i, count)} ${glow} ${on ? "spray" : ""}" data-valve="${z.valve}" data-on="${on ? 1 : 0}">
         <div class="row">
           <div class="shape" style="--ia-c:${on ? "var(--ia-blue)" : "#9e9e9e"}"><ha-icon icon="mdi:sprinkler"></ha-icon></div>
           <div class="txt wrap"><div class="primary">${t.zone} ${i + 1} – ${z.name}</div><div class="secondary">${secondary}</div></div>
@@ -280,7 +285,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       const id = aiOn ? z.ai : z.duration;
       const v = this._num(id);
       const label = v === null ? "–" : (aiOn && v === 0 ? t.skip : `${v} ${t.min}`);
-      return `<div class="tile span6" data-more="${id}"><div class="row">
+      return `<div class="tile ${this._span(i, map.zones.length)}" data-more="${id}"><div class="row">
         <div class="shape" style="--ia-c:${aiOn ? "#ffa000" : "var(--ia-blue)"}"><ha-icon icon="mdi:${aiOn ? "robot" : "sprinkler"}"></ha-icon></div>
         <div class="txt"><div class="secondary">${t.zone} ${i + 1} – ${z.name}</div><div class="value">${label}</div></div></div></div>`;
     }).join("");
@@ -317,7 +322,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
           ${aiButton}
           ${rain ? `<button class="yellow ${rain.state === "on" ? "on" : ""}" data-toggle="${sys.rain_block}"><ha-icon icon="mdi:weather-rainy"></ha-icon>${t.rain}</button>` : ""}
         </div>` : ""}
-        ${map.zones.map((z, i) => this._zoneTile(z, i, t, batteries[i])).join("")}
+        ${map.zones.map((z, i) => this._zoneTile(z, i, t, batteries[i], map.zones.length)).join("")}
         ${timer ? `<div class="btns span12" style="grid-template-columns:repeat(${timer.attributes.options.length},1fr)">${timerBtns}</div>` : ""}
         ${freq ? `<div class="btns span12" style="grid-template-columns:repeat(${freq.attributes.options.length},1fr)">${freqBtns}</div>` : ""}
         <div class="sec-title">${aiOn ? t.aiDurations : t.durations}</div>
