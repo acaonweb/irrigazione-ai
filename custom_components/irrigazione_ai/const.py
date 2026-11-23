@@ -46,6 +46,15 @@ CONF_EXPOSURE: Final = "exposure"
 
 EXPOSURES: Final = ["north", "south", "east", "west"]
 
+# Pagine dove ottenere le credenziali di ogni servizio AI
+AI_KEY_URLS: Final = {
+    "openai": "https://platform.openai.com/api-keys",
+    "anthropic": "https://platform.claude.com/settings/keys",
+    "gemini": "https://aistudio.google.com/apikey",
+    "ollama": "https://ollama.com/download",
+    "ai_task": "https://www.home-assistant.io/integrations/ai_task/",
+}
+
 # --- Default ---
 DEFAULT_NAME: Final = "Irrigazione"
 DEFAULT_SUNSET_OFFSET: Final = 5

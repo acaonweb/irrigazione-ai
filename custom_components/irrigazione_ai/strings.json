@@ -100,14 +100,14 @@
       },
       "ai": {
         "title": "AI analysis",
-        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.",
+        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.\n\nWhere to get the API key: [OpenAI]({openai_url}) · [Anthropic Claude]({anthropic_url}) · [Google Gemini]({gemini_url}) · [Ollama]({ollama_url}) (free, local) · [AI Task]({ai_task_url})",
         "data": {
           "ai_provider": "AI service"
         }
       },
       "ai_details": {
         "title": "AI service settings",
-        "description": "A small test request is sent to check the settings before saving.",
+        "description": "{help}A small test request is sent to check the settings before saving.",
         "data": {
           "ai_task_entity": "AI Task entity",
           "ai_api_key": "API key",
@@ -197,14 +197,14 @@
       },
       "ai": {
         "title": "AI analysis",
-        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.",
+        "description": "Optional: an AI model can decide whether to water and how many liters each zone needs, using current weather, rain of the last 12 hours and the forecast. You can use an AI Task entity already set up in Home Assistant or your own API key. You can turn the analysis on and off later with the 'AI analysis' switch.\n\nWhere to get the API key: [OpenAI]({openai_url}) · [Anthropic Claude]({anthropic_url}) · [Google Gemini]({gemini_url}) · [Ollama]({ollama_url}) (free, local) · [AI Task]({ai_task_url})",
         "data": {
           "ai_provider": "AI service"
         }
       },
       "ai_details": {
         "title": "AI service settings",
-        "description": "A small test request is sent to check the settings before saving.",
+        "description": "{help}A small test request is sent to check the settings before saving.",
         "data": {
           "ai_task_entity": "AI Task entity",
           "ai_api_key": "API key",

@@ -100,14 +100,14 @@
       },
       "ai": {
         "title": "Analisi AI",
-        "description": "Facoltativa: un modello AI decide se irrigare e quanti litri dare a ogni zona, in base a meteo attuale, pioggia delle ultime 12 ore e previsioni. Puoi usare un'entità AI Task già configurata in Home Assistant oppure una tua API key. L'analisi si accende e spegne poi con l'interruttore 'Analisi AI'.",
+        "description": "Facoltativa: un modello AI decide se irrigare e quanti litri dare a ogni zona, in base a meteo attuale, pioggia delle ultime 12 ore e previsioni. Puoi usare un'entità AI Task già configurata in Home Assistant oppure una tua API key. L'analisi si accende e spegne poi con l'interruttore 'Analisi AI'.\n\nDove ottenere la API key: [OpenAI]({openai_url}) · [Anthropic Claude]({anthropic_url}) · [Google Gemini]({gemini_url}) · [Ollama]({ollama_url}) (gratis, in locale) · [AI Task]({ai_task_url})",
         "data": {
           "ai_provider": "Servizio AI"
         }
       },
       "ai_details": {
         "title": "Impostazioni del servizio AI",
-        "description": "Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
+        "description": "{help}Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
         "data": {
           "ai_task_entity": "Entità AI Task",
           "ai_api_key": "API key",
@@ -197,14 +197,14 @@
       },
       "ai": {
         "title": "Analisi AI",
-        "description": "Facoltativa: un modello AI decide se irrigare e quanti litri dare a ogni zona, in base a meteo attuale, pioggia delle ultime 12 ore e previsioni. Puoi usare un'entità AI Task già configurata in Home Assistant oppure una tua API key. L'analisi si accende e spegne poi con l'interruttore 'Analisi AI'.",
+        "description": "Facoltativa: un modello AI decide se irrigare e quanti litri dare a ogni zona, in base a meteo attuale, pioggia delle ultime 12 ore e previsioni. Puoi usare un'entità AI Task già configurata in Home Assistant oppure una tua API key. L'analisi si accende e spegne poi con l'interruttore 'Analisi AI'.\n\nDove ottenere la API key: [OpenAI]({openai_url}) · [Anthropic Claude]({anthropic_url}) · [Google Gemini]({gemini_url}) · [Ollama]({ollama_url}) (gratis, in locale) · [AI Task]({ai_task_url})",
         "data": {
           "ai_provider": "Servizio AI"
         }
       },
       "ai_details": {
         "title": "Impostazioni del servizio AI",
-        "description": "Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
+        "description": "{help}Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
         "data": {
           "ai_task_entity": "Entità AI Task",
           "ai_api_key": "API key",

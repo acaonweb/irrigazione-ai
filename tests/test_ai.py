@@ -210,10 +210,12 @@ async def test_ai_wizard_step(hass: HomeAssistant, valves, aioclient_mock) -> No
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "ai"}
     )
+    assert result["description_placeholders"]["anthropic_url"].startswith("https://")
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"ai_provider": "openai"}
     )
     assert result["step_id"] == "ai_details"
+    assert "(https://platform.openai.com/api-keys)" in result["description_placeholders"]["help"]
 
     aioclient_mock.post(OPENAI_URL, status=401, text="bad key")
     details = {"ai_api_key": "sk-wrong", "ai_model": "gpt-4.1-mini", "ai_on_error": "formula"}
