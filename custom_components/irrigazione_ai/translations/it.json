@@ -56,7 +56,9 @@
         "title": "Programmazione",
         "description": "Quando e come irrigare. Puoi cambiare tutto anche dopo, dalle opzioni dell'integrazione.",
         "data": {
-          "sunset_offset": "Minuti dopo il tramonto",
+          "start_mode": "Orario di partenza riferito a",
+          "start_time": "Orario fisso",
+          "sunset_offset": "Scostamento in minuti",
           "weekly_day": "Giorno per 'una volta a settimana'",
           "twice_weekly_days": "Giorni per 'due volte a settimana'",
           "run_mode": "Zone",
@@ -67,7 +69,9 @@
           "notify_services": "Altre notifiche"
         },
         "data_description": {
-          "sunset_offset": "Quando parte il ciclo programmato; negativo = prima del tramonto",
+          "start_mode": "Tramonto, alba oppure un orario fisso scelto da te",
+          "start_time": "Usato solo con 'Orario fisso'",
+          "sunset_offset": "Solo per alba e tramonto: minuti dopo l'evento; negativo = prima (per esempio -30 = mezz'ora prima dell'alba)",
           "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
           "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
@@ -146,7 +150,9 @@
           "weather_entity": "Entità meteo",
           "temperature_sensor": "Sensore temperatura esterna",
           "humidity_sensor": "Sensore umidità esterna",
-          "sunset_offset": "Minuti dopo il tramonto",
+          "start_mode": "Orario di partenza riferito a",
+          "start_time": "Orario fisso",
+          "sunset_offset": "Scostamento in minuti",
           "weekly_day": "Giorno per 'una volta a settimana'",
           "twice_weekly_days": "Giorni per 'due volte a settimana'",
           "run_mode": "Zone",
@@ -160,7 +166,9 @@
           "weather_entity": "Facoltativa: usata dalla formula, dal blocco pioggia e dall'analisi AI. Senza, il blocco pioggia resta inattivo",
           "temperature_sensor": "Facoltativo: altrimenti si usa la temperatura dell'entità meteo",
           "humidity_sensor": "Facoltativo: altrimenti si usa l'umidità dell'entità meteo",
-          "sunset_offset": "Quando parte il ciclo programmato; negativo = prima del tramonto",
+          "start_mode": "Tramonto, alba oppure un orario fisso scelto da te",
+          "start_time": "Usato solo con 'Orario fisso'",
+          "sunset_offset": "Solo per alba e tramonto: minuti dopo l'evento; negativo = prima (per esempio -30 = mezz'ora prima dell'alba)",
           "run_mode": "In parallelo si aprono tutte insieme; in sequenza una dopo l'altra (utile se la pressione dell'acqua è bassa)",
           "safety_minutes": "Una valvola aperta a mano si chiude da sola dopo questi minuti (0 = mai)",
           "close_on_startup": "Se Home Assistant si riavvia con una valvola aperta e nessun ciclo in corso, la chiude",
@@ -314,6 +322,13 @@
       "options": {
         "parallel": "In parallelo",
         "sequential": "In sequenza"
+      }
+    },
+    "start_mode": {
+      "options": {
+        "sunset": "Tramonto",
+        "sunrise": "Alba",
+        "time": "Orario fisso"
       }
     },
     "exposure": {

@@ -56,7 +56,9 @@
         "title": "Scheduling",
         "description": "When and how to water. You can change everything later from the integration options.",
         "data": {
-          "sunset_offset": "Minutes after sunset",
+          "start_mode": "Start time based on",
+          "start_time": "Fixed time",
+          "sunset_offset": "Offset in minutes",
           "weekly_day": "Day for 'once a week'",
           "twice_weekly_days": "Days for 'twice a week'",
           "run_mode": "Zones",
@@ -67,7 +69,9 @@
           "notify_services": "Other notifications"
         },
         "data_description": {
-          "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
+          "start_mode": "Sunset, sunrise or a fixed time of your choice",
+          "start_time": "Used only with 'Fixed time'",
+          "sunset_offset": "Only for sunrise and sunset: minutes after the event; negative = before (e.g. -30 = half an hour before sunrise)",
           "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
           "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
@@ -146,7 +150,9 @@
           "weather_entity": "Weather entity",
           "temperature_sensor": "Outdoor temperature sensor",
           "humidity_sensor": "Outdoor humidity sensor",
-          "sunset_offset": "Minutes after sunset",
+          "start_mode": "Start time based on",
+          "start_time": "Fixed time",
+          "sunset_offset": "Offset in minutes",
           "weekly_day": "Day for 'once a week'",
           "twice_weekly_days": "Days for 'twice a week'",
           "run_mode": "Zones",
@@ -160,7 +166,9 @@
           "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
-          "sunset_offset": "When the scheduled cycle starts; negative = before sunset",
+          "start_mode": "Sunset, sunrise or a fixed time of your choice",
+          "start_time": "Used only with 'Fixed time'",
+          "sunset_offset": "Only for sunrise and sunset: minutes after the event; negative = before (e.g. -30 = half an hour before sunrise)",
           "run_mode": "In parallel all zones open together; in sequence one after the other (useful with low water pressure)",
           "safety_minutes": "A valve opened by hand closes automatically after these minutes (0 = never)",
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
@@ -314,6 +322,13 @@
       "options": {
         "parallel": "In parallel",
         "sequential": "In sequence"
+      }
+    },
+    "start_mode": {
+      "options": {
+        "sunset": "Sunset",
+        "sunrise": "Sunrise",
+        "time": "Fixed time"
       }
     },
     "exposure": {

@@ -99,7 +99,7 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
 
 ```mermaid
 flowchart LR
-    A[Tramonto + offset<br/>giorno previsto] --> B{Blocco pioggia<br/>e meteo piovoso?}
+    A[Alba, tramonto o orario fisso<br/>giorno previsto] --> B{Blocco pioggia<br/>e meteo piovoso?}
     M[Avvia ora / servizio] --> B
     B -- sì --> X[Saltato<br/>registrato nel calendario]
     B -- no --> C{Timer manuale<br/>o durata data?}
@@ -128,7 +128,7 @@ flowchart LR
 | --- | --- |
 | 1. Impianto | Nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo) |
 | 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, formula propria facoltativa |
-| 3. Programmazione | Minuti dopo il tramonto, giorni per le frequenze, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
+| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, giorni per le frequenze, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 

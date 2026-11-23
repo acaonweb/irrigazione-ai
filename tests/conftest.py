@@ -138,7 +138,9 @@ def zone_data(name: str, valve: str, moisture: str | None = None) -> dict[str, A
     return data
 
 
-def make_entry(run_mode: str = "parallel", safety: int = 60) -> MockConfigEntry:
+def make_entry(
+    run_mode: str = "parallel", safety: int = 60, **extra: Any
+) -> MockConfigEntry:
     """Impianto con due zone."""
     return MockConfigEntry(
         domain=DOMAIN,
@@ -153,6 +155,7 @@ def make_entry(run_mode: str = "parallel", safety: int = 60) -> MockConfigEntry:
             CONF_SAFETY_MINUTES: safety,
             CONF_CLOSE_ON_STARTUP: False,
             CONF_NOTIFY: [],
+            **extra,
         },
         subentries_data=[
             {

@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -17,6 +17,7 @@ from homeassistant.const import (
     STATE_OPENING,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
+    SUN_EVENT_SUNRISE,
     SUN_EVENT_SUNSET,
 )
 from homeassistant.core import (
@@ -30,6 +31,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
+    async_track_sunrise,
     async_track_sunset,
     async_track_time_change,
     async_track_time_interval,
@@ -75,6 +77,8 @@ from .const import (
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
+    CONF_START_MODE,
+    CONF_START_TIME,
     CONF_SUNSET_OFFSET,
     CONF_TEMPERATURE,
     CONF_TWICE_WEEKLY_DAYS,
@@ -94,6 +98,8 @@ from .const import (
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
     DEFAULT_SOIL_VOLUME,
+    DEFAULT_START_MODE,
+    DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
     DEFAULT_TWICE_WEEKLY_DAYS,
     DEFAULT_WEEKLY_DAY,
@@ -102,6 +108,8 @@ from .const import (
     RUN_MODE_SEQUENTIAL,
     SOURCE_SCHEDULE,
     SOURCE_SERVICE,
+    START_MODE_SUNRISE,
+    START_MODE_TIME,
     STARTUP_CLOSE_DELAY,
     STATUS_BLOCKED,
     STATUS_IDLE,
@@ -270,12 +278,7 @@ class IrrigationController:
                 self.hass, self._handle_midnight, hour=0, minute=0, second=5
             )
         )
-        offset = timedelta(
-            minutes=int(self.config.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET))
-        )
-        self._unsubs.append(
-            async_track_sunset(self.hass, self._handle_sunset, offset)
-        )
+        self._unsubs.append(self._track_start())
         valves = [zone.valve for zone in self.zones.values()]
         if valves:
             self._unsubs.append(
@@ -472,21 +475,57 @@ class IrrigationController:
         end = max(run.ends_at for run in self.zone_runs.values())
         return max(0, int(round((end - dt_util.utcnow()).total_seconds() / 60)))
 
+    @property
+    def start_mode(self) -> str:
+        """Riferimento dell'orario: alba, tramonto o orario fisso."""
+        return str(self.config.get(CONF_START_MODE, DEFAULT_START_MODE))
+
+    def _start_offset(self) -> timedelta:
+        return timedelta(
+            minutes=int(self.config.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET))
+        )
+
+    def _start_time(self) -> tuple[int, int]:
+        raw = str(self.config.get(CONF_START_TIME) or DEFAULT_START_TIME)
+        parsed = dt_util.parse_time(raw) or dt_util.parse_time(DEFAULT_START_TIME)
+        return parsed.hour, parsed.minute
+
+    def _track_start(self) -> Callable[[], None]:
+        """Registra il trigger dell'avvio programmato."""
+        mode = self.start_mode
+        if mode == START_MODE_TIME:
+            hour, minute = self._start_time()
+            return async_track_time_change(
+                self.hass, self._handle_start, hour=hour, minute=minute, second=0
+            )
+        track = async_track_sunrise if mode == START_MODE_SUNRISE else async_track_sunset
+        return track(self.hass, self._handle_start, self._start_offset())
+
+    def start_on(self, day: Any) -> datetime | None:
+        """Orario di avvio (UTC) per un giorno locale, senza controllare la frequenza."""
+        mode = self.start_mode
+        if mode == START_MODE_TIME:
+            hour, minute = self._start_time()
+            local = datetime.combine(
+                day, time(hour, minute), tzinfo=dt_util.get_default_time_zone()
+            )
+            return dt_util.as_utc(local)
+        event = SUN_EVENT_SUNRISE if mode == START_MODE_SUNRISE else SUN_EVENT_SUNSET
+        when = get_astral_event_date(self.hass, event, day)
+        if when is None:
+            return None
+        return when + self._start_offset()
+
     def next_run(self) -> datetime | None:
         """Prossima irrigazione programmata (UTC)."""
-        cfg = self.config
-        offset = timedelta(minutes=int(cfg.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET)))
         now = dt_util.now()
         for days in range(8):
             day = (now + timedelta(days=days)).date()
             local_noon = dt_util.start_of_local_day(day) + timedelta(hours=12)
             if not self._is_day(local_noon):
                 continue
-            sunset = get_astral_event_date(self.hass, SUN_EVENT_SUNSET, day)
-            if sunset is None:
-                continue
-            when = sunset + offset
-            if when > dt_util.utcnow():
+            when = self.start_on(day)
+            if when is not None and when > dt_util.utcnow():
                 return when
         return None
 
@@ -580,7 +619,7 @@ class IrrigationController:
     # Programmazione
     # ------------------------------------------------------------------
     @callback
-    def _handle_sunset(self) -> None:
+    def _handle_start(self, _now: datetime | None = None) -> None:
         if not self._is_day(dt_util.now()):
             return
         self.hass.async_create_task(self.async_start(SOURCE_SCHEDULE))

@@ -56,6 +56,8 @@ from .const import (
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
+    CONF_START_MODE,
+    CONF_START_TIME,
     CONF_SUNSET_OFFSET,
     CONF_TEMPERATURE,
     CONF_TWICE_WEEKLY_DAYS,
@@ -77,6 +79,8 @@ from .const import (
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
     DEFAULT_SOIL_VOLUME,
+    DEFAULT_START_MODE,
+    DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
     DEFAULT_TWICE_WEEKLY_DAYS,
     DEFAULT_WEEKLY_DAY,
@@ -84,6 +88,7 @@ from .const import (
     EXPOSURES,
     RUN_MODE_PARALLEL,
     RUN_MODE_SEQUENTIAL,
+    START_MODES,
     SUBENTRY_ZONE,
     WEEKDAYS,
 )
@@ -131,6 +136,20 @@ def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None
     devices = sorted(set(_mobile_devices(hass)) | set(defaults.get(CONF_LIVE_DEVICES, [])))
     return vol.Schema(
         {
+            vol.Required(
+                CONF_START_MODE,
+                default=defaults.get(CONF_START_MODE, DEFAULT_START_MODE),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=START_MODES,
+                    translation_key="start_mode",
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            ),
+            vol.Required(
+                CONF_START_TIME,
+                default=defaults.get(CONF_START_TIME, DEFAULT_START_TIME),
+            ): selector.TimeSelector(),
             vol.Required(
                 CONF_SUNSET_OFFSET,
                 default=defaults.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET),
@@ -390,7 +409,12 @@ def _validate_zone(
 
 def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
     data = dict(user_input)
-    data[CONF_SUNSET_OFFSET] = int(data[CONF_SUNSET_OFFSET])
+    data[CONF_SUNSET_OFFSET] = int(data.get(CONF_SUNSET_OFFSET, DEFAULT_SUNSET_OFFSET))
+    data.setdefault(CONF_START_MODE, DEFAULT_START_MODE)
+    start_time = str(data.get(CONF_START_TIME) or DEFAULT_START_TIME)
+    if start_time.count(":") == 1:
+        start_time += ":00"
+    data[CONF_START_TIME] = start_time
     data[CONF_SAFETY_MINUTES] = int(data[CONF_SAFETY_MINUTES])
     data[CONF_NOTIFY] = [s.strip() for s in data.get(CONF_NOTIFY, []) if s.strip()]
     data[CONF_LIVE_DEVICES] = [

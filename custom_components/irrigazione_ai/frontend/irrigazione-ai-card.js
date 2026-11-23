@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.8.0";
+const CARD_VERSION = "0.9.0";
 
 const TEXT = {
   it: {

@@ -13,7 +13,15 @@ SUBENTRY_ZONE: Final = "zone"
 CONF_WEATHER: Final = "weather_entity"
 CONF_TEMPERATURE: Final = "temperature_sensor"
 CONF_HUMIDITY: Final = "humidity_sensor"
+CONF_START_MODE: Final = "start_mode"
+CONF_START_TIME: Final = "start_time"
+# Il nome della chiave resta "sunset_offset" per compatibilità: ora vale per alba e tramonto
 CONF_SUNSET_OFFSET: Final = "sunset_offset"
+
+START_MODE_SUNRISE: Final = "sunrise"
+START_MODE_SUNSET: Final = "sunset"
+START_MODE_TIME: Final = "time"
+START_MODES: Final = [START_MODE_SUNSET, START_MODE_SUNRISE, START_MODE_TIME]
 CONF_RUN_MODE: Final = "run_mode"
 CONF_SAFETY_MINUTES: Final = "safety_minutes"
 CONF_CLOSE_ON_STARTUP: Final = "close_on_startup"
@@ -41,6 +49,8 @@ EXPOSURES: Final = ["north", "south", "east", "west"]
 # --- Default ---
 DEFAULT_NAME: Final = "Irrigazione"
 DEFAULT_SUNSET_OFFSET: Final = 5
+DEFAULT_START_MODE: Final = START_MODE_SUNSET
+DEFAULT_START_TIME: Final = "21:00:00"
 DEFAULT_RUN_MODE: Final = RUN_MODE_PARALLEL
 DEFAULT_SAFETY_MINUTES: Final = 60
 DEFAULT_CLOSE_ON_STARTUP: Final = True
