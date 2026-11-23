@@ -107,7 +107,7 @@
       },
       "ai_details": {
         "title": "Impostazioni del servizio AI",
-        "description": "{help}Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
+        "description": "🔑 Dove ottenere la API key (o come preparare il servizio): [{key_label}]({key_url})\n\nPrima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
         "data": {
           "ai_task_entity": "Entità AI Task",
           "ai_api_key": "API key",
@@ -133,7 +133,7 @@
       "valve_in_use": "Questa valvola è già usata da un'altra zona.",
       "min_greater_than_max": "La durata minima è maggiore della massima.",
       "formula_invalid": "La formula non funziona: {error}",
-      "invalid_auth": "La API key è stata rifiutata.",
+      "invalid_auth": "La API key è stata rifiutata ({error}). Controlla che sia copiata per intero, che sia ancora attiva e che il progetto possa usare il modello scelto.",
       "cannot_connect": "Servizio non raggiungibile: {error}",
       "ai_failed": "La richiesta di prova non è riuscita: {error}",
       "prompt_invalid": "Il prompt non funziona: {error}"
@@ -204,7 +204,7 @@
       },
       "ai_details": {
         "title": "Impostazioni del servizio AI",
-        "description": "{help}Prima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
+        "description": "🔑 Dove ottenere la API key (o come preparare il servizio): [{key_label}]({key_url})\n\nPrima di salvare viene inviata una piccola richiesta di prova per verificare i dati.",
         "data": {
           "ai_task_entity": "Entità AI Task",
           "ai_api_key": "API key",
@@ -227,7 +227,7 @@
     },
     "error": {
       "formula_invalid": "La formula non funziona: {error}",
-      "invalid_auth": "La API key è stata rifiutata.",
+      "invalid_auth": "La API key è stata rifiutata ({error}). Controlla che sia copiata per intero, che sia ancora attiva e che il progetto possa usare il modello scelto.",
       "cannot_connect": "Servizio non raggiungibile: {error}",
       "ai_failed": "La richiesta di prova non è riuscita: {error}",
       "prompt_invalid": "Il prompt non funziona: {error}"

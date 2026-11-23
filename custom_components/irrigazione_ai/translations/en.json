@@ -107,7 +107,7 @@
       },
       "ai_details": {
         "title": "AI service settings",
-        "description": "{help}A small test request is sent to check the settings before saving.",
+        "description": "🔑 Where to get the API key (or how to set up the service): [{key_label}]({key_url})\n\nA small test request is sent to check the settings before saving.",
         "data": {
           "ai_task_entity": "AI Task entity",
           "ai_api_key": "API key",
@@ -133,7 +133,7 @@
       "valve_in_use": "This valve is already used by another zone.",
       "min_greater_than_max": "The minimum duration is greater than the maximum.",
       "formula_invalid": "The formula does not work: {error}",
-      "invalid_auth": "The API key was rejected.",
+      "invalid_auth": "The API key was rejected ({error}). Check that it was copied whole, that it is still active and that the project can use the chosen model.",
       "cannot_connect": "Cannot reach the service: {error}",
       "ai_failed": "The test request failed: {error}",
       "prompt_invalid": "The prompt does not work: {error}"
@@ -204,7 +204,7 @@
       },
       "ai_details": {
         "title": "AI service settings",
-        "description": "{help}A small test request is sent to check the settings before saving.",
+        "description": "🔑 Where to get the API key (or how to set up the service): [{key_label}]({key_url})\n\nA small test request is sent to check the settings before saving.",
         "data": {
           "ai_task_entity": "AI Task entity",
           "ai_api_key": "API key",
@@ -227,7 +227,7 @@
     },
     "error": {
       "formula_invalid": "The formula does not work: {error}",
-      "invalid_auth": "The API key was rejected.",
+      "invalid_auth": "The API key was rejected ({error}). Check that it was copied whole, that it is still active and that the project can use the chosen model.",
       "cannot_connect": "Cannot reach the service: {error}",
       "ai_failed": "The test request failed: {error}",
       "prompt_invalid": "The prompt does not work: {error}"

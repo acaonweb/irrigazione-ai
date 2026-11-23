@@ -306,6 +306,22 @@ def parse_json_text(text: str) -> dict[str, Any]:
     return data
 
 
+def _error_message(body: str) -> str:
+    """Il messaggio d'errore del provider (OpenAI, Anthropic, Gemini, Ollama)."""
+    try:
+        data = json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return body.strip()[:200]
+    err = data.get("error") if isinstance(data, dict) else None
+    if isinstance(err, dict):
+        msg = err.get("message") or err.get("code") or err.get("type")
+        if msg:
+            return str(msg)[:300]
+    if isinstance(err, str):
+        return err[:300]
+    return body.strip()[:200]
+
+
 async def _post(
     hass: HomeAssistant, url: str, payload: dict[str, Any], headers: dict[str, str]
 ) -> dict[str, Any]:
@@ -321,9 +337,9 @@ async def _post(
             if response.status in (401, 403) or (
                 response.status == 400 and "API key" in body
             ):
-                raise AiAuthError(f"chiave API non valida (HTTP {response.status})")
+                raise AiAuthError(f"HTTP {response.status}: {_error_message(body)}")
             if response.status >= 400:
-                raise AiError(f"HTTP {response.status}: {body[:200]}")
+                raise AiError(f"HTTP {response.status}: {_error_message(body)}")
             return json.loads(body)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise AiConnectionError(f"servizio non raggiungibile: {err}") from err

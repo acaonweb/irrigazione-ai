@@ -215,21 +215,26 @@ async def test_ai_wizard_step(hass: HomeAssistant, valves, aioclient_mock) -> No
         result["flow_id"], {"ai_provider": "openai"}
     )
     assert result["step_id"] == "ai_details"
-    assert "(https://platform.openai.com/api-keys)" in result["description_placeholders"]["help"]
+    assert result["description_placeholders"]["key_url"] == "https://platform.openai.com/api-keys"
 
-    aioclient_mock.post(OPENAI_URL, status=401, text="bad key")
+    aioclient_mock.post(
+        OPENAI_URL, status=401,
+        json={"error": {"message": "Incorrect API key provided: sk-wrong."}},
+    )
     details = {"ai_api_key": "sk-wrong", "ai_model": "gpt-4.1-mini", "ai_on_error": "formula"}
     result = await hass.config_entries.options.async_configure(result["flow_id"], details)
     assert result["errors"] == {"base": "invalid_auth"}
+    assert "Incorrect API key provided" in result["description_placeholders"]["error"]
 
     aioclient_mock.clear_requests()
     aioclient_mock.post(OPENAI_URL, json=_openai_reply({"ok": True}))
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], details | {"ai_api_key": "sk-good"}
+        result["flow_id"], details | {"ai_api_key": "  sk-good\n"}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.options["ai_provider"] == "openai"
+    assert entry.options["ai_api_key"] == "sk-good"
     assert entry.options["ai_api_key"] == "sk-good"
     assert hass.states.get("switch.irrigazione_ai_analysis").state == "off"
 

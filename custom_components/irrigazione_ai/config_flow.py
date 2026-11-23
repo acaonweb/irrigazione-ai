@@ -124,44 +124,6 @@ def _system_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
-# Aiuto mostrato nel passo dei dati del servizio AI (link alle pagine delle API key)
-AI_HELP: dict[str, dict[str, str]] = {
-    "en": {
-        "openai": (
-            '🔑 Create your API key here: [platform.openai.com/api-keys]({key_url}). The account needs some prepaid credit.'
-        ),
-        "anthropic": (
-            '🔑 Create your API key here: [platform.claude.com → Settings → API keys]({key_url}). The key starts with sk-ant-.'
-        ),
-        "gemini": (
-            '🔑 Create your API key here: [Google AI Studio → API keys]({key_url}). The key starts with AIza.'
-        ),
-        "ollama": (
-            '🦙 Install Ollama on a computer of your network: [ollama.com/download]({key_url}). Then download a model, e.g. ollama pull llama3.1 ([model list]({models_url})).'
-        ),
-        "ai_task": (
-            '🤖 First add an AI integration (OpenAI, Anthropic, Google Gemini, Ollama...) in [Devices & services]({integrations_url}): it creates the AI Task entity. [What is AI Task]({key_url}).'
-        ),
-    },
-    "it": {
-        "openai": (
-            "🔑 Crea la tua API key qui: [platform.openai.com/api-keys]({key_url}). Sull'account serve un po' di credito prepagato."
-        ),
-        "anthropic": (
-            '🔑 Crea la tua API key qui: [platform.claude.com → Settings → API keys]({key_url}). La chiave inizia con sk-ant-.'
-        ),
-        "gemini": (
-            '🔑 Crea la tua API key qui: [Google AI Studio → API keys]({key_url}). La chiave inizia con AIza.'
-        ),
-        "ollama": (
-            '🦙 Installa Ollama su un computer della tua rete: [ollama.com/download]({key_url}). Poi scarica un modello, per esempio ollama pull llama3.1 ([elenco dei modelli]({models_url})).'
-        ),
-        "ai_task": (
-            "🤖 Prima aggiungi un'integrazione AI (OpenAI, Anthropic, Google Gemini, Ollama...) in [Dispositivi e servizi]({integrations_url}): crea lei l'entità AI Task. [Cos'è AI Task]({key_url})."
-        ),
-    },
-}
-
 def _mobile_devices(hass: HomeAssistant | None) -> list[str]:
     """Azioni notify delle app companion (iPhone, iPad, Android)."""
     if hass is None:
@@ -613,14 +575,13 @@ class _AiStepsMixin:
             "error": "",
             "provider": provider,
             "key_url": AI_KEY_URLS.get(provider, ""),
-            "integrations_url": "/config/integrations/dashboard",
-            "models_url": "https://ollama.com/library",
         }
-        lang = "it" if (self.hass.config.language or "").startswith("it") else "en"
-        help_text = AI_HELP[lang].get(provider, "")
-        placeholders["help"] = help_text.format(**placeholders) + "\n\n" if help_text else ""
+        placeholders["key_label"] = placeholders["key_url"].split("://")[-1].removeprefix("www.")
         if user_input is not None:
             candidate = _clean_prompt({CONF_AI_PROVIDER: provider, **user_input})
+            for key in (CONF_AI_API_KEY, CONF_AI_MODEL, CONF_AI_BASE_URL):
+                if isinstance(candidate.get(key), str):
+                    candidate[key] = candidate[key].strip()
             try:
                 build_prompt(
                     self.hass,
@@ -635,8 +596,9 @@ class _AiStepsMixin:
         if user_input is not None and not errors:
             try:
                 await async_validate(self.hass, candidate)
-            except AiAuthError:
+            except AiAuthError as err:
                 errors["base"] = "invalid_auth"
+                placeholders["error"] = str(err)
             except AiConnectionError as err:
                 errors["base"] = "cannot_connect"
                 placeholders["error"] = str(err)
