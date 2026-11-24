@@ -168,6 +168,7 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
         return {
             "card": self._entity_map(),
             "source": c.run_source if c.running else None,
+            "config_pending": c.reload_pending,
             "zones": {
                 c.zones[zid].name: {
                     "minutes": run.minutes,

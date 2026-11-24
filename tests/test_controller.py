@@ -175,3 +175,43 @@ async def test_custom_formula_and_fallback(hass: HomeAssistant, valves) -> None:
     assert zone.zone_id in controller.formula_errors
     attrs = hass.states.get("sensor.secondo_piano_planned_duration").attributes
     assert attrs["formula"] == "system"
+
+
+async def test_options_saved_during_cycle_wait_for_end(
+    hass: HomeAssistant, valves, slow_zone_sleep
+) -> None:
+    """Salvare le opzioni mentre irriga non interrompe il ciclo: si ricarica alla fine."""
+    entry = await _setup(hass, valves)
+    controller = entry.runtime_data
+    await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
+    await hass.async_block_till_done()
+    assert controller.running
+
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "safety_minutes": 30}
+    )
+    await hass.async_block_till_done()
+    assert entry.runtime_data is controller  # non ricaricata
+    assert controller.running
+    assert hass.states.get(VALVE_1).state == "on"
+    assert controller.reload_pending
+    status = _entity(hass, "sensor", "_status")
+    assert hass.states.get(status).attributes["config_pending"] is True
+
+    slow_zone_sleep.set()  # le zone finiscono
+    await hass.async_block_till_done(wait_background_tasks=True)
+    await hass.async_block_till_done()
+    assert entry.runtime_data is not controller  # ricaricata con le nuove opzioni
+    assert entry.runtime_data.config["safety_minutes"] == 30
+    assert hass.states.get(VALVE_1).state == "off"
+
+
+async def test_options_saved_when_idle_reload_now(hass: HomeAssistant, valves) -> None:
+    """Senza ciclo in corso la ricarica è immediata."""
+    entry = await _setup(hass, valves)
+    controller = entry.runtime_data
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "safety_minutes": 30}
+    )
+    await hass.async_block_till_done()
+    assert entry.runtime_data is not controller

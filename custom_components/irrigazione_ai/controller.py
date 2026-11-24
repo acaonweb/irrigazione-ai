@@ -208,6 +208,8 @@ class IrrigationController:
 
         # Stato del ciclo
         self.running = False
+        # Opzioni o zone cambiate durante un ciclo: si ricarica alla fine
+        self.reload_pending = False
         self.run_source: str | None = None
         self.zone_runs: dict[str, ZoneRun] = {}
         self.last_block: str | None = None
@@ -299,6 +301,7 @@ class IrrigationController:
 
     async def async_shutdown(self) -> None:
         """Ferma tutto (scarico dell'integrazione)."""
+        self.reload_pending = False  # si sta già scaricando
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
@@ -769,6 +772,15 @@ class IrrigationController:
         self.async_update_listeners()
         await self.live.async_finish(event, interrupted=False)
         await self._notify("Irrigazione terminata.")
+        self._apply_pending_reload()
+
+    @callback
+    def _apply_pending_reload(self) -> None:
+        """Applica la configurazione salvata durante il ciclo appena finito."""
+        if self.reload_pending:
+            self.reload_pending = False
+            _LOGGER.info("Ciclo finito: applico la nuova configurazione")
+            self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
     async def _async_run_zone(self, zone_id: str) -> None:
         zone = self.zones[zone_id]
@@ -814,6 +826,7 @@ class IrrigationController:
         self.async_update_listeners()
         if was_running and notify:
             await self._notify("Irrigazione interrotta.")
+        self._apply_pending_reload()
 
     # ------------------------------------------------------------------
     # Valvole

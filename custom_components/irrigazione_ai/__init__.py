@@ -150,7 +150,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) 
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> None:
-    """Ricarica quando cambiano opzioni o zone."""
+    """Ricarica quando cambiano opzioni o zone.
+
+    Se sta irrigando, la ricarica aspetta la fine del ciclo: ricaricare
+    adesso fermerebbe l'irrigazione a metà.
+    """
+    controller = entry.runtime_data
+    if controller.running:
+        controller.reload_pending = True
+        _LOGGER.info(
+            "Configurazione cambiata durante un ciclo: verrà applicata a fine irrigazione"
+        )
+        controller.async_update_listeners()
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
