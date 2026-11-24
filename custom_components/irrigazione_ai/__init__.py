@@ -154,7 +154,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> bool:
     """Configura un impianto."""
-    _async_migrate_schedule(hass, entry)
+    try:
+        await _async_migrate_schedule(hass, entry)
+    except Exception:  # noqa: BLE001 - la migrazione non deve mai bloccare l'avvio
+        _LOGGER.exception("Migrazione della programmazione non riuscita")
     controller = IrrigationController(hass, entry)
     entry.runtime_data = controller
     # Lo storico va caricato prima delle entità, che leggono i litri salvati
@@ -201,7 +204,38 @@ async def async_remove_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry)
     await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
 
 
-def _async_migrate_schedule(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> None:
+async def _async_last_state(hass: HomeAssistant, entity_id: str) -> str | None:
+    """Ultimo stato noto di un'entità che non esiste più (prima di registrarla di nuovo).
+
+    Prima la cache di ripristino (se l'API interna la espone), poi lo storico
+    del recorder.
+    """
+    try:
+        last_states = getattr(async_get_restore_data(hass), "last_states", None)
+        stored = last_states.get(entity_id) if isinstance(last_states, dict) else None
+        if stored is not None:
+            return stored.state.state
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("Cache di ripristino non leggibile", exc_info=True)
+    if "recorder" not in hass.config.components:
+        return None
+    from homeassistant.components.recorder import get_instance  # noqa: PLC0415
+    from homeassistant.components.recorder.history import (  # noqa: PLC0415
+        get_last_state_changes,
+    )
+
+    changes = await get_instance(hass).async_add_executor_job(
+        get_last_state_changes, hass, 20, entity_id
+    )
+    for state in reversed(changes.get(entity_id, [])):
+        if state.state in FREQUENCIES:
+            return state.state
+    return None
+
+
+async def _async_migrate_schedule(
+    hass: HomeAssistant, entry: IrrigazioneConfigEntry
+) -> None:
     """Da 0.9: la frequenza dell'impianto diventa la programmazione di ogni zona.
 
     Le zone ereditano i giorni in uso, così il comportamento non cambia.
@@ -215,9 +249,9 @@ def _async_migrate_schedule(hass: HomeAssistant, entry: IrrigazioneConfigEntry) 
         return
     frequency = DEFAULT_FREQUENCY
     if old_id is not None:
-        stored = async_get_restore_data(hass).last_states.get(old_id)
-        if stored is not None and stored.state.state in FREQUENCIES:
-            frequency = stored.state.state
+        last = await _async_last_state(hass, old_id)
+        if last in FREQUENCIES:
+            frequency = last
     cfg = {**entry.data, **entry.options}
     weekly = cfg.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY)
     twice = list(cfg.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS))
