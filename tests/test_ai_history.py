@@ -41,3 +41,20 @@ async def test_rain_history(hass: HomeAssistant, freezer) -> None:
 
     # Nessun dato per un'entità sconosciuta
     assert await async_rain_history(hass, "weather.nessuna", 12) is None
+
+
+async def test_rain_history_from_sensor(hass: HomeAssistant, freezer) -> None:
+    """Con il sensore pioggia lo storico arriva dal sensore, non dal meteo."""
+    start = dt_util.utcnow()
+    freezer.move_to(start)
+    hass.states.async_set("weather.casa", "rainy")
+    hass.states.async_set("sensor.pioggia_mm_h", "0")
+    await async_wait_recording_done(hass)
+    freezer.move_to(start + timedelta(hours=10))
+    hass.states.async_set("sensor.pioggia_mm_h", "1.2")
+    await async_wait_recording_done(hass)
+    freezer.move_to(start + timedelta(hours=12))
+
+    rain = await async_rain_history(hass, "weather.casa", 12, rain_sensor="sensor.pioggia_mm_h")
+    assert rain["source"] == "rain_sensor"
+    assert rain["rain_hours"] == 2.0

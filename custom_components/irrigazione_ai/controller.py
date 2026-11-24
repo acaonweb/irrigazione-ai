@@ -77,6 +77,7 @@ from .const import (
     CONF_MOISTURE,
     CONF_NOTIFY,
     CONF_PLANTS,
+    CONF_RAIN_SENSOR,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
@@ -127,6 +128,7 @@ from .const import (
     STATUS_RUNNING,
     SUBENTRY_ZONE,
     WEEKDAYS,
+    sensor_says_rain,
 )
 from .formula import FormulaError, render_formula
 from .history import IrrigationHistory
@@ -551,6 +553,7 @@ class IrrigationController:
             temperature=self.outdoor_temperature(),
             humidity=self.outdoor_humidity(),
             weather=self.weather_state(),
+            raining=self.is_raining(),
             coefficient=zone.coefficient,
             flow_rate=zone.flow_rate,
             soil_volume=zone.soil_volume,
@@ -595,9 +598,26 @@ class IrrigationController:
             return self.manual_timer
         return self.calculated_minutes(zone)
 
+    def rain_sensor_state(self) -> bool | None:
+        """Cosa dice il sensore pioggia (None se non c'è o non risponde)."""
+        entity_id = self.config.get(CONF_RAIN_SENSOR)
+        state = self.hass.states.get(entity_id) if entity_id else None
+        return sensor_says_rain(state.state if state else None)
+
     def is_raining(self) -> bool:
-        """True se il meteo indica pioggia."""
+        """True se piove: decide il sensore pioggia, se non c'è (o non risponde) il meteo."""
+        sensor = self.rain_sensor_state()
+        if sensor is not None:
+            return sensor
         return self.weather_state() in RAIN_STATES
+
+    def rain_description(self) -> str:
+        """Da dove arriva l'informazione sulla pioggia (per il registro)."""
+        entity_id = self.config.get(CONF_RAIN_SENSOR)
+        if entity_id and self.rain_sensor_state() is not None:
+            state = self.hass.states.get(entity_id)
+            return tr(self.hass, "block_rain_sensor_desc", sensor=state.name, state=state.state)
+        return tr(self.hass, "block_rain_desc", weather=self.weather_state())
 
     def remaining_minutes(self) -> int:
         """Minuti rimanenti al termine del ciclo in corso."""
@@ -730,7 +750,10 @@ class IrrigationController:
                 "temperature_c": self.outdoor_temperature(),
                 "humidity_percent": self.outdoor_humidity(),
             },
-            "rain_last_hours": await async_rain_history(self.hass, weather_entity),
+            "raining_now": self.is_raining(),
+            "rain_last_hours": await async_rain_history(
+                self.hass, weather_entity, rain_sensor=self.config.get(CONF_RAIN_SENSOR)
+            ),
             "forecast_next_hours": await async_forecast(self.hass, weather_entity),
             "zones": [
                 {
@@ -821,7 +844,7 @@ class IrrigationController:
             self.last_block_at = dt_util.utcnow()
             self.history.add_block(
                 tr(self.hass, "block_rain"),
-                tr(self.hass, "block_rain_desc", weather=self.weather_state()),
+                self.rain_description(),
             )
             self.async_update_listeners()
             await self._notify(tr(self.hass, "notify_rain"))

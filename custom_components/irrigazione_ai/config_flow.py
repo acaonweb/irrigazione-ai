@@ -57,6 +57,7 @@ from .const import (
     CONF_MOISTURE,
     CONF_NOTIFY,
     CONF_PLANTS,
+    CONF_RAIN_SENSOR,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
@@ -92,6 +93,7 @@ from .const import (
     DEFAULT_ZONE_DAYS,
     DOMAIN,
     EXPOSURES,
+    RAIN_STATES,
     RUN_MODE_PARALLEL,
     RUN_MODE_SEQUENTIAL,
     SCHEDULE_ALTERNATE,
@@ -101,6 +103,7 @@ from .const import (
     START_MODES,
     SUBENTRY_ZONE,
     WEEKDAYS,
+    sensor_says_rain,
 )
 from .controller import ZoneConfig, _float_state
 from .formula import FormulaError, render_formula
@@ -128,6 +131,12 @@ def _system_schema(defaults: dict[str, Any]) -> vol.Schema:
                 description={"suggested_value": defaults.get(CONF_HUMIDITY)},
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", device_class="humidity")
+            ),
+            vol.Optional(
+                CONF_RAIN_SENSOR,
+                description={"suggested_value": defaults.get(CONF_RAIN_SENSOR)},
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
             ),
         }
     )
@@ -345,11 +354,17 @@ def _inputs(hass: HomeAssistant, system: dict[str, Any]) -> tuple[float | None, 
 
 def _zone_variables(hass: HomeAssistant, system: dict[str, Any], zone: ZoneConfig) -> dict[str, Any]:
     temperature, humidity, weather = _inputs(hass, system)
+    rain_entity = system.get(CONF_RAIN_SENSOR)
+    rain_state = hass.states.get(rain_entity) if rain_entity else None
+    raining = sensor_says_rain(rain_state.state if rain_state else None)
+    if raining is None:
+        raining = weather in RAIN_STATES
     return formula_variables(
         moisture=_float_state(hass, zone.moisture_sensor),
         temperature=temperature,
         humidity=humidity,
         weather=weather,
+        raining=raining,
         coefficient=zone.coefficient,
         flow_rate=zone.flow_rate,
         soil_volume=zone.soil_volume,

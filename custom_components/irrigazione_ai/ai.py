@@ -38,6 +38,7 @@ from .const import (
     DEFAULT_AI_MODELS,
     DEFAULT_OLLAMA_URL,
     RAIN_STATES,
+    sensor_says_rain,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,9 +86,24 @@ class AiResult:
 
 
 async def async_rain_history(
-    hass: HomeAssistant, weather_entity: str | None, hours: int = AI_RAIN_HOURS
+    hass: HomeAssistant,
+    weather_entity: str | None,
+    hours: int = AI_RAIN_HOURS,
+    rain_sensor: str | None = None,
 ) -> dict[str, Any] | None:
-    """Quanto ha piovuto nelle ultime ore secondo lo storico dell'entità meteo."""
+    """Quanto ha piovuto nelle ultime ore: dal sensore pioggia se c'è, altrimenti dal meteo."""
+    source = rain_sensor or weather_entity
+    if rain_sensor:
+
+        def is_rain(value: str) -> bool:
+            return bool(sensor_says_rain(value))
+
+    else:
+
+        def is_rain(value: str) -> bool:
+            return value in RAIN_STATES
+
+    weather_entity = source
     if not weather_entity or "recorder" not in hass.config.components:
         return None
     from homeassistant.components.recorder import get_instance, history  # noqa: PLC0415
@@ -116,10 +132,11 @@ async def async_rain_history(
     for index, state in enumerate(items):
         begin = max(state.last_changed, start)
         finish = items[index + 1].last_changed if index + 1 < len(items) else end
-        if state.state in RAIN_STATES and finish > begin:
+        if is_rain(state.state) and finish > begin:
             rainy_seconds += (finish - begin).total_seconds()
     total = hours * 3600
     return {
+        "source": "rain_sensor" if rain_sensor else "weather",
         "hours": hours,
         "rain_hours": round(rainy_seconds / 3600, 1),
         "rain_percent": round(100 * rainy_seconds / total),
@@ -175,7 +192,8 @@ Decide whether the garden should be watered now and how many liters each zone ne
 
 Data fields:
 - weather_now: current condition, outdoor temperature (°C) and outdoor air humidity (%).
-- rain_last_hours: hours and percentage of time it rained in the recent hours, and whether it rained at all.
+- raining_now: whether it is raining right now (from the owner's rain sensor when there is one, otherwise from the weather).
+- rain_last_hours: hours and percentage of time it rained in the recent hours, and whether it rained at all (source: rain_sensor or weather).
 - forecast_next_hours: hourly forecast (condition, temperature, precipitation in mm and its probability).
 - zones: for each zone, plants (what grows there, written by the owner; null if not given), soil_moisture_percent (0-100%), soil_volume_liters (liters of substrate to water), exposure (north/south/east/west: affects evaporation and sun), flow_rate_liters_per_minute, min_minutes/max_minutes and formula_minutes (the duration of the classic formula, for reference).
 

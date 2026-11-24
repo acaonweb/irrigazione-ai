@@ -16,7 +16,8 @@ MESSAGES: dict[str, dict[str, str]] = {
         # Cicli e blocchi
         "block_rain": "Watering skipped: rain",
         "block_rain_desc": "Weather: {weather}. Rain block on.",
-        "notify_rain": "Watering blocked: the weather says rain and the rain block is on.",
+        "block_rain_sensor_desc": "Rain sensor {sensor}: {state}. Rain block on.",
+        "notify_rain": "Watering blocked: it is raining and the rain block is on.",
         "block_ai_error": "Watering skipped: AI analysis failed",
         "notify_ai_error_skip": "Watering cancelled: the AI analysis failed ({error}).",
         "notify_ai_error_disable": "AI analysis failed ({error}): AI analysis turned off, watering with the formula.",
@@ -61,7 +62,8 @@ MESSAGES: dict[str, dict[str, str]] = {
     "it": {
         "block_rain": "Irrigazione saltata: pioggia",
         "block_rain_desc": "Meteo: {weather}. Blocco pioggia attivo.",
-        "notify_rain": "Irrigazione bloccata: il meteo indica pioggia e il blocco pioggia è attivo.",
+        "block_rain_sensor_desc": "Sensore pioggia {sensor}: {state}. Blocco pioggia attivo.",
+        "notify_rain": "Irrigazione bloccata: sta piovendo e il blocco pioggia è attivo.",
         "block_ai_error": "Irrigazione saltata: AI non riuscita",
         "notify_ai_error_skip": "Irrigazione annullata: l'analisi AI non è riuscita ({error}).",
         "notify_ai_error_disable": "Analisi AI non riuscita ({error}): analisi AI disattivata, irrigo con la formula.",

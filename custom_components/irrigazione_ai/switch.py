@@ -51,7 +51,7 @@ class IrrigationSwitch(IrrigazioneEntity, SwitchEntity):
 
 
 class RainBlockSwitch(IrrigazioneEntity, SwitchEntity, RestoreEntity):
-    """Blocca l'avvio quando il meteo indica pioggia."""
+    """Blocca l'avvio quando piove (sensore pioggia o, in mancanza, meteo)."""
 
     def __init__(self, controller) -> None:
         """Inizializza."""

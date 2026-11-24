@@ -28,6 +28,7 @@ CONF_CLOSE_ON_STARTUP: Final = "close_on_startup"
 CONF_WEEKLY_DAY: Final = "weekly_day"
 CONF_TWICE_WEEKLY_DAYS: Final = "twice_weekly_days"
 CONF_NOTIFY: Final = "notify_services"
+CONF_RAIN_SENSOR: Final = "rain_sensor"
 CONF_DRY_THRESHOLD: Final = "dry_threshold"
 DEFAULT_DRY_THRESHOLD: Final = 25
 DRY_DELAY: Final = 300  # secondi sotto soglia prima dell'allarme
@@ -195,3 +196,22 @@ CONF_LIVE_DEVICES: Final = "live_devices"
 CONF_LIVE_URL: Final = "live_url"
 LIVE_CLEAR_DELAY: Final = 300
 ZONE_NUMBERS: Final = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+
+# Stati testuali di un sensore pioggia che significano "piove"
+RAIN_SENSOR_WORDS: Final = frozenset(
+    {"on", "true", "rain", "raining", "rainy", "wet", "pouring", "pioggia", "piove", "bagnato"}
+)
+
+
+def sensor_says_rain(state: str | None) -> bool | None:
+    """Interpreta lo stato di un sensore pioggia: True, False o None se sconosciuto.
+
+    binary_sensor: on = piove. Sensori numerici (mm/h, mm, intensità): > 0 = piove.
+    Testo: parole come rain, raining, wet, pioggia.
+    """
+    if state is None or state in ("unknown", "unavailable", ""):
+        return None
+    try:
+        return float(state) > 0
+    except ValueError:
+        return state.strip().lower() in RAIN_SENSOR_WORDS

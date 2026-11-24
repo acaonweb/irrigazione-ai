@@ -92,7 +92,7 @@ Un **calendario** registra:
 I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, si possono aggiungere alla **dashboard Energia**.
 
 ### 🛡️ Pensato per non allagare niente
-- **Blocco pioggia** collegato al meteo.
+- **Blocco pioggia** collegato al meteo o, meglio, a un **tuo sensore pioggia**.
 - **Chiusura di sicurezza** per le valvole aperte a mano.
 - **Chiusura automatica** delle valvole rimaste aperte se Home Assistant si riavvia a metà ciclo.
 - **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
@@ -151,6 +151,7 @@ Questa sezione spiega con calma tutto quello che il wizard ti chiede. Se è la p
 | Un **sensore di umidità del terriccio** per zona (`sensor.…` in %) | No | Senza sensore la formula considera il 50%, l'AI riceve "sconosciuto" e l'allarme terriccio secco non c'è |
 | Un'**entità meteo** (`weather.…`), per esempio quella di Met.no che Home Assistant installa da sola | No, ma consigliata | Serve al blocco pioggia, alla formula (`weather_factor`) e all'AI (previsioni) |
 | Sensori di **temperatura e umidità esterna** | No | Se mancano si usano quelli dell'entità meteo |
+| Un **sensore pioggia** tuo (pluviometro, sensore di pioggia, stazione meteo) | No | Più affidabile del meteo per il blocco pioggia: vedi il punto 3 bis |
 | L'**app Home Assistant** sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
 
 ### 2. I dati di una zona, spiegati
@@ -194,6 +195,25 @@ Irrigare la sera o all'alba riduce l'evaporazione: è la scelta migliore d'estat
 Nel form, il campo *Giorni* conta **solo** con "Giorni scelti" e viene ignorato con le altre scelte. Dalla card basta toccare i giorni: la riga si accende in blu e la modifica vale subito.
 
 All'orario partono solo le zone in programma quel giorno. *Avvia ora* (o l'interruttore *Irrigazione*) avvia invece tutte le zone che non sono spente.
+
+### 3 bis. Pioggia: meteo o sensore tuo
+
+Il **blocco pioggia** (interruttore *Blocco pioggia*, pulsante giallo *Pioggia* della card) impedisce l'avvio se sta piovendo. Per saperlo l'integrazione usa:
+
+1. il **sensore pioggia**, se l'hai indicato nel primo passo del wizard (o in *Configura*);
+2. altrimenti l'**entità meteo**, che però è una previsione per la tua zona e non sa se piove proprio sul tuo balcone.
+
+Il sensore pioggia può essere:
+
+| Tipo | Esempi | Quando dice "piove" |
+| --- | --- | --- |
+| Sensore binario | Sensore di pioggia Zigbee, contatto bagnato, `binary_sensor.rain` di una stazione meteo | Quando è **acceso** |
+| Sensore numerico | Intensità di pioggia (mm/h) o pioggia caduta (mm) di Ecowitt, Netatmo, pluviometro | Quando il valore è **maggiore di 0** |
+| Sensore di testo | Stato "rain"/"raining"/"wet" (anche in italiano: "pioggia", "bagnato") | Quando il testo indica pioggia |
+
+Per il blocco conviene un sensore di **intensità** (mm/h) o un sensore binario: un contatore della pioggia caduta *oggi* resta sopra 0 fino a mezzanotte e bloccherebbe anche le irrigazioni della sera dopo un acquazzone del mattino. Se ti serve proprio quel comportamento, va bene così.
+
+Se il sensore smette di rispondere (non disponibile), l'integrazione torna a usare il meteo: non resti senza blocco. Il sensore viene usato anche dall'**AI** (se piove adesso e quante ore ha piovuto nelle ultime 12) e nella **formula**, con la variabile `raining` (vero o falso).
 
 ### 4. Notifiche: come riceverle
 
@@ -247,8 +267,11 @@ Esempi, dal più semplice:
 {# Più secco = più minuti: 15 min al 70% di umidità, 35 min al 30% #}
 {{ 50 - moisture / 2 }}
 
-{# Come sopra, ma più acqua col caldo (oltre 25 °C) e niente se piove #}
+{# Come sopra, ma più acqua col caldo (oltre 25 °C) e meno se il meteo è nuvoloso o piovoso #}
 {{ (50 - moisture / 2) * (1.3 if temperature > 25 else 1) * weather_factor }}
+
+{# Zero minuti se il sensore pioggia dice che piove (la zona resta comunque al minimo impostato) #}
+{{ 0 if raining else 50 - moisture / 2 }}
 
 {# Litri necessari a riportare il terriccio al 60%, trasformati in minuti #}
 {{ soil_volume * (60 - moisture) / 100 / flow_rate }}
@@ -340,7 +363,8 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 | Non vedo le card nuove, o vedo quelle vecchie | Ricarica la pagina svuotando la cache (Ctrl+Shift+R nel browser; nell'app chiudila del tutto e riaprila) |
 | "La API key è stata rifiutata" | Hai copiato la chiave segreta e non il suo ID? È ancora attiva? Il progetto può usare il modello scelto? Il messaggio d'errore del servizio è riportato tra parentesi |
 | Le *Durate AI* sono vuote | L'AI non ha ancora analizzato nulla: premi *Analizza ora* |
-| Il blocco pioggia non scatta mai | Serve un'entità meteo, e il suo stato deve indicare pioggia (`rainy`, `pouring`…) al momento dell'avvio |
+| Il blocco pioggia non scatta mai | Serve un sensore pioggia o un'entità meteo, e al momento dell'avvio devono indicare pioggia (sensore acceso o > 0; meteo `rainy`, `pouring`…). Il motivo di ogni blocco è nel calendario |
+| Il blocco pioggia scatta anche quando non piove | Il meteo è una previsione per la zona: aggiungi un tuo sensore pioggia, che ha la precedenza |
 | I litri restano a 0 | Controlla la portata della zona: con 0 L/min i litri sono sempre 0 |
 | "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
 | Una valvola non si chiude | L'integrazione riprova tre volte e ti avvisa: controlla la batteria e la copertura radio della valvola |
@@ -351,7 +375,7 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 
 | Passo | Cosa chiede |
 | --- | --- |
-| 1. Impianto | Nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo) |
+| 1. Impianto | Nome; entità meteo, sensori di temperatura e umidità esterna, sensore pioggia: tutti facoltativi (senza meteo né sensore pioggia il blocco pioggia resta inattivo) |
 | 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
 | 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
@@ -453,6 +477,7 @@ Formula predefinita:
 | `temperature` | Temperatura esterna in °C (20 se manca) |
 | `humidity` | Umidità esterna in % (`none` se manca) |
 | `weather` | Stato dell'entità meteo (`sunny`, `cloudy`, `rainy`…) |
+| `raining` | Vero se piove adesso (sensore pioggia o, se manca, meteo) |
 | `weather_factor` | Sereno 1,1 · poco nuvoloso 0,8 · nuvoloso 0,5 · nebbia 0,6 · pioggia 0,2 · altro 1 |
 | `coefficient`, `flow_rate`, `soil_volume`, `exposure` | Dati della zona (portata in L/min, volume in L, `north`/`south`/`east`/`west`) |
 | `min_duration`, `max_duration` | Limiti della zona in minuti |
@@ -480,7 +505,7 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 - data e ora;
 - posizione approssimata (un solo decimale);
 - meteo attuale;
-- ore e percentuale di pioggia nelle ultime 12 ore;
+- se piove adesso, e ore e percentuale di pioggia nelle ultime 12 ore (dal sensore pioggia se c'è, altrimenti dal meteo);
 - previsioni orarie delle prossime 12 ore;
 - per ogni zona: piante, umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula;
 - le tue note.

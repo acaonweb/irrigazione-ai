@@ -8,12 +8,14 @@
           "name": "Name",
           "weather_entity": "Weather entity",
           "temperature_sensor": "Outdoor temperature sensor",
-          "humidity_sensor": "Outdoor humidity sensor"
+          "humidity_sensor": "Outdoor humidity sensor",
+          "rain_sensor": "Rain sensor"
         },
         "data_description": {
-          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
+          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it (and without a rain sensor) the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
-          "humidity_sensor": "Optional: otherwise the weather entity humidity is used"
+          "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
+          "rain_sensor": "Optional: your own device that knows whether it is raining (binary sensor on = rain, or a rain rate/amount sensor > 0). When set it decides instead of the weather; if it stops answering the weather is used"
         }
       },
       "zone": {
@@ -88,7 +90,7 @@
       },
       "formula": {
         "title": "Duration formula",
-        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `raining` (true/false, from the rain sensor or the weather), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
         "data": {
           "formula": "Formula"
         },
@@ -156,6 +158,7 @@
           "weather_entity": "Weather entity",
           "temperature_sensor": "Outdoor temperature sensor",
           "humidity_sensor": "Outdoor humidity sensor",
+          "rain_sensor": "Rain sensor",
           "start_mode": "Start time based on",
           "start_time": "Fixed time",
           "sunset_offset": "Offset in minutes",
@@ -168,9 +171,10 @@
           "dry_threshold": "Dry soil alarm"
         },
         "data_description": {
-          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
+          "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it (and without a rain sensor) the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
+          "rain_sensor": "Optional: your own device that knows whether it is raining (binary sensor on = rain, or a rain rate/amount sensor > 0). When set it decides instead of the weather; if it stops answering the weather is used",
           "start_mode": "Sunset, sunrise or a fixed time of your choice",
           "start_time": "Used only with 'Fixed time'",
           "sunset_offset": "Only for sunrise and sunset: minutes after the event; negative = before (e.g. -30 = half an hour before sunrise)",
@@ -185,7 +189,7 @@
       },
       "formula": {
         "title": "Duration formula",
-        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `raining` (true/false, from the rain sensor or the weather), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
         "data": {
           "formula": "Formula"
         },
