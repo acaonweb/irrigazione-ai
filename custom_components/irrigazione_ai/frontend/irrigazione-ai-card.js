@@ -8,7 +8,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.11.1";
+const CARD_VERSION = "0.13.0";
 
 const TEXT = {
   it: {
@@ -163,12 +163,44 @@ class IrrigazioneAiBase extends HTMLElement {
   _lang() { return this._hass.language || undefined; }
   _fmt(v, d = 1) { return v.toLocaleString(this._lang(), { maximumFractionDigits: d }); }
 
+  // Formati scelti: opzione della card > opzione dell'integrazione > profilo utente
+  _formats() {
+    const map = this._map ? this._map() : null;
+    const sys = (map && map.formats) || {};
+    const loc = this._hass.locale || {};
+    const pick = (card, integ, profile) => (card && card !== "auto" ? card : (integ && integ !== "auto" ? integ : profile));
+    const time = pick(this._config && this._config.time_format, sys.time,
+      loc.time_format === "12" ? "12" : loc.time_format === "24" ? "24" : null);
+    const date = pick(this._config && this._config.date_format, sys.date,
+      { DMY: "dmy", MDY: "mdy", YMD: "ymd" }[loc.date_format] || null);
+    return { time, date };
+  }
+
+  _hm(d) {
+    const { time } = this._formats();
+    const opts = { hour: "2-digit", minute: "2-digit" };
+    if (time === "12") { opts.hour12 = true; opts.hour = "numeric"; }
+    if (time === "24") { opts.hour12 = false; opts.hourCycle = "h23"; }
+    return d.toLocaleTimeString(this._lang(), opts);
+  }
+
+  _dm(d, year = false) {
+    const { date } = this._formats();
+    const dd = String(d.getDate()).padStart(2, "0"), mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = year ? d.getFullYear() : null;
+    if (date === "mdy") return yy ? `${mm}/${dd}/${yy}` : `${mm}/${dd}`;
+    if (date === "dmy") return yy ? `${dd}/${mm}/${yy}` : `${dd}/${mm}`;
+    if (date === "ymd") return yy ? `${yy}-${mm}-${dd}` : `${mm}-${dd}`;
+    return d.toLocaleDateString(this._lang(), year ? { day: "2-digit", month: "2-digit", year: "numeric" } : { day: "2-digit", month: "2-digit" });
+  }
+
+  _wd(d) { return d.toLocaleDateString(this._lang(), { weekday: "short" }); }
+
   _time(iso, withDay) {
     if (!iso || iso === "unknown" || iso === "unavailable") return "";
     const d = new Date(iso);
     if (isNaN(d)) return "";
-    return d.toLocaleString(this._lang(), withDay
-      ? { weekday: "short", hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit" });
+    return withDay ? `${this._wd(d)} ${this._hm(d)}` : this._hm(d);
   }
 
   _call(domain, service, data) { this._hass.callService(domain, service, data); }
@@ -306,7 +338,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       let dayRow;
       if (mode === "alternate") {
         const from = st.attributes.alternate_from
-          ? new Date(st.attributes.alternate_from + "T12:00:00").toLocaleDateString(this._lang(), { day: "numeric", month: "short" }) : "";
+          ? this._dm(new Date(st.attributes.alternate_from + "T12:00:00")) : "";
         dayRow = `<div class="salt">↔ ${t.altFrom} ${from}</div>`;
       } else {
         const active = mode === "daily" ? WEEK : (mode === "days" ? days : []);
@@ -478,10 +510,10 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
   _log(events, t) {
     const now = Date.now();
     const parse = (x) => Date.parse((x && (x.dateTime || x.date)) || x);
-    const past = (events || []).filter((e) => parse(e.start) <= now && !/prevista|planned|in corso|running/i.test(e.summary))
+    const past = (events || []).filter((e) => parse(e.start) <= now && !/prevista|planned|in corso|in progress|running/i.test(e.summary))
       .sort((a, b) => parse(b.start) - parse(a.start)).slice(0, this._config.log_items || 8);
     const next = (events || []).filter((e) => parse(e.start) > now).sort((a, b) => parse(a.start) - parse(b.start))[0];
-    const fmt = (ms) => new Date(ms).toLocaleString(this._lang(), { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const fmt = (ms) => { const d = new Date(ms); return `${this._wd(d)} ${this._dm(d)} ${this._hm(d)}`; };
     const liters = (desc) => {
       if (!desc) return null;
       const tot = desc.match(/(?:Totale|Total):\s*([\d.,]+)\s*L/);

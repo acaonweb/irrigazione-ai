@@ -45,6 +45,7 @@ from .const import (
     CONF_AI_TASK_ENTITY,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
+    CONF_DATE_FORMAT,
     CONF_DRY_THRESHOLD,
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
@@ -65,12 +66,14 @@ from .const import (
     CONF_START_TIME,
     CONF_SUNSET_OFFSET,
     CONF_TEMPERATURE,
+    CONF_TIME_FORMAT,
     CONF_VALVE,
     CONF_WEATHER,
     CONF_ZONE_ANCHOR,
     CONF_ZONE_DAYS,
     CONF_ZONE_NAME,
     CONF_ZONE_SCHEDULE,
+    DATE_FORMATS,
     DEFAULT_AI_MODELS,
     DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
@@ -102,6 +105,7 @@ from .const import (
     SCHEDULES,
     START_MODES,
     SUBENTRY_ZONE,
+    TIME_FORMATS,
     WEEKDAYS,
     sensor_says_rain,
 )
@@ -210,6 +214,20 @@ def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None
                 CONF_LIVE_URL,
                 description={"suggested_value": defaults.get(CONF_LIVE_URL)},
             ): selector.TextSelector(),
+            vol.Required(
+                CONF_TIME_FORMAT, default=defaults.get(CONF_TIME_FORMAT, "auto")
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=TIME_FORMATS, translation_key="time_format"
+                )
+            ),
+            vol.Required(
+                CONF_DATE_FORMAT, default=defaults.get(CONF_DATE_FORMAT, "auto")
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=DATE_FORMATS, translation_key="date_format"
+                )
+            ),
             vol.Optional(
                 CONF_NOTIFY, default=defaults.get(CONF_NOTIFY, [])
             ): selector.TextSelector(selector.TextSelectorConfig(multiple=True)),

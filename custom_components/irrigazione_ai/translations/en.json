@@ -73,6 +73,8 @@
           "live_devices": "Live Activity devices",
           "live_url": "Page to open on tap",
           "notify_services": "Other notifications",
+          "time_format": "Time format",
+          "date_format": "Date format",
           "dry_threshold": "Dry soil alarm"
         },
         "data_description": {
@@ -85,6 +87,8 @@
           "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
           "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
           "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
+          "time_format": "For the cards and the Live Activity. Automatic = the format of each user's profile (Live Activity: 12 h in the United States, 24 h elsewhere)",
+          "date_format": "For the cards. Automatic = the format of each user's profile",
           "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
         }
       },
@@ -168,6 +172,8 @@
           "live_devices": "Live Activity devices",
           "live_url": "Page to open on tap",
           "notify_services": "Other notifications",
+          "time_format": "Time format",
+          "date_format": "Date format",
           "dry_threshold": "Dry soil alarm"
         },
         "data_description": {
@@ -184,6 +190,8 @@
           "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
           "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
           "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
+          "time_format": "For the cards and the Live Activity. Automatic = the format of each user's profile (Live Activity: 12 h in the United States, 24 h elsewhere)",
+          "date_format": "For the cards. Automatic = the format of each user's profile",
           "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
         }
       },
@@ -346,6 +354,21 @@
         "alternate": "Every other day",
         "days": "Chosen days",
         "daily": "Every day"
+      }
+    },
+    "time_format": {
+      "options": {
+        "auto": "Automatic",
+        "24": "24 hours (15:30)",
+        "12": "12 hours (3:30 PM)"
+      }
+    },
+    "date_format": {
+      "options": {
+        "auto": "Automatic",
+        "dmy": "Day/month (24/11)",
+        "mdy": "Month/day (11/24)",
+        "ymd": "Year-month-day (2026-11-24)"
       }
     },
     "run_mode": {

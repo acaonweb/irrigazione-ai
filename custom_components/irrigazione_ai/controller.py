@@ -375,9 +375,9 @@ class IrrigationController:
             cancel()
         self._safety_timers.clear()
         self._dry_timers.clear()
-        self.live.shutdown()
         if self.running:
             await self.async_stop(notify=False)
+        self.live.shutdown()  # dopo lo stop, che programma la chiusura della Live Activity
         self._count_water()
         await self.history.async_save()
 

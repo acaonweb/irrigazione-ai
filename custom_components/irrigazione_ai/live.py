@@ -16,7 +16,13 @@ from homeassistant.core import callback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_LIVE_DEVICES, CONF_LIVE_URL, LIVE_CLEAR_DELAY, ZONE_NUMBERS
+from .const import (
+    CONF_LIVE_DEVICES,
+    CONF_LIVE_URL,
+    CONF_TIME_FORMAT,
+    LIVE_CLEAR_DELAY,
+    ZONE_NUMBERS,
+)
 from .messages import liters_text, tr
 
 if TYPE_CHECKING:
@@ -30,12 +36,26 @@ COLOR_DONE = "#4CAF50"
 COLOR_STOPPED = "#FF9800"
 
 
-def _hhmm(when: datetime) -> str:
-    return dt_util.as_local(when).strftime("%H:%M")
+def format_time(hass, setting: str | None, when: datetime) -> str:
+    """Ora locale nel formato scelto: 24 ore, 12 ore (AM/PM) o automatico.
+
+    Automatico: 12 ore se il paese di Home Assistant è gli Stati Uniti, altrimenti 24.
+    """
+    local = dt_util.as_local(when)
+    twelve = setting == "12" or (setting in (None, "", "auto") and hass.config.country == "US")
+    if twelve:
+        hour = local.hour % 12 or 12
+        return f"{hour}:{local.minute:02d} {'AM' if local.hour < 12 else 'PM'}"
+    return local.strftime("%H:%M")
 
 
 class LiveActivity:
     """Gestisce la Live Activity di un impianto."""
+
+    def _hhmm(self, when: datetime) -> str:
+        return format_time(
+            self.hass, self.controller.config.get(CONF_TIME_FORMAT), when
+        )
 
     def __init__(self, controller: IrrigationController) -> None:
         """Inizializza."""
@@ -67,19 +87,19 @@ class LiveActivity:
                 elif run.active or run.starts_at <= dt_util.utcnow() + timedelta(seconds=5):
                     lines.append(
                         f"{number} "
-                        + tr(self.hass, "live_zone_ends", zone=zone.name, time=_hhmm(run.ends_at))
+                        + tr(self.hass, "live_zone_ends", zone=zone.name, time=self._hhmm(run.ends_at))
                     )
                     last_end = max(last_end or run.ends_at, run.ends_at)
                 else:
                     lines.append(
                         "⏳ "
-                        + tr(self.hass, "live_zone_waiting", zone=zone.name, time=_hhmm(run.starts_at))
+                        + tr(self.hass, "live_zone_waiting", zone=zone.name, time=self._hhmm(run.starts_at))
                     )
                     last_end = max(last_end or run.ends_at, run.ends_at)
             elif c.history.is_open(zone_id):
                 close_at = c.manual_close_at.get(zone.valve)
                 tail = (
-                    tr(self.hass, "live_manual_close", time=_hhmm(close_at)) if close_at else ""
+                    tr(self.hass, "live_manual_close", time=self._hhmm(close_at)) if close_at else ""
                 )
                 lines.append(f"{number} " + tr(self.hass, "live_manual", zone=zone.name) + tail)
                 if close_at:
@@ -103,7 +123,7 @@ class LiveActivity:
         await self._send(
             title,
             "\n".join(lines),
-            critical=_hhmm(last_end) if last_end else "",
+            critical=self._hhmm(last_end) if last_end else "",
             icon="mdi:valve-open",
             color=COLOR_ACTIVE,
             silent=silent,

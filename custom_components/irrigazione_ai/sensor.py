@@ -25,8 +25,10 @@ from .const import (
     AI_RESULT_IRRIGATE,
     AI_RESULT_SKIP,
     AI_RESULTS,
+    CONF_DATE_FORMAT,
     CONF_HUMIDITY,
     CONF_TEMPERATURE,
+    CONF_TIME_FORMAT,
     CONF_WEATHER,
     DOMAIN,
     STATUSES,
@@ -155,6 +157,10 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
             "temperature": cfg.get(CONF_TEMPERATURE),
             "humidity": cfg.get(CONF_HUMIDITY),
             "dry_threshold": c.dry_threshold,
+            "formats": {
+                "time": cfg.get(CONF_TIME_FORMAT, "auto"),
+                "date": cfg.get(CONF_DATE_FORMAT, "auto"),
+            },
         }
 
     @property

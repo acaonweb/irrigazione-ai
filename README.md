@@ -215,6 +215,16 @@ Per il blocco conviene un sensore di **intensità** (mm/h) o un sensore binario:
 
 Se il sensore smette di rispondere (non disponibile), l'integrazione torna a usare il meteo: non resti senza blocco. Il sensore viene usato anche dall'**AI** (se piove adesso e quante ore ha piovuto nelle ultime 12) e nella **formula**, con la variabile `raining` (vero o falso).
 
+### 3 ter. Formato di orari e date
+
+Nelle opzioni (*Programmazione*) scegli:
+- **Formato orario**: automatico, 24 ore (15:30) o 12 ore (3:30 PM). Vale per le card e per la Live Activity;
+- **Formato data**: automatico, giorno/mese (24/11), mese/giorno (11/24) o anno-mese-giorno. Vale per le card.
+
+*Automatico* nelle card segue il formato scelto nel **profilo** di ogni utente di Home Assistant (*Profilo → Generale → Formato orario / Formato data*): in casa ognuno può vedere il suo. Nella Live Activity, che viene generata da Home Assistant e non dal telefono, *automatico* vuol dire 12 ore se il paese impostato in Home Assistant sono gli Stati Uniti, altrimenti 24 ore.
+
+Una singola card può anche forzare il suo formato con `time_format: "12"` / `"24"` e `date_format: dmy` / `mdy` / `ymd`.
+
 ### 4. Notifiche: come riceverle
 
 L'integrazione invia notifiche per: avvio (con i minuti di ogni zona), fine, interruzione, ciclo saltato per pioggia o dall'AI, errore dell'AI, valvola chiusa dalla sicurezza, valvola che non si chiude, terriccio secco.
@@ -377,7 +387,7 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 | --- | --- |
 | 1. Impianto | Nome; entità meteo, sensori di temperatura e umidità esterna, sensore pioggia: tutti facoltativi (senza meteo né sensore pioggia il blocco pioggia resta inattivo) |
 | 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
-| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
+| 3. Programmazione | Formato di orari e date; partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 
@@ -391,6 +401,8 @@ Le trovi in *Aggiungi scheda* cercando **"Irrigazione AI"**, oppure in YAML:
 type: custom:irrigazione-ai-card          # comandi
 title: Irrigazione Generale               # facoltativo
 entity: sensor.irrigazione_stato          # facoltativo, se hai più impianti
+time_format: "24"                         # facoltativo: "24" o "12" (default: opzioni dell'integrazione o profilo)
+date_format: dmy                          # facoltativo: dmy, mdy o ymd
 ```
 
 ```yaml

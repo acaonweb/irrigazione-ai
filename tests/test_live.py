@@ -12,7 +12,7 @@ from custom_components.irrigazione_ai.const import DOMAIN
 from .conftest import VALVE_1, install_fake_valves, make_entry
 
 
-async def _setup(hass: HomeAssistant, calls):
+async def _setup(hass: HomeAssistant, calls, **extra):
     pushes: list[ServiceCall] = []
 
     async def _push(call: ServiceCall) -> None:
@@ -25,6 +25,7 @@ async def _setup(hass: HomeAssistant, calls):
         entry,
         options={
             **entry.options,
+            **extra,
             "live_devices": ["notify.mobile_app_iphone"],
             "live_url": "/lovelace/irrigazione",
         },
@@ -115,3 +116,33 @@ async def test_cycle_event_summary(hass, valves) -> None:
     assert pushes[-1].data["title"] == "☑️ Watering finished"
     assert "Total" in pushes[-1].data["message"]
     assert entry.runtime_data.history.events[-1].summary == "Watering (action)"
+
+
+def test_format_time(hass) -> None:
+    """24 ore, 12 ore e automatico (12 ore solo negli Stati Uniti)."""
+    from datetime import datetime
+
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.irrigazione_ai.live import format_time
+
+    when = dt_util.as_utc(datetime(2026, 11, 24, 15, 5, tzinfo=dt_util.get_default_time_zone()))
+    assert format_time(hass, "24", when) == "15:05"
+    assert format_time(hass, "12", when) == "3:05 PM"
+    hass.config.country = "IT"
+    assert format_time(hass, "auto", when) == "15:05"
+    hass.config.country = "US"
+    assert format_time(hass, "auto", when) == "3:05 PM"
+    midnight = dt_util.as_utc(datetime(2026, 11, 24, 0, 30, tzinfo=dt_util.get_default_time_zone()))
+    assert format_time(hass, "12", midnight) == "12:30 AM"
+
+
+async def test_live_activity_12h(hass, valves) -> None:
+    """Con il formato 12 ore la Live Activity mostra AM/PM."""
+    entry, pushes = await _setup(hass, valves, time_format="12")
+    await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
+    await hass.async_block_till_done()
+    assert "M" in pushes[0].data["data"]["critical_text"]
+    assert ("AM" in pushes[0].data["message"]) or ("PM" in pushes[0].data["message"])
+    await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

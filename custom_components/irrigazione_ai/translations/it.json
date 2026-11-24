@@ -73,6 +73,8 @@
           "live_devices": "Dispositivi per la Live Activity",
           "live_url": "Pagina da aprire al tocco",
           "notify_services": "Altre notifiche",
+          "time_format": "Formato orario",
+          "date_format": "Formato data",
           "dry_threshold": "Allarme terriccio secco"
         },
         "data_description": {
@@ -85,6 +87,8 @@
           "live_devices": "Telefoni e tablet con l'app Home Assistant: durante l'irrigazione mostrano una Live Activity (iPhone, Dynamic Island) o un Live Update (Android 16+) con ogni zona e la sua ora di fine",
           "live_url": "Facoltativa: dashboard aperta toccando la Live Activity, per esempio /lovelace/irrigazione",
           "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, terriccio secco, errori), per esempio notify.pushover",
+          "time_format": "Per le card e la Live Activity. Automatico = il formato del profilo di ogni utente (Live Activity: 12 ore negli Stati Uniti, 24 altrove)",
+          "date_format": "Per le card. Automatico = il formato del profilo di ogni utente",
           "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)"
         }
       },
@@ -168,6 +172,8 @@
           "live_devices": "Dispositivi per la Live Activity",
           "live_url": "Pagina da aprire al tocco",
           "notify_services": "Altre notifiche",
+          "time_format": "Formato orario",
+          "date_format": "Formato data",
           "dry_threshold": "Allarme terriccio secco"
         },
         "data_description": {
@@ -184,6 +190,8 @@
           "live_devices": "Telefoni e tablet con l'app Home Assistant: durante l'irrigazione mostrano una Live Activity (iPhone, Dynamic Island) o un Live Update (Android 16+) con ogni zona e la sua ora di fine",
           "live_url": "Facoltativa: dashboard aperta toccando la Live Activity, per esempio /lovelace/irrigazione",
           "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, terriccio secco, errori), per esempio notify.pushover",
+          "time_format": "Per le card e la Live Activity. Automatico = il formato del profilo di ogni utente (Live Activity: 12 ore negli Stati Uniti, 24 altrove)",
+          "date_format": "Per le card. Automatico = il formato del profilo di ogni utente",
           "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)"
         }
       },
@@ -346,6 +354,21 @@
         "alternate": "Un giorno sì e uno no",
         "days": "Giorni scelti",
         "daily": "Tutti i giorni"
+      }
+    },
+    "time_format": {
+      "options": {
+        "auto": "Automatico",
+        "24": "24 ore (15:30)",
+        "12": "12 ore (3:30 PM)"
+      }
+    },
+    "date_format": {
+      "options": {
+        "auto": "Automatico",
+        "dmy": "Giorno/mese (24/11)",
+        "mdy": "Mese/giorno (11/24)",
+        "ymd": "Anno-mese-giorno (2026-11-24)"
       }
     },
     "run_mode": {
