@@ -16,6 +16,8 @@ from homeassistant.core import (
 )
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.restore_state import async_get as async_get_restore_data
 from homeassistant.helpers.typing import ConfigType
 
 from .ai import AiError
@@ -23,13 +25,28 @@ from .const import (
     ATTR_CONFIG_ENTRY_ID,
     ATTR_DURATION,
     ATTR_FORCE,
+    CONF_TWICE_WEEKLY_DAYS,
+    CONF_WEEKLY_DAY,
+    CONF_ZONE_DAYS,
+    CONF_ZONE_SCHEDULE,
+    DEFAULT_FREQUENCY,
+    DEFAULT_TWICE_WEEKLY_DAYS,
+    DEFAULT_WEEKLY_DAY,
     DOMAIN,
+    FREQ_DAILY,
+    FREQ_OFF,
+    FREQ_TWICE_WEEKLY,
+    FREQ_WEEKLY,
+    FREQUENCIES,
+    SCHEDULE_DAILY,
+    SCHEDULE_DAYS,
+    SCHEDULE_OFF,
     SERVICE_ANALYZE,
     SERVICE_START,
     SERVICE_STOP,
     SOURCE_SERVICE,
 )
-from .controller import IrrigationController
+from .controller import IrrigationController, structure_key
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -44,7 +61,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 CARD_URL = f"/{DOMAIN}/irrigazione-ai-card.js"
 CARD_PATH = Path(__file__).parent / "frontend" / "irrigazione-ai-card.js"
-CARD_VERSION = "0.9.4"
+CARD_VERSION = "0.10.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
@@ -137,6 +154,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> bool:
     """Configura un impianto."""
+    _async_migrate_schedule(hass, entry)
     controller = IrrigationController(hass, entry)
     entry.runtime_data = controller
     # Lo storico va caricato prima delle entità, che leggono i litri salvati
@@ -156,6 +174,10 @@ async def _async_update_listener(hass: HomeAssistant, entry: IrrigazioneConfigEn
     adesso fermerebbe l'irrigazione a metà.
     """
     controller = entry.runtime_data
+    if structure_key(entry) == controller.structure:
+        # Cambiata solo la programmazione delle zone: nessuna ricarica
+        controller.refresh_zones()
+        return
     if controller.running:
         controller.reload_pending = True
         _LOGGER.info(
@@ -177,3 +199,46 @@ async def async_remove_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry)
     from homeassistant.helpers.storage import Store  # noqa: PLC0415
 
     await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
+
+
+def _async_migrate_schedule(hass: HomeAssistant, entry: IrrigazioneConfigEntry) -> None:
+    """Da 0.9: la frequenza dell'impianto diventa la programmazione di ogni zona.
+
+    Le zone ereditano i giorni in uso, così il comportamento non cambia.
+    """
+    zones = [
+        sub for sub in entry.subentries.values() if CONF_ZONE_SCHEDULE not in sub.data
+    ]
+    reg = er.async_get(hass)
+    old_id = reg.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_frequency")
+    if not zones and old_id is None:
+        return
+    frequency = DEFAULT_FREQUENCY
+    if old_id is not None:
+        stored = async_get_restore_data(hass).last_states.get(old_id)
+        if stored is not None and stored.state.state in FREQUENCIES:
+            frequency = stored.state.state
+    cfg = {**entry.data, **entry.options}
+    weekly = cfg.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY)
+    twice = list(cfg.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS))
+    schedule, days = {
+        FREQ_OFF: (SCHEDULE_OFF, twice),
+        FREQ_DAILY: (SCHEDULE_DAILY, twice),
+        FREQ_WEEKLY: (SCHEDULE_DAYS, [weekly]),
+        FREQ_TWICE_WEEKLY: (SCHEDULE_DAYS, twice),
+    }.get(frequency, (SCHEDULE_DAYS, twice))
+    for sub in zones:
+        hass.config_entries.async_update_subentry(
+            entry,
+            sub,
+            data={**sub.data, CONF_ZONE_SCHEDULE: schedule, CONF_ZONE_DAYS: days},
+        )
+    if zones:
+        _LOGGER.info(
+            "Programmazione migrata alle zone: %s %s (frequenza %s)",
+            schedule,
+            days,
+            frequency,
+        )
+    if old_id is not None:
+        reg.async_remove(old_id)

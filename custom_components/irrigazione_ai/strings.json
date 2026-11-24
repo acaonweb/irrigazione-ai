@@ -29,6 +29,8 @@
           "coefficient": "Coefficient",
           "soil_volume": "Soil volume",
           "exposure": "Exposure",
+          "schedule": "When to water",
+          "days": "Days",
           "formula": "Zone formula"
         },
         "data_description": {
@@ -41,6 +43,8 @@
           "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
           "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
           "exposure": "Main orientation of the zone (used by the AI analysis)",
+          "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
+          "days": "Used with 'Chosen days'",
           "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
         }
       },
@@ -59,8 +63,6 @@
           "start_mode": "Start time based on",
           "start_time": "Fixed time",
           "sunset_offset": "Offset in minutes",
-          "weekly_day": "Day for 'once a week'",
-          "twice_weekly_days": "Days for 'twice a week'",
           "run_mode": "Zones",
           "safety_minutes": "Safety close",
           "close_on_startup": "Close valves on startup",
@@ -153,8 +155,6 @@
           "start_mode": "Start time based on",
           "start_time": "Fixed time",
           "sunset_offset": "Offset in minutes",
-          "weekly_day": "Day for 'once a week'",
-          "twice_weekly_days": "Days for 'twice a week'",
           "run_mode": "Zones",
           "safety_minutes": "Safety close",
           "close_on_startup": "Close valves on startup",
@@ -252,6 +252,8 @@
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
             "exposure": "Exposure",
+            "schedule": "When to water",
+            "days": "Days",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -264,6 +266,8 @@
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
             "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
+            "days": "Used with 'Chosen days'",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         },
@@ -279,6 +283,8 @@
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
             "exposure": "Exposure",
+            "schedule": "When to water",
+            "days": "Days",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -291,6 +297,8 @@
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
             "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
+            "days": "Used with 'Chosen days'",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         }
@@ -316,6 +324,14 @@
         "fri": "Friday",
         "sat": "Saturday",
         "sun": "Sunday"
+      }
+    },
+    "schedule": {
+      "options": {
+        "off": "Off",
+        "alternate": "Every other day",
+        "days": "Chosen days",
+        "daily": "Every day"
       }
     },
     "run_mode": {
@@ -370,12 +386,12 @@
       }
     },
     "select": {
-      "frequency": {
-        "name": "Frequency",
+      "zone_schedule": {
+        "name": "Schedule",
         "state": {
           "off": "Off",
-          "weekly": "Once a week",
-          "twice_weekly": "Twice a week",
+          "alternate": "Every other day",
+          "days": "Chosen days",
           "daily": "Every day"
         }
       },
@@ -498,11 +514,28 @@
           "description": "Leave empty for all systems."
         }
       }
+    },
+    "set_schedule": {
+      "name": "Set zone schedule",
+      "description": "Changes when a zone is watered. Target: the zone's Schedule entity.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "off, alternate (every other day, starting today), days, daily."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Weekdays (mon…sun). Alone, they also set the mode to 'Chosen days'; an empty list turns the zone off."
+        }
+      }
     }
   },
   "exceptions": {
     "entry_not_found": {
       "message": "Irrigation system not found or not loaded."
+    },
+    "schedule_empty": {
+      "message": "Give a mode or the days."
     }
   }
 }

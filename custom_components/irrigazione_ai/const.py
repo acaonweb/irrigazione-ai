@@ -91,6 +91,22 @@ FREQ_DAILY: Final = "daily"
 FREQUENCIES: Final = [FREQ_OFF, FREQ_WEEKLY, FREQ_TWICE_WEEKLY, FREQ_DAILY]
 DEFAULT_FREQUENCY: Final = FREQ_TWICE_WEEKLY
 
+# Programmazione per zona
+CONF_ZONE_SCHEDULE: Final = "schedule"
+CONF_ZONE_DAYS: Final = "days"
+CONF_ZONE_ANCHOR: Final = "alternate_anchor"
+SCHEDULE_OFF: Final = "off"
+SCHEDULE_ALTERNATE: Final = "alternate"
+SCHEDULE_DAYS: Final = "days"
+SCHEDULE_DAILY: Final = "daily"
+SCHEDULES: Final = [SCHEDULE_OFF, SCHEDULE_ALTERNATE, SCHEDULE_DAYS, SCHEDULE_DAILY]
+DEFAULT_SCHEDULE: Final = SCHEDULE_DAYS
+DEFAULT_ZONE_DAYS: Final = ["thu", "sun"]
+SERVICE_SET_SCHEDULE: Final = "set_schedule"
+ATTR_MODE: Final = "mode"
+ATTR_DAYS: Final = "days"
+SCHEDULE_KEYS: Final = (CONF_ZONE_SCHEDULE, CONF_ZONE_DAYS, CONF_ZONE_ANCHOR)
+
 # --- Timer manuale (select) ---
 MANUAL_TIMER_OPTIONS: Final = ["off", "15", "30", "60"]
 

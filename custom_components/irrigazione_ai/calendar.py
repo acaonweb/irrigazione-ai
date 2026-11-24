@@ -55,7 +55,8 @@ class IrrigationCalendar(IrrigazioneEntity, CalendarEntity):
         when = c.next_run()
         if when is None or not c.zones:
             return None
-        minutes = {z.name: c.planned_minutes(z) for z in c.zones.values()}
+        due = c.zones_due(dt_util.as_local(when).date())
+        minutes = {c.zones[zid].name: c.planned_minutes(c.zones[zid]) for zid in due}
         length = max(minutes.values(), default=0)
         if c.config.get("run_mode") == "sequential":
             length = sum(minutes.values())

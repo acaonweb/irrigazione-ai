@@ -6,13 +6,16 @@ facilmente.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from .const import (
     FREQ_DAILY,
     FREQ_OFF,
     FREQ_TWICE_WEEKLY,
     FREQ_WEEKLY,
+    SCHEDULE_ALTERNATE,
+    SCHEDULE_DAILY,
+    SCHEDULE_DAYS,
     WEEKDAYS,
 )
 
@@ -129,4 +132,20 @@ def is_irrigation_day(
         return day == weekly_day
     if frequency == FREQ_TWICE_WEEKLY:
         return day in twice_weekly_days
+    return False
+
+
+def zone_irrigates_on(
+    day: date, mode: str, days: list[str] | tuple[str, ...], anchor: date | None
+) -> bool:
+    """True se la zona va irrigata nel giorno (locale) indicato."""
+    if mode == SCHEDULE_DAILY:
+        return True
+    if mode == SCHEDULE_DAYS:
+        return WEEKDAYS[day.weekday()] in days
+    if mode == SCHEDULE_ALTERNATE:
+        # Un giorno sì e uno no, contando dal giorno in cui è stato scelto
+        if anchor is None:
+            return True
+        return (day - anchor).days % 2 == 0
     return False

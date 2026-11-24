@@ -22,11 +22,11 @@ async def _setup(hass: HomeAssistant, calls: list, **options):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     install_fake_valves(hass, calls)
-    await hass.services.async_call(
-        "select", "select_option",
-        {"entity_id": "select.irrigazione_frequency", "option": "daily"},
-        blocking=True,
-    )
+    for zone in ("select.secondo_piano_schedule", "select.sottotetto_schedule"):
+        await hass.services.async_call(
+            "select", "select_option", {"entity_id": zone, "option": "daily"},
+            blocking=True,
+        )
     return entry.runtime_data
 
 

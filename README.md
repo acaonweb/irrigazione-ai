@@ -43,6 +43,15 @@ Una zona è una valvola (`switch` o `valve`) con i suoi dati:
 
 Le zone partono in parallelo o una dopo l'altra, utile se la pressione dell'acqua è bassa.
 
+### 📅 Ogni zona ha i suoi giorni
+Per ogni zona scegli quando irrigare, anche direttamente dalla card:
+- **spenta**;
+- **un giorno sì e uno no**, a partire dal giorno in cui lo scegli;
+- **giorni scelti**, quanti ne vuoi (per esempio lunedì, mercoledì, sabato e domenica);
+- **tutti i giorni**.
+
+All'orario programmato partono solo le zone in programma quel giorno. *Avvia ora* irriga tutte le zone tranne quelle spente. Cambiare i giorni non ricarica l'integrazione e non interrompe un ciclo in corso.
+
 ### 🧪 La formula la scrivi tu
 La durata si calcola con un **template Jinja** nello stesso editor di Home Assistant. Hai a disposizione umidità, temperatura, meteo, portata, volume, esposizione e qualsiasi `states('sensor.xxx')`. Prima di salvare vedi **in anteprima quanti minuti darebbe a ogni zona** con i valori di adesso. Vuoi solo un timer fisso? `{{ 20 }}` e hai finito.
 
@@ -91,7 +100,8 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
   - il riquadro *Irrigazione Generale*, con lo stato (attiva, inattiva con la prossima irrigazione, saltata per pioggia o dall'AI);
   - i pulsanti gialli *AI* e *Pioggia*;
   - una scheda per zona, con umidità (🔴 secco, 🟢 ottimale, 💧 umido), minuti previsti e AI, litri, ora di fine e batteria della valvola. Si illumina di blu con l'irrigatore che oscilla mentre irriga, e di rosso se il terriccio è secco;
-  - le righe del timer (off/15/30/60) e della frequenza (Off, Dom, Gio-Dom, 7/7);
+  - la riga del timer (off/15/30/60);
+  - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
 - **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; il **registro delle irrigazioni** con gli ultimi eventi (cicli, aperture manuali, cicli saltati con il motivo), ciascuno con orario, minuti, dettaglio delle zone e litri, più la prossima irrigazione prevista; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
 
@@ -127,8 +137,8 @@ flowchart LR
 | Passo | Cosa chiede |
 | --- | --- |
 | 1. Impianto | Nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo) |
-| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, formula propria facoltativa |
-| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, giorni per le frequenze, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
+| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
+| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 
@@ -183,13 +193,13 @@ Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). 
 | Interruttore *Irrigazione* | Acceso = ciclo in corso. Accenderlo avvia, spegnerlo ferma e chiude le valvole |
 | Interruttore *Blocco pioggia* | Se il meteo indica pioggia il ciclo non parte |
 | Interruttore *Analisi AI* | A ogni ciclo l'AI decide se e quanto irrigare |
-| Selettore *Frequenza* | Spenta, una o due volte a settimana, tutti i giorni |
 | Selettore *Timer manuale* | 15/30/60 minuti per tutte le zone al posto della formula |
 | Pulsanti *Avvia ora*, *Ferma*, *Analizza ora* | Comandi immediati |
 | Sensori *Stato*, *Tempo rimanente*, *Prossima irrigazione*, *Ultima irrigazione*, *Ultimo blocco* | Stato dell'impianto |
 | Sensore *Decisione AI* | Irrigare / Saltare / Errore, con motivo e litri per zona |
 | Sensori *Acqua oggi*, *Acqua questo mese*, *Acqua totale* | Litri di tutte le zone |
 | Calendario *Registro irrigazioni* | Cicli, aperture manuali, cicli saltati, prossima irrigazione |
+| Per zona: selettore *Programmazione* | Spenta, un giorno sì e uno no, giorni scelti, tutti i giorni; negli attributi i giorni (`days`) e la prossima irrigazione della zona (`next_run`) |
 | Per zona: *Durata prevista*, *Durata AI*, *Fine prevista*, *Acqua oggi*, *Acqua totale* | Minuti, litri e orari della zona; nella durata prevista ci sono anche formula usata ed eventuale errore |
 
 ## 🛠️ Servizi
@@ -198,6 +208,7 @@ Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). 
 | --- | --- |
 | `irrigazione_ai.start` | Avvia un ciclo. Facoltativi: `config_entry_id`, `duration` (minuti per tutte le zone), `force` (ignora il blocco pioggia) |
 | `irrigazione_ai.stop` | Ferma il ciclo e chiude le valvole |
+| `irrigazione_ai.set_schedule` | Cambia la programmazione di una zona (destinazione: il suo selettore *Programmazione*). `mode`: `off`, `alternate`, `days`, `daily`; `days`: per esempio `[mon, wed, sat, sun]`. Solo i giorni impostano anche "giorni scelti"; una lista vuota spegne la zona |
 | `irrigazione_ai.analyze` | Chiede all'AI una valutazione senza irrigare e restituisce decisione, motivo, litri e minuti per zona |
 
 ## 🧪 La formula nel dettaglio
@@ -288,6 +299,8 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 ## ❓ Domande frequenti
 
 **Posso usarla senza sensori?** Sì. Meteo e sensori sono tutti facoltativi. Con la formula `{{ 20 }}` hai un timer fisso con programmazione, sicurezza e registro.
+
+**Aggiorno dalla 0.9: cosa succede ai giorni?** Ogni zona eredita la frequenza che avevi (per esempio "una volta a settimana, lunedì" diventa "giorni scelti: lunedì"), quindi l'impianto continua a irrigare negli stessi giorni. Il vecchio selettore *Frequenza* sparisce.
 
 **Quanto costa l'AI?** Una richiesta per ciclo, più quelle che lanci con *Analizza ora*: con modelli piccoli (per esempio `gpt-4.1-mini` o `gemini-2.5-flash`) sono frazioni di centesimo. Con Ollama in locale è gratis.
 

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -52,7 +53,7 @@ from .calc import (
     calculate_duration,
     clamp_minutes,
     formula_variables,
-    is_irrigation_day,
+    zone_irrigates_on,
 )
 from .const import (
     AI_NONE,
@@ -81,31 +82,36 @@ from .const import (
     CONF_START_TIME,
     CONF_SUNSET_OFFSET,
     CONF_TEMPERATURE,
-    CONF_TWICE_WEEKLY_DAYS,
     CONF_VALVE,
     CONF_WEATHER,
-    CONF_WEEKLY_DAY,
+    CONF_ZONE_ANCHOR,
+    CONF_ZONE_DAYS,
     CONF_ZONE_NAME,
+    CONF_ZONE_SCHEDULE,
     DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
     DEFAULT_COEFFICIENT,
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
     DEFAULT_FORMULA,
-    DEFAULT_FREQUENCY,
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
+    DEFAULT_SCHEDULE,
     DEFAULT_SOIL_VOLUME,
     DEFAULT_START_MODE,
     DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
-    DEFAULT_TWICE_WEEKLY_DAYS,
-    DEFAULT_WEEKLY_DAY,
+    DEFAULT_ZONE_DAYS,
     DOMAIN,
     RAIN_STATES,
     RUN_MODE_SEQUENTIAL,
+    SCHEDULE_ALTERNATE,
+    SCHEDULE_DAYS,
+    SCHEDULE_KEYS,
+    SCHEDULE_OFF,
+    SCHEDULES,
     SOURCE_SCHEDULE,
     SOURCE_SERVICE,
     START_MODE_SUNRISE,
@@ -115,6 +121,7 @@ from .const import (
     STATUS_IDLE,
     STATUS_RUNNING,
     SUBENTRY_ZONE,
+    WEEKDAYS,
 )
 from .formula import FormulaError, render_formula
 from .history import IrrigationHistory
@@ -145,6 +152,13 @@ class ZoneConfig:
     soil_volume: float
     exposure: str
     formula: str | None = None
+    schedule: str = DEFAULT_SCHEDULE
+    days: tuple[str, ...] = tuple(DEFAULT_ZONE_DAYS)
+    anchor: date | None = None
+
+    def irrigates_on(self, day: date) -> bool:
+        """True se la zona va irrigata nel giorno (locale)."""
+        return zone_irrigates_on(day, self.schedule, self.days, self.anchor)
 
     @classmethod
     def from_subentry(cls, subentry_id: str, data: dict[str, Any]) -> ZoneConfig:
@@ -161,7 +175,44 @@ class ZoneConfig:
             soil_volume=float(data.get(CONF_SOIL_VOLUME, DEFAULT_SOIL_VOLUME)),
             exposure=data.get(CONF_EXPOSURE, DEFAULT_EXPOSURE),
             formula=(data.get(CONF_FORMULA) or "").strip() or None,
+            schedule=(
+                data.get(CONF_ZONE_SCHEDULE)
+                if data.get(CONF_ZONE_SCHEDULE) in SCHEDULES
+                else DEFAULT_SCHEDULE
+            ),
+            days=tuple(
+                d for d in WEEKDAYS if d in data.get(CONF_ZONE_DAYS, DEFAULT_ZONE_DAYS)
+            ),
+            anchor=_parse_date(data.get(CONF_ZONE_ANCHOR)),
         )
+
+
+def _parse_date(value: Any) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def structure_key(entry: ConfigEntry) -> str:
+    """Impronta della configurazione esclusa la programmazione delle zone.
+
+    Se cambia solo la programmazione (giorni, modalità) non serve ricaricare.
+    """
+    zones = {
+        sub_id: {
+            "title": sub.title,
+            **{k: v for k, v in sub.data.items() if k not in SCHEDULE_KEYS},
+        }
+        for sub_id, sub in entry.subentries.items()
+    }
+    return json.dumps(
+        {"data": dict(entry.data), "options": dict(entry.options), "zones": zones},
+        sort_keys=True,
+        default=str,
+    )
 
 
 @dataclass
@@ -202,7 +253,6 @@ class IrrigationController:
         }
 
         # Impostazioni modificate dalle entità (ripristinate al riavvio)
-        self.frequency: str = DEFAULT_FREQUENCY
         self.manual_timer: int = 0
         self.rain_block: bool = True
 
@@ -210,6 +260,7 @@ class IrrigationController:
         self.running = False
         # Opzioni o zone cambiate durante un ciclo: si ricarica alla fine
         self.reload_pending = False
+        self.structure = structure_key(entry)
         self.run_source: str | None = None
         self.zone_runs: dict[str, ZoneRun] = {}
         self.last_block: str | None = None
@@ -519,27 +570,60 @@ class IrrigationController:
             return None
         return when + self._start_offset()
 
-    def next_run(self) -> datetime | None:
-        """Prossima irrigazione programmata (UTC)."""
-        now = dt_util.now()
-        for days in range(8):
-            day = (now + timedelta(days=days)).date()
-            local_noon = dt_util.start_of_local_day(day) + timedelta(hours=12)
-            if not self._is_day(local_noon):
+    def zones_due(self, day: date) -> list[str]:
+        """Zone da irrigare nel giorno (locale)."""
+        return [zid for zid, zone in self.zones.items() if zone.irrigates_on(day)]
+
+    def next_run(self, zone_id: str | None = None) -> datetime | None:
+        """Prossima irrigazione programmata (UTC), dell'impianto o di una zona."""
+        today = dt_util.now().date()
+        now = dt_util.utcnow()
+        for offset in range(15):
+            day = today + timedelta(days=offset)
+            if zone_id is None:
+                if not self.zones_due(day):
+                    continue
+            elif zone_id not in self.zones or not self.zones[zone_id].irrigates_on(day):
                 continue
             when = self.start_on(day)
-            if when is not None and when > dt_util.utcnow():
+            if when is not None and when > now:
                 return when
         return None
 
-    def _is_day(self, when: datetime) -> bool:
-        cfg = self.config
-        return is_irrigation_day(
-            dt_util.as_local(when),
-            self.frequency,
-            cfg.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY),
-            list(cfg.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS)),
-        )
+    @callback
+    def refresh_zones(self) -> None:
+        """Rilegge le zone (cambiata solo la programmazione: niente ricarica)."""
+        self.zones = {
+            subentry_id: ZoneConfig.from_subentry(subentry_id, dict(sub.data))
+            for subentry_id, sub in self.entry.subentries.items()
+            if sub.subentry_type == SUBENTRY_ZONE
+        }
+        self.async_update_listeners()
+
+    @callback
+    def async_set_schedule(
+        self, zone_id: str, mode: str | None = None, days: list[str] | None = None
+    ) -> None:
+        """Cambia modalità e/o giorni di una zona (dalla card o da un'azione)."""
+        sub = self.entry.subentries[zone_id]
+        data = dict(sub.data)
+        current = data.get(CONF_ZONE_SCHEDULE, DEFAULT_SCHEDULE)
+        if days is not None:
+            days = [d for d in WEEKDAYS if d in days]
+            data[CONF_ZONE_DAYS] = days
+            if mode is None:
+                mode = SCHEDULE_DAYS if days else SCHEDULE_OFF
+        if mode is not None:
+            if mode == SCHEDULE_DAYS and not data.get(CONF_ZONE_DAYS):
+                data[CONF_ZONE_DAYS] = list(DEFAULT_ZONE_DAYS)
+            if mode == SCHEDULE_ALTERNATE and (
+                current != SCHEDULE_ALTERNATE or not data.get(CONF_ZONE_ANCHOR)
+            ):
+                # Si parte da oggi: oggi sì, domani no, ...
+                data[CONF_ZONE_ANCHOR] = dt_util.now().date().isoformat()
+            data[CONF_ZONE_SCHEDULE] = mode
+        if data != dict(sub.data):
+            self.hass.config_entries.async_update_subentry(self.entry, sub, data=data)
 
     # ------------------------------------------------------------------
     # Analisi AI
@@ -623,9 +707,10 @@ class IrrigationController:
     # ------------------------------------------------------------------
     @callback
     def _handle_start(self, _now: datetime | None = None) -> None:
-        if not self._is_day(dt_util.now()):
+        due = self.zones_due(dt_util.now().date())
+        if not due:
             return
-        self.hass.async_create_task(self.async_start(SOURCE_SCHEDULE))
+        self.hass.async_create_task(self.async_start(SOURCE_SCHEDULE, zone_ids=due))
 
     # ------------------------------------------------------------------
     # Avvio / arresto
@@ -635,13 +720,22 @@ class IrrigationController:
         source: str,
         duration: int | None = None,
         force: bool = False,
+        zone_ids: list[str] | None = None,
     ) -> bool:
-        """Avvia un ciclo. Ritorna False se non parte."""
+        """Avvia un ciclo (tutte le zone o solo `zone_ids`). False se non parte."""
         if self.running:
             _LOGGER.debug("Ciclo già in corso, avvio ignorato")
             return False
         if not self.zones:
             _LOGGER.warning("Nessuna zona configurata")
+            return False
+        if zone_ids is None:
+            # Avvio manuale: tutte le zone tranne quelle spente
+            zone_ids = [
+                zid for zid, zone in self.zones.items() if zone.schedule != SCHEDULE_OFF
+            ]
+        if not zone_ids:
+            _LOGGER.info("Tutte le zone sono spente: nessuna irrigazione")
             return False
 
         if self.rain_block and not force and self.is_raining():
@@ -691,12 +785,16 @@ class IrrigationController:
                 durations = {
                     zone_id: zr.minutes
                     for zone_id, zr in result.zones.items()
-                    if zr.minutes > 0 and zone_id in self.zones
+                    if zr.minutes > 0
+                    and zone_id in self.zones
+                    and (zone_ids is None or zone_id in zone_ids)
                 }
                 self.ai_last_used = True
 
         if not self.ai_last_used:
             for zone_id, zone in self.zones.items():
+                if zone_ids is not None and zone_id not in zone_ids:
+                    continue
                 minutes = duration if duration is not None else self.planned_minutes(zone)
                 if minutes > 0:
                     durations[zone_id] = int(minutes)

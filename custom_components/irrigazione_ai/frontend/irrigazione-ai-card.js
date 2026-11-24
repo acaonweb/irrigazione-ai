@@ -1,13 +1,13 @@
 /*
  * Irrigazione AI — card Lovelace (registrate automaticamente dall'integrazione)
  *
- *   type: custom:irrigazione-ai-card          # controllo: generale, AI, pioggia, zone, timer, frequenza
+ *   type: custom:irrigazione-ai-card          # controllo: generale, AI, pioggia, zone, timer, programmazione per zona
  *   type: custom:irrigazione-ai-charts-card   # grafici: consumi 7 giorni, umidità terriccio, esterno
  *
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.9.4";
+const CARD_VERSION = "0.10.0";
 
 const TEXT = {
   it: {
@@ -19,6 +19,8 @@ const TEXT = {
     aiTitle: "🤖 Decisione AI", analyze: "Analizza", durations: "Durate previste", aiDurations: "Durate AI",
     decision: { irrigate: "Irrigare", skip: "Saltare", error: "Errore", unknown: "Nessuna analisi" },
     off: "Off", daily: "7/7", min: "min", skip: "salta",
+    schedule: "Programmazione", alternate: "1 sì 1 no", chosen: "Giorni", zoneOff: "spenta", noDays: "nessun giorno",
+    altFrom: "un giorno sì e uno no dal", nextShort: "prossima",
     water7: "💧 Consumo acqua", soil: "Umidità terriccio", outdoor: "Esterno", temp: "Temperatura", hum: "Umidità",
     noData: "Nessun dato", noEntity: "Nessun impianto Irrigazione AI trovato.",
     today: "Oggi", month: "Mese", total: "Totale", log: "📒 Registro irrigazioni", noEvents: "Nessun evento negli ultimi 14 giorni",
@@ -34,6 +36,8 @@ const TEXT = {
     aiTitle: "🤖 AI decision", analyze: "Analyze", durations: "Planned durations", aiDurations: "AI durations",
     decision: { irrigate: "Water", skip: "Skip", error: "Error", unknown: "No analysis yet" },
     off: "Off", daily: "7/7", min: "min", skip: "skip",
+    schedule: "Schedule", alternate: "Every 2", chosen: "Days", zoneOff: "off", noDays: "no days",
+    altFrom: "every other day from", nextShort: "next",
     water7: "💧 Water use", soil: "Soil moisture", outdoor: "Outdoor", temp: "Temperature", hum: "Humidity",
     noData: "No data", noEntity: "No Irrigazione AI system found.",
     today: "Today", month: "Month", total: "Total", log: "📒 Irrigation log", noEvents: "No events in the last 14 days",
@@ -87,6 +91,19 @@ const CONTROL_STYLE = `
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; }
   .chip { padding: 2px 8px; border-radius: 999px; background: var(--secondary-background-color); color: var(--secondary-text-color); }
   .chip.blue { background: rgba(33,150,243,.18); color: var(--ia-blue); font-weight: 600; }
+  .sched { cursor: default; display: flex; flex-direction: column; gap: 8px; }
+  .shead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .shead .sname { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shead .snext { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
+  .modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .modes .btn { min-height: 36px; flex-direction: row; gap: 4px; font-size: 11px; padding: 4px; }
+  .modes .btn ha-icon { --mdc-icon-size: 16px; }
+  .wdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .wday { height: 30px; border-radius: 999px; border: 1px solid var(--divider-color, rgba(0,0,0,.12)); cursor: pointer;
+          background: transparent; color: var(--primary-text-color); font: inherit; font-size: 11px; padding: 0; }
+  .wday.on { background: var(--ia-blue); border-color: var(--ia-blue); color: #fff; font-weight: 600; }
+  .wdays.dim .wday { opacity: .45; }
+  .salt { font-size: 11px; color: var(--secondary-text-color); }
 `;
 
 const CHART_STYLE = `
@@ -267,19 +284,37 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       <button class="btn ${o === timer.state ? "on" : ""}" data-select="${sys.manual_timer}" data-option="${o}">
         <ha-icon icon="${timerIcons[o] || "mdi:timer"}"></ha-icon></button>`).join("") : "";
 
-    const freq = this._s(sys.frequency);
     const dname = (d) => t.days[d] || d;
-    const freqLabel = {
-      off: [t.off, "mdi:power"],
-      weekly: [dname(map.weekly_day), "mdi:numeric-1-box"],
-      twice_weekly: [(map.twice_weekly_days || []).map(dname).join("-"), "mdi:numeric-2-box"],
-      daily: [t.daily, "mdi:calendar"],
-    };
-    const freqBtns = freq ? freq.attributes.options.map((o) => {
-      const [label, icon] = freqLabel[o] || [o, "mdi:calendar"];
-      return `<button class="btn ${o === freq.state ? "on" : ""}" data-select="${sys.frequency}" data-option="${o}">
-        <ha-icon icon="${icon}"></ha-icon><span>${label}</span></button>`;
-    }).join("") : "";
+    const WEEK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const modeBtns = [
+      ["off", t.off, "mdi:power"], ["alternate", t.alternate, "mdi:swap-horizontal"],
+      ["days", t.chosen, "mdi:calendar-week"], ["daily", t.daily, "mdi:calendar"],
+    ];
+    const schedTiles = map.zones.map((z, i) => {
+      const st = this._s(z.schedule);
+      if (!st) return "";
+      const mode = st.state;
+      const days = st.attributes.days || [];
+      const nextIso = st.attributes.next_run;
+      let info = nextIso ? `${t.nextShort} ${this._time(nextIso, true)}` : (mode === "off" ? t.zoneOff : t.noDays);
+      const modes = modeBtns.map(([m, label, icon]) => `
+        <button class="btn ${m === mode ? "on" : ""}" data-sched="${z.schedule}" data-mode="${m}">
+          <ha-icon icon="${icon}"></ha-icon><span>${label}</span></button>`).join("");
+      let dayRow;
+      if (mode === "alternate") {
+        const from = st.attributes.alternate_from
+          ? new Date(st.attributes.alternate_from + "T12:00:00").toLocaleDateString(this._lang(), { day: "numeric", month: "short" }) : "";
+        dayRow = `<div class="salt">↔ ${t.altFrom} ${from}</div>`;
+      } else {
+        const active = mode === "daily" ? WEEK : (mode === "days" ? days : []);
+        dayRow = `<div class="wdays ${mode === "days" ? "" : "dim"}">${WEEK.map((d) => `
+          <button class="wday ${active.includes(d) ? "on" : ""}" data-sched="${z.schedule}" data-day="${d}"
+            data-mode-now="${mode}" data-days="${active.join(",")}">${dname(d)}</button>`).join("")}</div>`;
+      }
+      return `<div class="tile span12 sched">
+        <div class="shead"><span class="sname">${t.zone} ${i + 1} – ${z.name}</span><span class="snext">${info}</span></div>
+        <div class="modes">${modes}</div>${dayRow}</div>`;
+    }).join("");
 
     const durTiles = map.zones.map((z, i) => {
       const id = aiOn ? z.ai : z.duration;
@@ -324,7 +359,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
         </div>` : ""}
         ${map.zones.map((z, i) => this._zoneTile(z, i, t, batteries[i], map.zones.length)).join("")}
         ${timer ? `<div class="btns span12" style="grid-template-columns:repeat(${timer.attributes.options.length},1fr)">${timerBtns}</div>` : ""}
-        ${freq ? `<div class="btns span12" style="grid-template-columns:repeat(${freq.attributes.options.length},1fr)">${freqBtns}</div>` : ""}
+        ${schedTiles ? `<div class="sec-title">📅 ${t.schedule}</div>${schedTiles}` : ""}
         <div class="sec-title">${aiOn ? t.aiDurations : t.durations}</div>
         ${durTiles}
         ${aiBox}
@@ -341,6 +376,14 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     }));
     root.querySelectorAll("[data-select]").forEach((el) => el.addEventListener("click", () =>
       this._call("select", "select_option", { entity_id: el.dataset.select, option: el.dataset.option })));
+    root.querySelectorAll("[data-mode]").forEach((el) => el.addEventListener("click", () =>
+      this._call("select", "select_option", { entity_id: el.dataset.sched, option: el.dataset.mode })));
+    root.querySelectorAll("[data-day]").forEach((el) => el.addEventListener("click", () => {
+      const cur = el.dataset.days ? el.dataset.days.split(",") : [];
+      const d = el.dataset.day;
+      const days = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d];
+      this._call("irrigazione_ai", "set_schedule", { entity_id: el.dataset.sched, days });
+    }));
     root.querySelectorAll("[data-press]").forEach((el) => el.addEventListener("click", (ev) => {
       ev.stopPropagation(); this._call("button", "press", { entity_id: el.dataset.press });
     }));
@@ -564,7 +607,7 @@ customElements.define("irrigazione-ai-card", IrrigazioneAiCard);
 customElements.define("irrigazione-ai-charts-card", IrrigazioneAiChartsCard);
 window.customCards = window.customCards || [];
 window.customCards.push(
-  { type: "irrigazione-ai-card", name: "Irrigazione AI", description: "Comandi dell'impianto: generale, AI, pioggia, zone, timer, frequenza, durate.", preview: true },
+  { type: "irrigazione-ai-card", name: "Irrigazione AI", description: "Comandi dell'impianto: generale, AI, pioggia, zone, timer, programmazione per zona, durate.", preview: true },
   { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici e registro", description: "Litri di oggi, del mese e totali, consumo degli ultimi 7 giorni, registro delle irrigazioni, umidità del terriccio e meteo esterno.", preview: true },
 );
 console.info(`%c IRRIGAZIONE-AI-CARD %c ${CARD_VERSION} `, "background:#26a69a;color:#fff", "");

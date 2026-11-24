@@ -29,3 +29,32 @@ analyze:
       selector:
         config_entry:
           integration: irrigazione_ai
+
+set_schedule:
+  target:
+    entity:
+      integration: irrigazione_ai
+      domain: select
+  fields:
+    mode:
+      selector:
+        select:
+          options:
+            - "off"
+            - alternate
+            - days
+            - daily
+          translation_key: schedule
+    days:
+      selector:
+        select:
+          multiple: true
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          translation_key: weekday

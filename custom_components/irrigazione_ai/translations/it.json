@@ -29,6 +29,8 @@
           "coefficient": "Coefficiente",
           "soil_volume": "Volume del terriccio",
           "exposure": "Esposizione",
+          "schedule": "Quando irrigare",
+          "days": "Giorni",
           "formula": "Formula della zona"
         },
         "data_description": {
@@ -41,6 +43,8 @@
           "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
           "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
           "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+          "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
+          "days": "Usati con 'Giorni scelti'",
           "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
         }
       },
@@ -59,8 +63,6 @@
           "start_mode": "Orario di partenza riferito a",
           "start_time": "Orario fisso",
           "sunset_offset": "Scostamento in minuti",
-          "weekly_day": "Giorno per 'una volta a settimana'",
-          "twice_weekly_days": "Giorni per 'due volte a settimana'",
           "run_mode": "Zone",
           "safety_minutes": "Chiusura di sicurezza",
           "close_on_startup": "Chiudi le valvole all'avvio",
@@ -153,8 +155,6 @@
           "start_mode": "Orario di partenza riferito a",
           "start_time": "Orario fisso",
           "sunset_offset": "Scostamento in minuti",
-          "weekly_day": "Giorno per 'una volta a settimana'",
-          "twice_weekly_days": "Giorni per 'due volte a settimana'",
           "run_mode": "Zone",
           "safety_minutes": "Chiusura di sicurezza",
           "close_on_startup": "Chiudi le valvole all'avvio",
@@ -252,6 +252,8 @@
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
             "exposure": "Esposizione",
+            "schedule": "Quando irrigare",
+            "days": "Giorni",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -264,6 +266,8 @@
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
+            "days": "Usati con 'Giorni scelti'",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         },
@@ -279,6 +283,8 @@
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
             "exposure": "Esposizione",
+            "schedule": "Quando irrigare",
+            "days": "Giorni",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -291,6 +297,8 @@
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
+            "days": "Usati con 'Giorni scelti'",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         }
@@ -316,6 +324,14 @@
         "fri": "Venerdì",
         "sat": "Sabato",
         "sun": "Domenica"
+      }
+    },
+    "schedule": {
+      "options": {
+        "off": "Spenta",
+        "alternate": "Un giorno sì e uno no",
+        "days": "Giorni scelti",
+        "daily": "Tutti i giorni"
       }
     },
     "run_mode": {
@@ -370,12 +386,12 @@
       }
     },
     "select": {
-      "frequency": {
-        "name": "Frequenza",
+      "zone_schedule": {
+        "name": "Programmazione",
         "state": {
           "off": "Spenta",
-          "weekly": "Una volta a settimana",
-          "twice_weekly": "Due volte a settimana",
+          "alternate": "Un giorno sì e uno no",
+          "days": "Giorni scelti",
           "daily": "Tutti i giorni"
         }
       },
@@ -498,11 +514,28 @@
           "description": "Lascia vuoto per tutti gli impianti."
         }
       }
+    },
+    "set_schedule": {
+      "name": "Programma la zona",
+      "description": "Cambia quando viene irrigata una zona. Destinazione: l'entità Programmazione della zona.",
+      "fields": {
+        "mode": {
+          "name": "Modalità",
+          "description": "off, alternate (un giorno sì e uno no, da oggi), days, daily."
+        },
+        "days": {
+          "name": "Giorni",
+          "description": "Giorni della settimana (mon…sun). Da soli impostano anche 'Giorni scelti'; una lista vuota spegne la zona."
+        }
+      }
     }
   },
   "exceptions": {
     "entry_not_found": {
       "message": "Impianto non trovato o non caricato."
+    },
+    "schedule_empty": {
+      "message": "Indica la modalità o i giorni."
     }
   }
 }

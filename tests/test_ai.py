@@ -200,8 +200,8 @@ async def test_ai_wizard_step(hass: HomeAssistant, valves, aioclient_mock) -> No
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"weather_entity": WEATHER, "sunset_offset": 5, "weekly_day": "sun",
-                            "twice_weekly_days": ["thu", "sun"], "run_mode": "parallel",
+        result["flow_id"], {"weather_entity": WEATHER, "sunset_offset": 5,
+                            "run_mode": "parallel",
                             "safety_minutes": 60, "close_on_startup": True, "notify_services": []},
     )
     result = await hass.config_entries.options.async_configure(
@@ -276,8 +276,8 @@ async def test_prompt_editor_in_options(hass: HomeAssistant, valves, aioclient_m
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"weather_entity": WEATHER, "sunset_offset": 5, "weekly_day": "sun",
-                            "twice_weekly_days": ["thu", "sun"], "run_mode": "parallel",
+        result["flow_id"], {"weather_entity": WEATHER, "sunset_offset": 5,
+                            "run_mode": "parallel",
                             "safety_minutes": 60, "close_on_startup": True, "notify_services": []},
     )
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"formula": "{{ 20 }}"})

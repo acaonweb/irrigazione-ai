@@ -104,8 +104,8 @@ async def test_planned_event(hass: HomeAssistant, valves) -> None:
     """Il calendario mostra la prossima irrigazione prevista."""
     await _setup(hass, valves)
     await hass.services.async_call(
-        "select", "select_option",
-        {"entity_id": "select.irrigazione_frequency", "option": "daily"}, blocking=True,
+        "irrigazione_ai", "set_schedule",
+        {"entity_id": "select.secondo_piano_schedule", "mode": "daily"}, blocking=True,
     )
     now = dt_util.utcnow()
     events = await _events(hass, now, now + timedelta(days=2))

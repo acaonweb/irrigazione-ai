@@ -19,8 +19,6 @@ from .conftest import VALVE_1, VALVE_2, WEATHER, make_entry, zone_data
 
 SCHEDULE = {
     "sunset_offset": 5,
-    "weekly_day": "sun",
-    "twice_weekly_days": ["thu", "sun"],
     "run_mode": "sequential",
     "safety_minutes": 60,
     "close_on_startup": True,

@@ -16,6 +16,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
+from homeassistant.util import dt as dt_util
 
 from .ai import (
     DEFAULT_AI_PROMPT,
@@ -61,11 +62,12 @@ from .const import (
     CONF_START_TIME,
     CONF_SUNSET_OFFSET,
     CONF_TEMPERATURE,
-    CONF_TWICE_WEEKLY_DAYS,
     CONF_VALVE,
     CONF_WEATHER,
-    CONF_WEEKLY_DAY,
+    CONF_ZONE_ANCHOR,
+    CONF_ZONE_DAYS,
     CONF_ZONE_NAME,
+    CONF_ZONE_SCHEDULE,
     DEFAULT_AI_MODELS,
     DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
@@ -79,16 +81,20 @@ from .const import (
     DEFAULT_OLLAMA_URL,
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
+    DEFAULT_SCHEDULE,
     DEFAULT_SOIL_VOLUME,
     DEFAULT_START_MODE,
     DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
-    DEFAULT_TWICE_WEEKLY_DAYS,
-    DEFAULT_WEEKLY_DAY,
+    DEFAULT_ZONE_DAYS,
     DOMAIN,
     EXPOSURES,
     RUN_MODE_PARALLEL,
     RUN_MODE_SEQUENTIAL,
+    SCHEDULE_ALTERNATE,
+    SCHEDULE_DAYS,
+    SCHEDULE_OFF,
+    SCHEDULES,
     START_MODES,
     SUBENTRY_ZONE,
     WEEKDAYS,
@@ -158,19 +164,6 @@ def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None
                 selector.NumberSelectorConfig(
                     min=-180, max=240, step=1, unit_of_measurement="min",
                     mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Required(
-                CONF_WEEKLY_DAY, default=defaults.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY)
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(options=WEEKDAYS, translation_key="weekday")
-            ),
-            vol.Required(
-                CONF_TWICE_WEEKLY_DAYS,
-                default=defaults.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=WEEKDAYS, multiple=True, translation_key="weekday"
                 )
             ),
             vol.Required(
@@ -278,6 +271,23 @@ def _zone_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=EXPOSURES, translation_key="exposure")
             ),
+            vol.Required(
+                CONF_ZONE_SCHEDULE,
+                default=defaults.get(CONF_ZONE_SCHEDULE, DEFAULT_SCHEDULE),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SCHEDULES,
+                    translation_key="schedule",
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            ),
+            vol.Optional(
+                CONF_ZONE_DAYS, default=list(defaults.get(CONF_ZONE_DAYS, DEFAULT_ZONE_DAYS))
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=WEEKDAYS, multiple=True, translation_key="weekday"
+                )
+            ),
             vol.Optional(
                 CONF_FORMULA,
                 description={"suggested_value": defaults.get(CONF_FORMULA)},
@@ -368,9 +378,25 @@ def _preview_text(results: list[tuple[str, int, float]]) -> str:
     return "\n".join(lines)
 
 
-def _clean_zone(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Normalizza i numeri (il selettore restituisce float)."""
+def _clean_zone(
+    user_input: dict[str, Any], previous: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Normalizza i numeri (il selettore restituisce float) e la programmazione."""
     data = dict(user_input)
+    previous = previous or {}
+    data[CONF_ZONE_DAYS] = [d for d in WEEKDAYS if d in data.get(CONF_ZONE_DAYS, [])]
+    schedule = data.get(CONF_ZONE_SCHEDULE, DEFAULT_SCHEDULE)
+    if schedule == SCHEDULE_DAYS and not data[CONF_ZONE_DAYS]:
+        data[CONF_ZONE_SCHEDULE] = SCHEDULE_OFF
+    if schedule == SCHEDULE_ALTERNATE:
+        keep = previous.get(CONF_ZONE_SCHEDULE) == SCHEDULE_ALTERNATE and previous.get(
+            CONF_ZONE_ANCHOR
+        )
+        data[CONF_ZONE_ANCHOR] = (
+            previous[CONF_ZONE_ANCHOR] if keep else dt_util.now().date().isoformat()
+        )
+    else:
+        data.pop(CONF_ZONE_ANCHOR, None)
     data[CONF_ZONE_NAME] = data[CONF_ZONE_NAME].strip()
     for key in (CONF_MIN_DURATION, CONF_MAX_DURATION):
         data[key] = int(data[key])
@@ -920,7 +946,7 @@ class ZoneSubentryFlow(ConfigSubentryFlow):
                 placeholders,
             )
             if not errors:
-                data = _clean_zone(user_input)
+                data = _clean_zone(user_input, dict(subentry.data))
                 return self.async_update_and_abort(
                     self._get_entry(),
                     subentry,

@@ -27,11 +27,7 @@ from .const import (
     AI_RESULTS,
     CONF_HUMIDITY,
     CONF_TEMPERATURE,
-    CONF_TWICE_WEEKLY_DAYS,
     CONF_WEATHER,
-    CONF_WEEKLY_DAY,
-    DEFAULT_TWICE_WEEKLY_DAYS,
-    DEFAULT_WEEKLY_DAY,
     DOMAIN,
     STATUSES,
 )
@@ -120,7 +116,6 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
                 ("switch", "irrigation"),
                 ("switch", "rain_block"),
                 ("switch", "ai_analysis"),
-                ("select", "frequency"),
                 ("select", "manual_timer"),
                 ("button", "start"),
                 ("button", "stop"),
@@ -145,6 +140,7 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
                 "ai": find("sensor", f"{zone_id}_zone_ai_duration"),
                 "water_today": find("sensor", f"{zone_id}_zone_water_today"),
                 "water_total": find("sensor", f"{zone_id}_zone_water_total"),
+                "schedule": find("select", f"{zone_id}_zone_schedule"),
             }
             for zone_id, zone in c.zones.items()
         ]
@@ -157,8 +153,6 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
             "weather": cfg.get(CONF_WEATHER),
             "temperature": cfg.get(CONF_TEMPERATURE),
             "humidity": cfg.get(CONF_HUMIDITY),
-            "weekly_day": cfg.get(CONF_WEEKLY_DAY, DEFAULT_WEEKLY_DAY),
-            "twice_weekly_days": list(cfg.get(CONF_TWICE_WEEKLY_DAYS, DEFAULT_TWICE_WEEKLY_DAYS)),
         }
 
     @property

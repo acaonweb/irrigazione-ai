@@ -33,7 +33,9 @@ async def test_entities_created(hass: HomeAssistant, valves) -> None:
     await _setup(hass, valves)
     assert hass.states.get("switch.irrigazione").state == "off"
     assert hass.states.get("switch.irrigazione_rain_block").state == "on"
-    assert hass.states.get("select.irrigazione_frequency").state == "twice_weekly"
+    sched = hass.states.get("select.secondo_piano_schedule")
+    assert sched.state == "days"
+    assert sched.attributes["days"] == ["thu", "sun"]
     assert hass.states.get("sensor.irrigazione_status").state == "idle"
     # u=50, T=20, sunny -> 50.4*1.1 = 55.4 -> 55
     assert hass.states.get("sensor.secondo_piano_planned_duration").state == "55"
