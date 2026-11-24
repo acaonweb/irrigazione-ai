@@ -270,8 +270,8 @@ Esempi, dal più semplice:
 {# Come sopra, ma più acqua col caldo (oltre 25 °C) e meno se il meteo è nuvoloso o piovoso #}
 {{ (50 - moisture / 2) * (1.3 if temperature > 25 else 1) * weather_factor }}
 
-{# Zero minuti se il sensore pioggia dice che piove (la zona resta comunque al minimo impostato) #}
-{{ 0 if raining else 50 - moisture / 2 }}
+{# Metà dei minuti se piove adesso (per non irrigare affatto usa il blocco pioggia) #}
+{{ (50 - moisture / 2) * (0.5 if raining else 1) }}
 
 {# Litri necessari a riportare il terriccio al 60%, trasformati in minuti #}
 {{ soil_volume * (60 - moisture) / 100 / flow_rate }}
