@@ -141,6 +141,7 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
                 "water_today": find("sensor", f"{zone_id}_zone_water_today"),
                 "water_total": find("sensor", f"{zone_id}_zone_water_total"),
                 "schedule": find("select", f"{zone_id}_zone_schedule"),
+                "dry": find("binary_sensor", f"{zone_id}_zone_dry"),
             }
             for zone_id, zone in c.zones.items()
         ]
@@ -153,6 +154,7 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
             "weather": cfg.get(CONF_WEATHER),
             "temperature": cfg.get(CONF_TEMPERATURE),
             "humidity": cfg.get(CONF_HUMIDITY),
+            "dry_threshold": c.dry_threshold,
         }
 
     @property

@@ -45,6 +45,7 @@ from .const import (
     CONF_AI_TASK_ENTITY,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
+    CONF_DRY_THRESHOLD,
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
     CONF_FORMULA,
@@ -73,6 +74,7 @@ from .const import (
     DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
     DEFAULT_COEFFICIENT,
+    DEFAULT_DRY_THRESHOLD,
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
     DEFAULT_FORMULA,
@@ -202,6 +204,15 @@ def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None
             vol.Optional(
                 CONF_NOTIFY, default=defaults.get(CONF_NOTIFY, [])
             ): selector.TextSelector(selector.TextSelectorConfig(multiple=True)),
+            vol.Required(
+                CONF_DRY_THRESHOLD,
+                default=defaults.get(CONF_DRY_THRESHOLD, DEFAULT_DRY_THRESHOLD),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=90, step=1, unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -455,6 +466,7 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_START_TIME] = start_time
     data[CONF_SAFETY_MINUTES] = int(data[CONF_SAFETY_MINUTES])
     data[CONF_NOTIFY] = [s.strip() for s in data.get(CONF_NOTIFY, []) if s.strip()]
+    data[CONF_DRY_THRESHOLD] = int(data.get(CONF_DRY_THRESHOLD, DEFAULT_DRY_THRESHOLD))
     data[CONF_LIVE_DEVICES] = [
         d if d.startswith("notify.") else f"notify.{d}"
         for d in (x.strip() for x in data.get(CONF_LIVE_DEVICES, []))

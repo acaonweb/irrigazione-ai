@@ -70,7 +70,8 @@
           "close_on_startup": "Close valves on startup",
           "live_devices": "Live Activity devices",
           "live_url": "Page to open on tap",
-          "notify_services": "Other notifications"
+          "notify_services": "Other notifications",
+          "dry_threshold": "Dry soil alarm"
         },
         "data_description": {
           "start_mode": "Sunset, sunrise or a fixed time of your choice",
@@ -81,7 +82,8 @@
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
           "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
           "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
-          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, errors), e.g. notify.pushover"
+          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
+          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
         }
       },
       "formula": {
@@ -162,7 +164,8 @@
           "close_on_startup": "Close valves on startup",
           "live_devices": "Live Activity devices",
           "live_url": "Page to open on tap",
-          "notify_services": "Other notifications"
+          "notify_services": "Other notifications",
+          "dry_threshold": "Dry soil alarm"
         },
         "data_description": {
           "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it the rain block stays inactive",
@@ -176,7 +179,8 @@
           "close_on_startup": "If Home Assistant restarts with a valve open and no cycle running, it closes it",
           "live_devices": "Phones and tablets with the Home Assistant app: during watering they show a Live Activity (iPhone, Dynamic Island) or a Live Update (Android 16+) with each zone and its end time",
           "live_url": "Optional: dashboard opened by tapping the Live Activity, e.g. /lovelace/irrigation",
-          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, errors), e.g. notify.pushover"
+          "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
+          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
         }
       },
       "formula": {
@@ -380,6 +384,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "zone_dry": {
+        "name": "Dry soil"
+      }
+    },
     "switch": {
       "irrigation": {
         "name": "Irrigation"

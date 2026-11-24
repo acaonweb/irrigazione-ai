@@ -67,6 +67,7 @@ from .const import (
     CONF_AI_PROVIDER,
     CONF_CLOSE_ON_STARTUP,
     CONF_COEFFICIENT,
+    CONF_DRY_THRESHOLD,
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
     CONF_FORMULA,
@@ -92,6 +93,7 @@ from .const import (
     DEFAULT_AI_ON_ERROR,
     DEFAULT_CLOSE_ON_STARTUP,
     DEFAULT_COEFFICIENT,
+    DEFAULT_DRY_THRESHOLD,
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
     DEFAULT_FORMULA,
@@ -106,6 +108,8 @@ from .const import (
     DEFAULT_SUNSET_OFFSET,
     DEFAULT_ZONE_DAYS,
     DOMAIN,
+    DRY_DELAY,
+    DRY_HYSTERESIS,
     RAIN_STATES,
     RUN_MODE_SEQUENTIAL,
     SCHEDULE_ALTERNATE,
@@ -289,6 +293,10 @@ class IrrigationController:
         self._unsubs: list[Callable[[], None]] = []
         self._safety_timers: dict[str, Callable[[], None]] = {}
 
+        # Allarme terriccio secco: zone secche e timer in attesa
+        self.dry: dict[str, bool] = {}
+        self._dry_timers: dict[str, Callable[[], None]] = {}
+
     # ------------------------------------------------------------------
     # Configurazione
     # ------------------------------------------------------------------
@@ -336,6 +344,7 @@ class IrrigationController:
             )
         )
         self._unsubs.append(self._track_start())
+        self._setup_dry_alarm()
         valves = [zone.valve for zone in self.zones.values()]
         if valves:
             self._unsubs.append(
@@ -360,9 +369,10 @@ class IrrigationController:
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
-        for cancel in self._safety_timers.values():
+        for cancel in (*self._safety_timers.values(), *self._dry_timers.values()):
             cancel()
         self._safety_timers.clear()
+        self._dry_timers.clear()
         self.live.shutdown()
         if self.running:
             await self.async_stop(notify=False)
@@ -454,6 +464,68 @@ class IrrigationController:
             except (TypeError, ValueError):
                 return None
         return None
+
+    # ------------------------------------------------------------------
+    # Allarme terriccio secco
+    # ------------------------------------------------------------------
+    @property
+    def dry_threshold(self) -> int:
+        """Soglia di umidità del terriccio sotto cui scatta l'allarme (0 = spento)."""
+        return int(self.config.get(CONF_DRY_THRESHOLD, DEFAULT_DRY_THRESHOLD))
+
+    def _setup_dry_alarm(self) -> None:
+        sensors = {z.moisture_sensor: z.zone_id for z in self.zones.values() if z.moisture_sensor}
+        if not sensors or self.dry_threshold <= 0:
+            return
+        # Stato iniziale senza notificare (es. dopo un riavvio)
+        for zone_id in sensors.values():
+            moisture = self.zone_moisture(self.zones[zone_id])
+            self.dry[zone_id] = moisture is not None and moisture < self.dry_threshold
+
+        @callback
+        def _changed(event: Event[EventStateChangedData]) -> None:
+            zone_id = sensors.get(event.data["entity_id"])
+            if zone_id in self.zones:
+                self._check_dry(zone_id)
+
+        self._unsubs.append(
+            async_track_state_change_event(self.hass, list(sensors), _changed)
+        )
+
+    @callback
+    def _check_dry(self, zone_id: str) -> None:
+        zone = self.zones[zone_id]
+        moisture = self.zone_moisture(zone)
+        threshold = self.dry_threshold
+        if moisture is None:
+            return
+        if moisture < threshold:
+            if not self.dry.get(zone_id) and zone_id not in self._dry_timers:
+
+                async def _confirm(_now: datetime) -> None:
+                    self._dry_timers.pop(zone_id, None)
+                    current = self.zone_moisture(zone)
+                    if current is None or current >= threshold or self.dry.get(zone_id):
+                        return
+                    self.dry[zone_id] = True
+                    self.async_update_listeners()
+                    await self._notify(
+                        tr(
+                            self.hass,
+                            "notify_dry",
+                            zone=zone.name,
+                            moisture=round(current),
+                            threshold=threshold,
+                        )
+                    )
+
+                self._dry_timers[zone_id] = async_call_later(self.hass, DRY_DELAY, _confirm)
+            return
+        if cancel := self._dry_timers.pop(zone_id, None):
+            cancel()
+        if self.dry.get(zone_id) and moisture >= threshold + DRY_HYSTERESIS:
+            self.dry[zone_id] = False
+            self.async_update_listeners()
 
     def zone_moisture(self, zone: ZoneConfig) -> float | None:
         """Umidità del terriccio della zona."""

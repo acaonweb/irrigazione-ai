@@ -68,6 +68,9 @@ Funziona con un'**entità AI Task** già configurata in Home Assistant oppure co
 
 E il **prompt è tuo**: si modifica nelle opzioni come template Jinja, con tutti i dati a disposizione. Il formato della risposta lo aggiunge sempre l'integrazione, quindi nessuna modifica può rompere il calcolo dei litri.
 
+### 🌵 Allarme terriccio secco
+Se l'umidità del terriccio di una zona resta **sotto la soglia per 5 minuti** (25% di default, si cambia nelle opzioni; 0 = spento) arriva una notifica sui servizi di *Altre notifiche*, per esempio Pushover. Una sola per episodio: la zona torna "normale" quando risale di almeno 3 punti sopra la soglia. Ogni zona con sensore ha il sensore binario *Terriccio secco*, utile per la dashboard o per le tue automazioni, e la card colora di rosso la zona con la stessa soglia.
+
 ### 📱 Live Activity su iPhone e Android
 Durante l'irrigazione il telefono mostra una **Live Activity** (schermata di blocco e Dynamic Island su iPhone) o un **Live Update** (Android 16+):
 
@@ -140,7 +143,7 @@ flowchart LR
 | --- | --- |
 | 1. Impianto | Nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo) |
 | 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
-| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
+| 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 
@@ -201,6 +204,7 @@ Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). 
 | Sensore *Decisione AI* | Irrigare / Saltare / Errore, con motivo e litri per zona |
 | Sensori *Acqua oggi*, *Acqua questo mese*, *Acqua totale* | Litri di tutte le zone |
 | Calendario *Registro irrigazioni* | Cicli, aperture manuali, cicli saltati, prossima irrigazione |
+| Per zona: sensore binario *Terriccio secco* | Acceso dopo 5 minuti sotto la soglia; attributi `moisture` e `threshold` |
 | Per zona: selettore *Programmazione* | Spenta, un giorno sì e uno no, giorni scelti, tutti i giorni; negli attributi i giorni (`days`) e la prossima irrigazione della zona (`next_run`) |
 | Per zona: *Durata prevista*, *Durata AI*, *Fine prevista*, *Acqua oggi*, *Acqua totale* | Minuti, litri e orari della zona; nella durata prevista ci sono anche formula usata ed eventuale errore |
 

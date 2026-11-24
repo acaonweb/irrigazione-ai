@@ -33,6 +33,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "notify_stopped": "Watering stopped.",
         "notify_valve_stuck": "Warning: valve {valve} did not close.",
         "notify_safety": "{zone} closed automatically after {minutes} minutes (safety).",
+        "notify_dry": "🌱 Dry soil: {zone} is at {moisture}% (threshold {threshold}%).",
         # Live Activity
         "live_running": "💧 Watering",
         "live_valve_open": "💧 Valve open",
@@ -77,6 +78,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "notify_stopped": "Irrigazione interrotta.",
         "notify_valve_stuck": "Attenzione: la valvola {valve} non si è chiusa.",
         "notify_safety": "{zone} chiusa automaticamente dopo {minutes} minuti (sicurezza).",
+        "notify_dry": "🌱 Terriccio secco: {zone} è al {moisture}% (soglia {threshold}%).",
         "live_running": "💧 Irrigazione in corso",
         "live_valve_open": "💧 Valvola aperta",
         "live_zone_done": "{zone} terminata",

@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.irrigazione_ai.const import DOMAIN
 
 from .conftest import VALVE_1, install_fake_valves, make_entry
-
 
 
 async def _setup(hass: HomeAssistant, calls):

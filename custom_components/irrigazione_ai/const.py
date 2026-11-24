@@ -28,6 +28,10 @@ CONF_CLOSE_ON_STARTUP: Final = "close_on_startup"
 CONF_WEEKLY_DAY: Final = "weekly_day"
 CONF_TWICE_WEEKLY_DAYS: Final = "twice_weekly_days"
 CONF_NOTIFY: Final = "notify_services"
+CONF_DRY_THRESHOLD: Final = "dry_threshold"
+DEFAULT_DRY_THRESHOLD: Final = 25
+DRY_DELAY: Final = 300  # secondi sotto soglia prima dell'allarme
+DRY_HYSTERESIS: Final = 3  # punti % sopra soglia per tornare "non secco"
 CONF_FORMULA: Final = "formula"
 
 RUN_MODE_PARALLEL: Final = "parallel"

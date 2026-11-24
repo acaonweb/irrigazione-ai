@@ -7,7 +7,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.10.0";
+const CARD_VERSION = "0.11.0";
 
 const TEXT = {
   it: {
@@ -213,6 +213,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     this._hass = hass;
     const map = this._map();
     if (!map) { if (this._sig !== "none") { this._sig = "none"; this._empty(this._t().noEntity); } return; }
+    this._dryAt = map.dry_threshold ?? 25;
     const batteries = map.zones.map((z) => this._battery(z.valve));
     const sig = this._signature([...this._allIds(map), ...batteries]);
     if (sig === this._sig) return;
@@ -229,15 +230,16 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const valve = this._s(z.valve);
     const on = valve && ["on", "open", "opening"].includes(valve.state);
     const m = this._num(z.moisture);
+    const dryAt = this._dryAt ?? 25;
     const planned = this._num(z.duration);
     const ai = this._num(z.ai);
     const water = this._num(z.water_today);
     const end = this._s(z.end);
     // Stesse informazioni per ogni zona: umidità (o il motivo per cui manca) e durata prevista
     const secondary = m !== null
-      ? `${t.moisture} ${Math.round(m)}% · ${m < 25 ? t.dry : m <= 50 ? t.ok : t.wet}`
+      ? `${t.moisture} ${Math.round(m)}% · ${m < dryAt ? t.dry : m <= 50 ? t.ok : t.wet}`
       : `${t.moisture}: ${z.moisture ? t.unavailable : t.noSensor}`;
-    const glow = on ? "glow-blue" : (m !== null && m < 25 ? "glow-red" : "");
+    const glow = on ? "glow-blue" : (m !== null && m < dryAt ? "glow-red" : "");
     const chips = [];
     if (on && end && this._time(end.state)) chips.push(`<span class="chip blue">${t.ends} ${this._time(end.state)}</span>`);
     chips.push(`<span class="chip">⏱ ${planned === null ? "–" : planned + " " + t.min}</span>`);

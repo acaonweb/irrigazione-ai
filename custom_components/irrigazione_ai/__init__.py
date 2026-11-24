@@ -49,6 +49,7 @@ from .const import (
 from .controller import IrrigationController, structure_key
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.CALENDAR,
     Platform.SELECT,
@@ -61,7 +62,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 CARD_URL = f"/{DOMAIN}/irrigazione-ai-card.js"
 CARD_PATH = Path(__file__).parent / "frontend" / "irrigazione-ai-card.js"
-CARD_VERSION = "0.10.0"
+CARD_VERSION = "0.11.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
