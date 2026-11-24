@@ -136,6 +136,215 @@ flowchart LR
 2. **Aggiungi da link** → `https://github.com/acaonweb/irrigazione-ai`, categoria *Integrazione*.
 3. Installa **Irrigazione AI** e riavvia Home Assistant.
 4. **Impostazioni → Dispositivi e servizi → Aggiungi integrazione → Irrigazione AI.**
+5. Segui il wizard (sotto trovi la guida campo per campo), poi aggiungi le card a una dashboard.
+
+## 📖 Guida pratica
+
+Questa sezione spiega con calma tutto quello che il wizard ti chiede. Se è la prima volta, leggila una volta dall'inizio alla fine: ti evita le sorprese più comuni.
+
+### 1. Cosa ti serve prima di iniziare
+
+| Cosa | Obbligatorio? | Come trovarlo |
+| --- | --- | --- |
+| Una **valvola** per zona, vista da Home Assistant come entità `switch.…` o `valve.…` | Sì | *Impostazioni → Dispositivi e servizi → Entità*, cerca il nome della valvola. Accendendola e spegnendola deve aprirsi e chiudersi l'acqua |
+| Un **sensore di umidità del terriccio** per zona (`sensor.…` in %) | No | Senza sensore la formula considera il 50%, l'AI riceve "sconosciuto" e l'allarme terriccio secco non c'è |
+| Un'**entità meteo** (`weather.…`), per esempio quella di Met.no che Home Assistant installa da sola | No, ma consigliata | Serve al blocco pioggia, alla formula (`weather_factor`) e all'AI (previsioni) |
+| Sensori di **temperatura e umidità esterna** | No | Se mancano si usano quelli dell'entità meteo |
+| L'**app Home Assistant** sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
+
+### 2. I dati di una zona, spiegati
+
+**Portata (L/min).** Quanta acqua esce dalla zona in un minuto. Serve a trasformare minuti in litri e viceversa. Due modi per ricavarla:
+- *dai gocciolatori*: numero di gocciolatori × litri/ora di ciascuno ÷ 60. Per esempio 22 gocciolatori da 2 L/h danno 22 × 2 ÷ 60 = **0,73 L/min**;
+- *misurandola*: metti un gocciolatore (o l'uscita della linea) in un contenitore graduato per 5 minuti, dividi i litri per 5 e, se hai misurato un solo gocciolatore, moltiplica per il numero di gocciolatori.
+
+**Durata minima e massima.** Qualunque calcolo (formula o AI) viene tenuto dentro questi limiti. La minima evita irrigazioni inutili da 1 minuto, la massima ti protegge da un valore sbagliato. Fa eccezione l'AI quando decide 0 litri per una zona: in quel caso la zona resta chiusa.
+
+**Coefficiente.** Un moltiplicatore della formula predefinita: 1 = invariata, 1,2 = 20% di acqua in più, 0,8 = 20% in meno. Comodo per una zona che si asciuga prima delle altre.
+
+**Volume del terriccio (L).** Quanta terra c'è da bagnare. L'AI lo usa per dosare i litri: più terra, più acqua per arrivare alla stessa umidità. Per stimarlo:
+- fioriera rettangolare: lunghezza × larghezza × altezza della terra, in cm, ÷ 1000. Per esempio 100 × 20 × 18 cm = **36 L**;
+- vaso tondo: 3,14 × raggio × raggio × altezza, in cm, ÷ 1000;
+- più vasi sulla stessa linea: somma i volumi.
+
+**Esposizione.** Da che parte prende il sole la zona (nord, sud, est, ovest). Sud e ovest asciugano di più, nord di meno. La usa l'AI; nella formula è disponibile come variabile `exposure`.
+
+**Piante.** Scrivi con parole tue cosa cresce nella zona, il più precise possibile: "rosmarino, lavanda e timo in fioriera", "pomodori e basilico", "limone in vaso da 50 cm", "gerani appena trapiantati". L'AI conosce il fabbisogno d'acqua delle piante comuni e dosa di conseguenza: le mediterranee ne vogliono poca, ortaggi, fiori e piante giovani di più. Puoi usarle anche nella formula con la variabile `plants`.
+
+**Formula della zona.** Facoltativa: se la scrivi, vale solo per questa zona e sostituisce quella dell'impianto (vedi il punto 6).
+
+### 3. Quando irrigare: orario e giorni
+
+**L'orario** vale per tutto l'impianto e si sceglie in *Programmazione*:
+- **tramonto** o **alba**, più uno scostamento in minuti. Positivo = dopo, negativo = prima: `-30` con l'alba vuol dire mezz'ora prima che sorga il sole;
+- **orario fisso**, per esempio 21:00. Lo scostamento in questo caso non conta.
+
+Irrigare la sera o all'alba riduce l'evaporazione: è la scelta migliore d'estate.
+
+**I giorni** si scelgono per ogni zona, nel form della zona o dalla card (sezione 📅 Programmazione):
+
+| Scelta | Cosa succede | Esempio |
+| --- | --- | --- |
+| Spenta | La zona non irriga mai, neanche con *Avvia ora* | D'inverno, o una zona temporaneamente vuota |
+| Un giorno sì e uno no | Irriga il giorno in cui lo scegli, poi a giorni alterni, senza guardare la settimana | Scelto martedì: mar, gio, sab, lun, mer… |
+| Giorni scelti | Irriga nei giorni della settimana che indichi | Lun, mer, sab e dom |
+| Tutti i giorni | Ogni giorno | Piena estate, vasi piccoli |
+
+Nel form, il campo *Giorni* conta **solo** con "Giorni scelti" e viene ignorato con le altre scelte. Dalla card basta toccare i giorni: la riga si accende in blu e la modifica vale subito.
+
+All'orario partono solo le zone in programma quel giorno. *Avvia ora* (o l'interruttore *Irrigazione*) avvia invece tutte le zone che non sono spente.
+
+### 4. Notifiche: come riceverle
+
+L'integrazione invia notifiche per: avvio (con i minuti di ogni zona), fine, interruzione, ciclo saltato per pioggia o dall'AI, errore dell'AI, valvola chiusa dalla sicurezza, valvola che non si chiude, terriccio secco.
+
+Le manda alle **azioni di notifica** che scrivi nel campo *Altre notifiche* (passo *Programmazione*). Un'azione di notifica è un servizio di Home Assistant che si chiama `notify.qualcosa`. Le più comuni:
+
+| Dove vuoi la notifica | Cosa scrivere | Cosa ti serve |
+| --- | --- | --- |
+| Sul telefono, con l'app Home Assistant | `notify.mobile_app_<nome_telefono>` | L'app installata e collegata |
+| Pushover | `notify.pushover` | L'integrazione Pushover |
+| Telegram | `notify.<nome_del_bot>` | L'integrazione Telegram |
+| Nelle notifiche di Home Assistant (la campanella) | `notify.persistent_notification` | Niente, c'è sempre |
+
+**Come trovare il nome esatto:** apri *Strumenti → Azioni* (prima della 2026.8 il menu si chiamava *Strumenti per sviluppatori*), scrivi `notify.` nella casella di ricerca e copia il nome che ti interessa. Puoi metterne più di uno: ogni messaggio arriva a tutti.
+
+Le notifiche e la Live Activity sono due cose diverse e si possono usare insieme: le notifiche sono messaggi singoli, la Live Activity è un riquadro che resta sullo schermo e si aggiorna durante l'irrigazione.
+
+### 5. Live Activity: requisiti e impostazione
+
+- **iPhone e iPad:** iOS/iPadOS 17.2 o successivo e l'app Home Assistant aggiornata. Compare nella schermata di blocco e nella Dynamic Island.
+- **Android:** Android 16 o successivo per il *Live Update*; sulle versioni precedenti arriva come notifica normale che si aggiorna al suo posto.
+
+Nel passo *Programmazione*, in **Dispositivi per la Live Activity**, l'elenco propone da solo i telefoni e tablet con l'app. Selezionali tutti quelli su cui la vuoi.
+
+**Pagina da aprire** è la dashboard che si apre toccando la Live Activity. Si scrive come percorso, senza l'indirizzo del server: apri la dashboard dal browser e copia la parte dell'indirizzo dopo il nome del server. Per esempio da `http://homeassistant.local:8123/lovelace/irrigazione` scrivi `/lovelace/irrigazione`.
+
+### 6. Scrivere una formula tua
+
+La formula è un **template Jinja**, lo stesso linguaggio dei modelli di Home Assistant. Deve restituire **un numero: i minuti di irrigazione** della zona. Il risultato viene comunque tenuto tra durata minima e massima.
+
+**Passo 1, prova sul sicuro.** Apri *Strumenti → Modello* (prima della 2026.8: *Strumenti per sviluppatori → Modello*) e incolla, per esempio:
+
+```jinja
+{% set moisture = states('sensor.umidita_terriccio') | float(50) %}
+{{ 40 - moisture / 2 }}
+```
+
+A destra vedi il risultato con i valori di adesso. Le variabili dell'integrazione (`moisture`, `temperature`…) lì non esistono, per questo le definisci tu con `{% set %}` per provare.
+
+**Passo 2, mettila nell'integrazione.** *Configura → Formula*: incolla la formula **senza** le righe `{% set %}` delle variabili che l'integrazione ti fornisce già (vedi la tabella in *La formula nel dettaglio*). Prima di salvare compare l'**anteprima** con i minuti che darebbe a ogni zona: se un numero non ti convince, torna indietro e correggi.
+
+**Passo 3, se serve, una formula per zona.** Nel form della zona, il campo *Formula della zona* sostituisce quella dell'impianto solo per quella zona.
+
+Esempi, dal più semplice:
+
+```jinja
+{# Sempre 20 minuti #}
+{{ 20 }}
+
+{# Più secco = più minuti: 15 min al 70% di umidità, 35 min al 30% #}
+{{ 50 - moisture / 2 }}
+
+{# Come sopra, ma più acqua col caldo (oltre 25 °C) e niente se piove #}
+{{ (50 - moisture / 2) * (1.3 if temperature > 25 else 1) * weather_factor }}
+
+{# Litri necessari a riportare il terriccio al 60%, trasformati in minuti #}
+{{ soil_volume * (60 - moisture) / 100 / flow_rate }}
+
+{# Metà acqua se nella zona ci sono piante mediterranee #}
+{{ (50 - moisture / 2) * (0.5 if 'rosmarino' in plants | lower or 'lavanda' in plants | lower else 1) }}
+
+{# Minuti decisi da un tuo helper (input_number) #}
+{{ states('input_number.minuti_irrigazione') | float(20) }}
+```
+
+Se una formula personale smette di funzionare (per esempio un sensore diventa *non disponibile*), l'integrazione usa quella predefinita e scrive l'errore nell'attributo `formula_error` del sensore *Durata prevista* della zona. Così non resti mai senza irrigazione.
+
+### 7. Configurare l'AI
+
+1. **Scegli il servizio** nel passo *Analisi AI*:
+   - **AI Task**: usa un'integrazione AI già configurata in Home Assistant (OpenAI, Google Gemini, Anthropic, Ollama…). È la scelta più semplice se ne hai già una;
+   - **OpenAI, Anthropic, Gemini**: serve una **API key** del servizio. Il wizard mostra il link alla pagina dove crearla. Attenzione a copiare la **chiave segreta** (per OpenAI inizia con `sk-`, per Anthropic con `sk-ant-`, per Gemini con `AIza`) e non l'identificativo della chiave. Su OpenAI e Anthropic l'account deve avere un po' di credito prepagato (bastano pochi euro, vedi la FAQ sui costi);
+   - **Ollama**: un modello che gira gratis su un computer della tua rete. Indica l'indirizzo (per esempio `http://192.168.1.20:11434`) e il modello scaricato (per esempio `llama3.1`).
+2. Prima di salvare viene inviata **una richiesta di prova**: se qualcosa non va, l'errore del servizio compare nel form.
+3. Scegli **cosa fare se l'AI non risponde**: irrigare con la formula (consigliato), irrigare con la formula e spegnere l'AI, oppure saltare il ciclo.
+4. **Note per l'AI** (facoltative): tutto quello che non sta nei campi, per esempio "terrazzo molto ventoso", "vasi in terracotta che asciugano in fretta".
+5. Accendi l'interruttore **Analisi AI** (o il pulsante giallo *AI* della card) e premi **Analizza ora**: vedi cosa deciderebbe adesso, zona per zona, senza aprire le valvole.
+
+L'AI viene interpellata **all'inizio di ogni ciclo**, programmato o avviato a mano, dopo il controllo della pioggia. Non viene interpellata se il timer manuale è attivo o se avvii con una durata fissa.
+
+### 8. Allarme terriccio secco
+
+Nel passo *Programmazione* imposta la **soglia** (25% di default; 0 = spento). Se una zona con sensore resta sotto la soglia per 5 minuti ricevi **una notifica** sulle *Altre notifiche* (punto 4) e si accende il sensore binario *Terriccio secco* della zona. Non ricevi altre notifiche finché l'umidità non risale almeno 3 punti sopra la soglia: un valore che oscilla intorno al 25% non ti tempesta di messaggi.
+
+### 9. Usare l'integrazione nelle tue automazioni
+
+Tutto quello che vedi nella card è un'entità o un'azione, quindi puoi usarlo nelle automazioni. Alcuni esempi:
+
+```yaml
+# Spegne una zona da novembre a marzo e la riaccende in primavera
+triggers:
+  - trigger: time
+    at: "08:00:00"
+actions:
+  - action: irrigazione_ai.set_schedule
+    target:
+      entity_id: select.balcone_programmazione
+    data:
+      mode: "{{ 'off' if now().month in [11, 12, 1, 2, 3] else 'days' }}"
+```
+
+```yaml
+# Avvia un ciclo extra di 10 minuti se fa molto caldo
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.temperatura_esterna
+    above: 35
+actions:
+  - action: irrigazione_ai.start
+    data:
+      duration: 10
+```
+
+```yaml
+# Notifica speciale quando l'AI decide di non irrigare
+triggers:
+  - trigger: state
+    entity_id: sensor.irrigazione_decisione_ai
+    to: skip
+actions:
+  - action: notify.mobile_app_mio_telefono
+    data:
+      message: "Oggi niente acqua: {{ state_attr('sensor.irrigazione_decisione_ai', 'reason') }}"
+```
+
+I nomi delle entità dipendono dal nome che hai dato all'impianto e alle zone: li trovi in *Impostazioni → Dispositivi e servizi → Irrigazione AI*.
+
+### 10. Se avevi già automazioni di irrigazione
+
+Puoi provare l'integrazione senza toccare quello che hai: non modifica automazioni, helper, `configuration.yaml` o dashboard, usa solo le valvole e le notifiche che le assegni.
+
+Finché convivono:
+- metti **Chiusura di sicurezza = 0** e spegni **Chiudi le valvole all'avvio**, altrimenti l'integrazione chiuderebbe anche le valvole aperte dalle tue automazioni;
+- scegli giorni o orari diversi da quelli delle tue automazioni, per non irrigare due volte;
+- tieni presente che litri e calendario dell'integrazione conteranno anche le irrigazioni delle tue automazioni, come aperture manuali.
+
+Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le due sicurezze e sistema i giorni. Se cambi idea, riaccendi le automazioni e rimuovi l'integrazione: si porta via le sue entità e i suoi dati e non lascia altro, a parte lo storico nel database e le eventuali card nelle dashboard.
+
+### 11. Problemi comuni
+
+| Problema | Soluzione |
+| --- | --- |
+| Non vedo le card nuove, o vedo quelle vecchie | Ricarica la pagina svuotando la cache (Ctrl+Shift+R nel browser; nell'app chiudila del tutto e riaprila) |
+| "La API key è stata rifiutata" | Hai copiato la chiave segreta e non il suo ID? È ancora attiva? Il progetto può usare il modello scelto? Il messaggio d'errore del servizio è riportato tra parentesi |
+| Le *Durate AI* sono vuote | L'AI non ha ancora analizzato nulla: premi *Analizza ora* |
+| Il blocco pioggia non scatta mai | Serve un'entità meteo, e il suo stato deve indicare pioggia (`rainy`, `pouring`…) al momento dell'avvio |
+| I litri restano a 0 | Controlla la portata della zona: con 0 L/min i litri sono sempre 0 |
+| "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
+| Una valvola non si chiude | L'integrazione riprova tre volte e ti avvisa: controlla la batteria e la copertura radio della valvola |
+| Ho cambiato le opzioni durante un ciclo e non succede niente | È voluto: le modifiche si applicano alla fine del ciclo, per non interrompere l'irrigazione |
+
 
 ## 🧭 Il wizard, passo per passo
 
@@ -315,7 +524,7 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 
 **In che lingua sono i testi?** Form, entità e card seguono la lingua del tuo profilo. Notifiche, Live Activity, eventi del calendario e motivazioni dell'AI seguono la lingua di sistema (Impostazioni → Sistema → Generale): oggi italiano e inglese, le altre lingue usano l'inglese.
 
-**Quanto costa l'AI?** Una richiesta per ciclo, più quelle che lanci con *Analizza ora*: con modelli piccoli (per esempio `gpt-4.1-mini` o `gemini-2.5-flash`) sono frazioni di centesimo. Con Ollama in locale è gratis.
+**Quanto costa l'AI?** Una richiesta per ciclo, più quelle che lanci con *Analizza ora*. Con modelli piccoli (per esempio `gpt-4.1-mini` o `gemini-2.5-flash`) ogni richiesta costa una frazione di centesimo: con 2–3 cicli a settimana, 5 € di credito durano ben più di un anno. Con Ollama in locale, o con AI Task su un modello locale, è gratis.
 
 **La Live Activity funziona su Android?** Sì, come Live Update da Android 16. Sulle versioni precedenti arriva come notifica normale, che si aggiorna al suo posto.
 
@@ -342,7 +551,7 @@ Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irr
 - **safety closing** of valves;
 - two ready-made **Lovelace cards** (controls and charts), no extra frontend dependencies.
 
-Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI in Italian and English. Like it? [Buy me a coffee](https://buymeacoffee.com/acaonweb) ☕
+Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI, notifications and Live Activities in Italian and English. The step-by-step guide above (📖 *Guida pratica*) covers flow rate and soil volume, schedules, notifications, Live Activities, writing your own formula, AI setup, the dry-soil alarm, automations and troubleshooting. Like it? [Buy me a coffee](https://buymeacoffee.com/acaonweb) ☕
 
 ## Licenza
 
