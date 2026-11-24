@@ -13,6 +13,7 @@ from . import IrrigazioneConfigEntry
 from .controller import IrrigationController
 from .entity import IrrigazioneEntity
 from .history import HistoryEvent
+from .messages import tr
 
 BLOCK_LENGTH = timedelta(minutes=1)
 
@@ -61,13 +62,16 @@ class IrrigationCalendar(IrrigazioneEntity, CalendarEntity):
         if c.config.get("run_mode") == "sequential":
             length = sum(minutes.values())
         start = dt_util.as_local(when)
-        lines = [f"{name}: {mins} min (stima)" for name, mins in minutes.items()]
+        lines = [
+            tr(self.hass, "cal_estimate", zone=name, minutes=mins)
+            for name, mins in minutes.items()
+        ]
         if c.ai_active:
-            lines.append("La durata la deciderà l'AI al momento dell'avvio.")
+            lines.append(tr(self.hass, "cal_ai_decides"))
         return CalendarEvent(
             start=start,
             end=start + timedelta(minutes=max(length, 1)),
-            summary="Irrigazione prevista",
+            summary=tr(self.hass, "cal_planned"),
             description="\n".join(lines),
             uid=f"{c.entry.entry_id}_planned",
         )
@@ -82,7 +86,7 @@ class IrrigationCalendar(IrrigazioneEntity, CalendarEntity):
         return CalendarEvent(
             start=dt_util.as_local(start),
             end=dt_util.as_local(end),
-            summary="Irrigazione in corso",
+            summary=tr(self.hass, "cal_running"),
             uid=f"{c.entry.entry_id}_running",
         )
 

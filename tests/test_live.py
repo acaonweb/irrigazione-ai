@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.irrigazione_ai.const import DOMAIN
 
 from .conftest import VALVE_1, install_fake_valves, make_entry
+
 
 
 async def _setup(hass: HomeAssistant, calls):
@@ -42,17 +44,17 @@ async def test_cycle_live_activity(hass: HomeAssistant, valves, freezer) -> None
     await hass.async_block_till_done(wait_background_tasks=True)
 
     first = pushes[0].data
-    assert first["title"] == "💧 Irrigazione in corso"
-    assert "1️⃣ Secondo piano · fine" in first["message"]
-    assert "2️⃣ Sottotetto · fine" in first["message"]
+    assert first["title"] == "💧 Watering"
+    assert "1️⃣ Secondo piano · ends" in first["message"]
+    assert "2️⃣ Sottotetto · ends" in first["message"]
     assert first["data"]["live_update"] is True
     assert first["data"]["silent"] is False
     assert first["data"]["url"] == "/lovelace/irrigazione"
     tag = first["data"]["tag"]
 
     last = pushes[-1].data
-    assert last["title"] == "☑️ Irrigazione terminata"
-    assert "Totale" in last["message"]
+    assert last["title"] == "☑️ Watering finished"
+    assert "Total" in last["message"]
     assert last["data"]["tag"] == tag
     # aggiornamenti intermedi silenziosi
     assert all(p.data["data"]["silent"] for p in pushes[1:-1])
@@ -69,13 +71,13 @@ async def test_manual_live_activity(hass: HomeAssistant, valves, freezer) -> Non
     _entry, pushes = await _setup(hass, valves)
     await hass.services.async_call("switch", "turn_on", {"entity_id": VALVE_1}, blocking=True)
     await hass.async_block_till_done()
-    assert pushes[0].data["title"] == "💧 Valvola aperta"
-    assert "aperta a mano · chiusura" in pushes[0].data["message"]
+    assert pushes[0].data["title"] == "💧 Valve open"
+    assert "opened by hand · closes" in pushes[0].data["message"]
 
     freezer.tick(timedelta(minutes=10))
     await hass.services.async_call("switch", "turn_off", {"entity_id": VALVE_1}, blocking=True)
     await hass.async_block_till_done()
-    assert pushes[-1].data["title"] == "☑️ Irrigazione terminata"
+    assert pushes[-1].data["title"] == "☑️ Watering finished"
     assert "Secondo piano · 10 min · 7.3 L" in pushes[-1].data["message"]
 
 
@@ -104,3 +106,14 @@ async def test_card_entity_map(hass: HomeAssistant, valves) -> None:
     assert card["system"]["calendar"] == "calendar.irrigazione_irrigation_log"
     assert card["zones"][0]["valve"] == VALVE_1
     assert card["zones"][0]["duration"] == "sensor.secondo_piano_planned_duration"
+
+
+async def test_cycle_event_summary(hass, valves) -> None:
+    """Avvio da azione: titolo dell'evento e testi della Live Activity."""
+    entry, pushes = await _setup(hass, valves)
+    await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert pushes[0].data["title"] == "💧 Watering"
+    assert pushes[-1].data["title"] == "☑️ Watering finished"
+    assert "Total" in pushes[-1].data["message"]
+    assert entry.runtime_data.history.events[-1].summary == "Watering (action)"

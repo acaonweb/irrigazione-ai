@@ -31,7 +31,7 @@
           "exposure": "Exposure",
           "plants": "Plants",
           "schedule": "When to water",
-          "days": "Days",
+          "days": "Days (only with 'Chosen days')",
           "formula": "Zone formula"
         },
         "data_description": {
@@ -46,7 +46,7 @@
           "exposure": "Main orientation of the zone (used by the AI analysis)",
           "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
           "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
-          "days": "Used with 'Chosen days'",
+          "days": "Ignored with the other choices",
           "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
         }
       },
@@ -256,7 +256,7 @@
             "exposure": "Exposure",
             "plants": "Plants",
             "schedule": "When to water",
-            "days": "Days",
+            "days": "Days (only with 'Chosen days')",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -271,7 +271,7 @@
             "exposure": "Main orientation of the zone (used by the AI analysis)",
             "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
-            "days": "Used with 'Chosen days'",
+            "days": "Ignored with the other choices",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         },
@@ -289,7 +289,7 @@
             "exposure": "Exposure",
             "plants": "Plants",
             "schedule": "When to water",
-            "days": "Days",
+            "days": "Days (only with 'Chosen days')",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -304,7 +304,7 @@
             "exposure": "Main orientation of the zone (used by the AI analysis)",
             "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
-            "days": "Used with 'Chosen days'",
+            "days": "Ignored with the other choices",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         }

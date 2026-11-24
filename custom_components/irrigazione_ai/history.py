@@ -12,6 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from .messages import liters_text, tr
+
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
@@ -193,8 +195,14 @@ class IrrigationHistory:
                     kind=KIND_MANUAL,
                     start=start.isoformat(),
                     end=max(when, start).isoformat(),
-                    summary=f"Apertura manuale: {zone_name}",
-                    description=f"{zone_name}: {minutes} min, {liters:.1f} L",
+                    summary=tr(self.hass, "ev_manual", zone=zone_name),
+                    description=tr(
+                        self.hass,
+                        "ev_zone_line",
+                        zone=zone_name,
+                        minutes=minutes,
+                        liters=liters_text(self.hass, liters),
+                    ),
                     zones={zone_id: {"name": zone_name, "minutes": minutes, "liters": round(liters, 1)}},
                 )
             self._add_event(event)
@@ -237,13 +245,21 @@ class IrrigationHistory:
             liters = max(0.0, self.zone(zone_id).total - cycle["before"][zone_id])
             total += liters
             zones[zone_id] = {"name": name, "minutes": minutes, "liters": round(liters, 1)}
-            lines.append(f"{name}: {minutes} min, {liters:.1f} L")
+            lines.append(
+                tr(
+                    self.hass,
+                    "ev_zone_line",
+                    zone=name,
+                    minutes=minutes,
+                    liters=liters_text(self.hass, liters),
+                )
+            )
         if cycle["note"]:
             lines.append(cycle["note"])
         if interrupted:
-            lines.append("Interrotta prima della fine.")
-        lines.append(f"Totale: {total:.1f} L")
-        summary = cycle["summary"] + (" (interrotta)" if interrupted else "")
+            lines.append(tr(self.hass, "ev_interrupted_line"))
+        lines.append(tr(self.hass, "ev_total", liters=liters_text(self.hass, total)))
+        summary = cycle["summary"] + (tr(self.hass, "ev_interrupted") if interrupted else "")
         event = HistoryEvent(
             uid=uuid.uuid4().hex,
             kind=KIND_CYCLE,

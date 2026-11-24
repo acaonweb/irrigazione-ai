@@ -309,6 +309,8 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 
 **Aggiorno dalla 0.9: cosa succede ai giorni?** Ogni zona eredita la frequenza che avevi (per esempio "una volta a settimana, lunedì" diventa "giorni scelti: lunedì"), quindi l'impianto continua a irrigare negli stessi giorni. Il vecchio selettore *Frequenza* sparisce.
 
+**In che lingua sono i testi?** Form, entità e card seguono la lingua del tuo profilo. Notifiche, Live Activity, eventi del calendario e motivazioni dell'AI seguono la lingua di sistema (Impostazioni → Sistema → Generale): oggi italiano e inglese, le altre lingue usano l'inglese.
+
 **Quanto costa l'AI?** Una richiesta per ciclo, più quelle che lanci con *Analizza ora*: con modelli piccoli (per esempio `gpt-4.1-mini` o `gemini-2.5-flash`) sono frazioni di centesimo. Con Ollama in locale è gratis.
 
 **La Live Activity funziona su Android?** Sì, come Live Update da Android 16. Sulle versioni precedenti arriva come notifica normale, che si aggiorna al suo posto.

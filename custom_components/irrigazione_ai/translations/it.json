@@ -31,7 +31,7 @@
           "exposure": "Esposizione",
           "plants": "Piante",
           "schedule": "Quando irrigare",
-          "days": "Giorni",
+          "days": "Giorni (solo con 'Giorni scelti')",
           "formula": "Formula della zona"
         },
         "data_description": {
@@ -46,7 +46,7 @@
           "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
           "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
           "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
-          "days": "Usati con 'Giorni scelti'",
+          "days": "Ignorati con le altre scelte",
           "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
         }
       },
@@ -256,7 +256,7 @@
             "exposure": "Esposizione",
             "plants": "Piante",
             "schedule": "Quando irrigare",
-            "days": "Giorni",
+            "days": "Giorni (solo con 'Giorni scelti')",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -271,7 +271,7 @@
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
             "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
-            "days": "Usati con 'Giorni scelti'",
+            "days": "Ignorati con le altre scelte",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         },
@@ -289,7 +289,7 @@
             "exposure": "Esposizione",
             "plants": "Piante",
             "schedule": "Quando irrigare",
-            "days": "Giorni",
+            "days": "Giorni (solo con 'Giorni scelti')",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -304,7 +304,7 @@
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
             "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
-            "days": "Usati con 'Giorni scelti'",
+            "days": "Ignorati con le altre scelte",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         }

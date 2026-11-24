@@ -17,6 +17,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_LIVE_DEVICES, CONF_LIVE_URL, LIVE_CLEAR_DELAY, ZONE_NUMBERS
+from .messages import liters_text, tr
 
 if TYPE_CHECKING:
     from .controller import IrrigationController
@@ -62,17 +63,25 @@ class LiveActivity:
             run = c.zone_runs.get(zone_id) if c.running else None
             if run is not None:
                 if run.done:
-                    lines.append(f"☑️ {zone.name} terminata")
+                    lines.append("☑️ " + tr(self.hass, "live_zone_done", zone=zone.name))
                 elif run.active or run.starts_at <= dt_util.utcnow() + timedelta(seconds=5):
-                    lines.append(f"{number} {zone.name} · fine {_hhmm(run.ends_at)}")
+                    lines.append(
+                        f"{number} "
+                        + tr(self.hass, "live_zone_ends", zone=zone.name, time=_hhmm(run.ends_at))
+                    )
                     last_end = max(last_end or run.ends_at, run.ends_at)
                 else:
-                    lines.append(f"⏳ {zone.name} · dalle {_hhmm(run.starts_at)}")
+                    lines.append(
+                        "⏳ "
+                        + tr(self.hass, "live_zone_waiting", zone=zone.name, time=_hhmm(run.starts_at))
+                    )
                     last_end = max(last_end or run.ends_at, run.ends_at)
             elif c.history.is_open(zone_id):
                 close_at = c.manual_close_at.get(zone.valve)
-                tail = f" · chiusura {_hhmm(close_at)}" if close_at else ""
-                lines.append(f"{number} {zone.name} · aperta a mano{tail}")
+                tail = (
+                    tr(self.hass, "live_manual_close", time=_hhmm(close_at)) if close_at else ""
+                )
+                lines.append(f"{number} " + tr(self.hass, "live_manual", zone=zone.name) + tail)
                 if close_at:
                     last_end = max(last_end or close_at, close_at)
         return lines, last_end
@@ -86,9 +95,9 @@ class LiveActivity:
             return
         c = self.controller
         if c.running:
-            title = "💧 Irrigazione in corso" + (" · AI" if c.ai_last_used else "")
+            title = tr(self.hass, "live_running") + (" · AI" if c.ai_last_used else "")
         else:
-            title = "💧 Valvola aperta"
+            title = tr(self.hass, "live_valve_open")
         self._cancel_clear()
         self.active = True
         await self._send(
@@ -109,14 +118,17 @@ class LiveActivity:
         if event is not None:
             for zone in event.zones.values():
                 total += zone.get("liters", 0)
-                lines.append(f"☑️ {zone['name']} · {zone['minutes']} min · {zone['liters']:.1f} L")
+                lines.append(
+                    f"☑️ {zone['name']} · {zone['minutes']} min · "
+                    f"{liters_text(self.hass, zone['liters'])} L"
+                )
             if len(event.zones) > 1:
-                lines.append(f"Totale {total:.1f} L")
-        title = "⏹️ Irrigazione interrotta" if interrupted else "☑️ Irrigazione terminata"
+                lines.append(tr(self.hass, "live_total", liters=liters_text(self.hass, total)))
+        title = tr(self.hass, "live_stopped" if interrupted else "live_done")
         await self._send(
             title,
-            "\n".join(lines) or "Tutte le zone completate",
-            critical="Finita",
+            "\n".join(lines) or tr(self.hass, "live_all_done"),
+            critical=tr(self.hass, "live_finished"),
             icon="mdi:check-circle",
             color=COLOR_STOPPED if interrupted else COLOR_DONE,
             silent=False,

@@ -127,6 +127,7 @@ from .const import (
 from .formula import FormulaError, render_formula
 from .history import IrrigationHistory
 from .live import LiveActivity
+from .messages import tr
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -747,13 +748,11 @@ class IrrigationController:
             self.last_block = "rain"
             self.last_block_at = dt_util.utcnow()
             self.history.add_block(
-                "Irrigazione saltata: pioggia",
-                f"Meteo: {self.weather_state()}. Blocco pioggia attivo.",
+                tr(self.hass, "block_rain"),
+                tr(self.hass, "block_rain_desc", weather=self.weather_state()),
             )
             self.async_update_listeners()
-            await self._notify(
-                "Irrigazione bloccata: il meteo indica pioggia e il blocco pioggia è attivo."
-            )
+            await self._notify(tr(self.hass, "notify_rain"))
             return False
 
         durations: dict[str, int] = {}
@@ -767,25 +766,23 @@ class IrrigationController:
                 if on_error == AI_ON_ERROR_SKIP:
                     self.last_block = "ai_error"
                     self.last_block_at = dt_util.utcnow()
-                    self.history.add_block("Irrigazione saltata: AI non riuscita", str(err))
+                    self.history.add_block(tr(self.hass, "block_ai_error"), str(err))
                     self.async_update_listeners()
-                    await self._notify(f"Irrigazione annullata: l'analisi AI non è riuscita ({err}).")
+                    await self._notify(tr(self.hass, "notify_ai_error_skip", error=err))
                     return False
                 if on_error == AI_ON_ERROR_DISABLE:
                     self.ai_enabled = False
                     self.async_update_listeners()
-                    await self._notify(
-                        f"Analisi AI non riuscita ({err}): analisi AI disattivata, irrigo con la formula."
-                    )
+                    await self._notify(tr(self.hass, "notify_ai_error_disable", error=err))
                 else:
-                    await self._notify(f"Analisi AI non riuscita ({err}): irrigo con la formula.")
+                    await self._notify(tr(self.hass, "notify_ai_error_formula", error=err))
             else:
                 if not result.irrigate:
                     self.last_block = "ai"
                     self.last_block_at = dt_util.utcnow()
-                    self.history.add_block("Irrigazione saltata dall'AI", result.reason)
+                    self.history.add_block(tr(self.hass, "block_ai"), result.reason)
                     self.async_update_listeners()
-                    await self._notify(f"Irrigazione saltata dall'AI: {result.reason}")
+                    await self._notify(tr(self.hass, "notify_ai_skip", reason=result.reason))
                     return False
                 durations = {
                     zone_id: zr.minutes
@@ -807,17 +804,18 @@ class IrrigationController:
             return False
 
         self._plan(durations)
-        titles = {
-            SOURCE_SCHEDULE: "Irrigazione programmata",
-            SOURCE_SERVICE: "Irrigazione (servizio)",
-        }
-        summary = titles.get(source, "Irrigazione manuale")
+        titles = {SOURCE_SCHEDULE: "cycle_schedule", SOURCE_SERVICE: "cycle_service"}
+        summary = tr(self.hass, titles.get(source, "cycle_manual"))
         note = None
         if self.ai_last_used and self.ai_result is not None:
             summary += " · AI"
-            note = f"AI: {self.ai_result.reason}" if self.ai_result.reason else None
+            note = (
+                tr(self.hass, "note_ai", reason=self.ai_result.reason)
+                if self.ai_result.reason
+                else None
+            )
         elif duration is None and self.manual_timer > 0:
-            note = f"Timer manuale: {self.manual_timer} min"
+            note = tr(self.hass, "note_timer", minutes=self.manual_timer)
         self.history.cycle_started(
             summary,
             {zid: (self.zones[zid].name, mins) for zid, mins in durations.items()},
@@ -833,7 +831,7 @@ class IrrigationController:
         )
         origin = " (AI)" if self.ai_last_used else ""
         await self.live.async_update(silent=False)
-        await self._notify(f"Irrigazione avviata{origin}. {details}.")
+        await self._notify(tr(self.hass, "notify_started", origin=origin, details=details))
 
         self._run_task = self.entry.async_create_background_task(
             self.hass, self._async_run(), name=f"{DOMAIN}_run_{self.entry.entry_id}"
@@ -874,7 +872,7 @@ class IrrigationController:
         self._run_task = None
         self.async_update_listeners()
         await self.live.async_finish(event, interrupted=False)
-        await self._notify("Irrigazione terminata.")
+        await self._notify(tr(self.hass, "notify_finished"))
         self._apply_pending_reload()
 
     @callback
@@ -928,7 +926,7 @@ class IrrigationController:
             await self.live.async_finish(event, interrupted=True)
         self.async_update_listeners()
         if was_running and notify:
-            await self._notify("Irrigazione interrotta.")
+            await self._notify(tr(self.hass, "notify_stopped"))
         self._apply_pending_reload()
 
     # ------------------------------------------------------------------
@@ -959,7 +957,7 @@ class IrrigationController:
             if not self._is_open(entity_id):
                 return
         _LOGGER.error("Impossibile chiudere la valvola %s", entity_id)
-        await self._notify(f"Attenzione: la valvola {entity_id} non si è chiusa.")
+        await self._notify(tr(self.hass, "notify_valve_stuck", valve=entity_id))
 
     async def _close_all(self) -> None:
         to_close = [z.valve for z in self.zones.values() if self._is_open(z.valve)]
@@ -1010,7 +1008,7 @@ class IrrigationController:
                 if self._is_open(entity_id):
                     await self._close_valve(entity_id)
                     await self._notify(
-                        f"{zone.name} chiusa automaticamente dopo {minutes} minuti (sicurezza)."
+                        tr(self.hass, "notify_safety", zone=zone.name, minutes=minutes)
                     )
 
             self._safety_timers[entity_id] = async_call_later(
