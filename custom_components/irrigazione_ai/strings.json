@@ -29,6 +29,7 @@
           "coefficient": "Coefficient",
           "soil_volume": "Soil volume",
           "exposure": "Exposure",
+          "plants": "Plants",
           "schedule": "When to water",
           "days": "Days",
           "formula": "Zone formula"
@@ -43,6 +44,7 @@
           "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
           "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
           "exposure": "Main orientation of the zone (used by the AI analysis)",
+          "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
           "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
           "days": "Used with 'Chosen days'",
           "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
@@ -84,7 +86,7 @@
       },
       "formula": {
         "title": "Duration formula",
-        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
         "data": {
           "formula": "Formula"
         },
@@ -179,7 +181,7 @@
       },
       "formula": {
         "title": "Duration formula",
-        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
+        "description": "Write a Jinja template that returns the minutes of watering. Available variables: `moisture` soil moisture % (min 10, 50 if no sensor), `temperature` outdoor °C (20 if missing), `humidity` outdoor %, `weather` weather state (sunny, rainy...), `weather_factor` (sunny 1.1, partlycloudy 0.8, cloudy 0.5, rain 0.2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (text). You can also read any entity with `states('sensor.xxx')`. The result is always kept between the zone minimum and maximum.",
         "data": {
           "formula": "Formula"
         },
@@ -252,6 +254,7 @@
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
             "exposure": "Exposure",
+            "plants": "Plants",
             "schedule": "When to water",
             "days": "Days",
             "formula": "Zone formula"
@@ -266,6 +269,7 @@
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
             "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
             "days": "Used with 'Chosen days'",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
@@ -283,6 +287,7 @@
             "coefficient": "Coefficient",
             "soil_volume": "Soil volume",
             "exposure": "Exposure",
+            "plants": "Plants",
             "schedule": "When to water",
             "days": "Days",
             "formula": "Zone formula"
@@ -297,6 +302,7 @@
             "coefficient": "1 = formula as is; 1.2 = 20% more water; 0.8 = 20% less",
             "soil_volume": "Liters of substrate in this zone (used by the AI analysis)",
             "exposure": "Main orientation of the zone (used by the AI analysis)",
+            "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
             "days": "Used with 'Chosen days'",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"

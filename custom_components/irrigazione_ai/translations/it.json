@@ -29,6 +29,7 @@
           "coefficient": "Coefficiente",
           "soil_volume": "Volume del terriccio",
           "exposure": "Esposizione",
+          "plants": "Piante",
           "schedule": "Quando irrigare",
           "days": "Giorni",
           "formula": "Formula della zona"
@@ -43,6 +44,7 @@
           "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
           "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
           "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+          "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
           "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
           "days": "Usati con 'Giorni scelti'",
           "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
@@ -84,7 +86,7 @@
       },
       "formula": {
         "title": "Formula della durata",
-        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
+        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (testo). Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
         "data": {
           "formula": "Formula"
         },
@@ -179,7 +181,7 @@
       },
       "formula": {
         "title": "Formula della durata",
-        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`. Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
+        "description": "Scrivi un template Jinja che restituisce i minuti di irrigazione. Variabili disponibili: `moisture` umidità del terriccio % (minimo 10, 50 senza sensore), `temperature` °C esterni (20 se manca), `humidity` umidità esterna %, `weather` stato meteo (sunny, rainy...), `weather_factor` (sereno 1,1, poco nuvoloso 0,8, nuvoloso 0,5, pioggia 0,2), `coefficient`, `flow_rate` L/min, `soil_volume` L, `exposure` (north, south, east, west), `min_duration`, `max_duration`, `plants` (testo). Puoi leggere anche qualsiasi entità con `states('sensor.xxx')`. Il risultato resta sempre tra minimo e massimo della zona.",
         "data": {
           "formula": "Formula"
         },
@@ -252,6 +254,7 @@
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
             "exposure": "Esposizione",
+            "plants": "Piante",
             "schedule": "Quando irrigare",
             "days": "Giorni",
             "formula": "Formula della zona"
@@ -266,6 +269,7 @@
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
             "days": "Usati con 'Giorni scelti'",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
@@ -283,6 +287,7 @@
             "coefficient": "Coefficiente",
             "soil_volume": "Volume del terriccio",
             "exposure": "Esposizione",
+            "plants": "Piante",
             "schedule": "Quando irrigare",
             "days": "Giorni",
             "formula": "Formula della zona"
@@ -297,6 +302,7 @@
             "coefficient": "1 = formula così com'è; 1,2 = 20% di acqua in più; 0,8 = 20% in meno",
             "soil_volume": "Litri di substrato in questa zona (usato dall'analisi AI)",
             "exposure": "Orientamento principale della zona (usato dall'analisi AI)",
+            "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
             "days": "Usati con 'Giorni scelti'",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"

@@ -39,7 +39,8 @@ Una zona è una valvola (`switch` o `valve`) con i suoi dati:
 - durata minima e massima;
 - coefficiente;
 - volume del terriccio;
-- esposizione.
+- esposizione;
+- **piante** che ci crescono, scritte con parole tue (per esempio "rosmarino e lavanda" o "pomodori").
 
 Le zone partono in parallelo o una dopo l'altra, utile se la pressione dell'acqua è bassa.
 
@@ -60,7 +61,8 @@ Accendi *Analisi AI* e prima di ogni ciclo un modello decide **se irrigare e qua
 - evapotraspirazione;
 - pioggia caduta nelle ultime 12 ore (dallo storico di Home Assistant);
 - previsioni orarie;
-- esposizione e volume del terriccio.
+- esposizione e volume del terriccio;
+- le **piante** di ogni zona: rosmarino, lavanda e succulente vogliono poca acqua, ortaggi e piante giovani di più.
 
 Funziona con un'**entità AI Task** già configurata in Home Assistant oppure con la **tua API key** (OpenAI, Anthropic Claude, Google Gemini), o con **Ollama in locale**. Prima di salvare la chiave viene verificata con una richiesta di prova. Il pulsante *Analizza ora* ti fa vedere cosa farebbe l'AI senza aprire una valvola.
 
@@ -137,7 +139,7 @@ flowchart LR
 | Passo | Cosa chiede |
 | --- | --- |
 | 1. Impianto | Nome; entità meteo e sensori di temperatura e umidità esterna, tutti facoltativi (senza meteo il blocco pioggia resta inattivo) |
-| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
+| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
 | 3. Programmazione | Partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover) |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
@@ -229,6 +231,7 @@ Formula predefinita:
 | `weather_factor` | Sereno 1,1 · poco nuvoloso 0,8 · nuvoloso 0,5 · nebbia 0,6 · pioggia 0,2 · altro 1 |
 | `coefficient`, `flow_rate`, `soil_volume`, `exposure` | Dati della zona (portata in L/min, volume in L, `north`/`south`/`east`/`west`) |
 | `min_duration`, `max_duration` | Limiti della zona in minuti |
+| `plants` | Piante della zona, come le hai scritte (testo vuoto se non indicate) |
 
 Il risultato resta sempre tra durata minima e massima. Se una formula personalizzata smette di funzionare, per esempio perché un sensore diventa non disponibile, si usa quella predefinita e l'errore compare nell'attributo `formula_error`.
 
@@ -238,6 +241,9 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 
 {# Più acqua con l'esposizione a sud #}
 {{ (40 - moisture / 2) * (1.3 if exposure == 'south' else 1) * weather_factor }}
+
+{# Meno acqua alle piante mediterranee #}
+{{ (40 - moisture / 2) * (0.6 if 'rosmarino' in plants | lower else 1) * weather_factor }}
 
 {# Tempo fisso deciso da un helper #}
 {{ states('input_number.minuti_irrigazione') | float(20) }}
@@ -251,7 +257,7 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 - meteo attuale;
 - ore e percentuale di pioggia nelle ultime 12 ore;
 - previsioni orarie delle prossime 12 ore;
-- per ogni zona: umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula;
+- per ogni zona: piante, umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula;
 - le tue note.
 
 **Le regole che segue:**
@@ -262,6 +268,7 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 - dà 0 litri sopra il 70% di umidità del terriccio;
 - dà un minimo di mantenimento tra 50% e 65%, anche con volumi grandi (oltre 1000 L);
 - se ha piovuto meno di metà delle ore, riduce i litri in proporzione;
+- dosa l'acqua sulle **piante**: poca per quelle resistenti alla siccità (succulente, cactus, rosmarino, lavanda, olivo, aromatiche mediterranee), di più per ortaggi, piante da fiore o a foglia larga, agrumi in vaso e piante giovani, tenendo conto della stagione;
 - con l'esposizione a sud aumenta l'acqua, a nord la riduce.
 
 **Il prompt è modificabile.** Nelle opzioni AI c'è l'editor (template Jinja), già compilato con il prompt predefinito. Variabili:

@@ -55,6 +55,7 @@ from .const import (
     CONF_MIN_DURATION,
     CONF_MOISTURE,
     CONF_NOTIFY,
+    CONF_PLANTS,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
@@ -271,6 +272,10 @@ def _zone_schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=EXPOSURES, translation_key="exposure")
             ),
+            vol.Optional(
+                CONF_PLANTS,
+                description={"suggested_value": defaults.get(CONF_PLANTS)},
+            ): selector.TextSelector(),
             vol.Required(
                 CONF_ZONE_SCHEDULE,
                 default=defaults.get(CONF_ZONE_SCHEDULE, DEFAULT_SCHEDULE),
@@ -340,6 +345,7 @@ def _zone_variables(hass: HomeAssistant, system: dict[str, Any], zone: ZoneConfi
         exposure=zone.exposure,
         min_duration=zone.min_duration,
         max_duration=zone.max_duration,
+        plants=zone.plants,
     )
 
 
@@ -385,6 +391,11 @@ def _clean_zone(
     data = dict(user_input)
     previous = previous or {}
     data[CONF_ZONE_DAYS] = [d for d in WEEKDAYS if d in data.get(CONF_ZONE_DAYS, [])]
+    plants = (data.get(CONF_PLANTS) or "").strip()
+    if plants:
+        data[CONF_PLANTS] = plants
+    else:
+        data.pop(CONF_PLANTS, None)
     schedule = data.get(CONF_ZONE_SCHEDULE, DEFAULT_SCHEDULE)
     if schedule == SCHEDULE_DAYS and not data[CONF_ZONE_DAYS]:
         data[CONF_ZONE_SCHEDULE] = SCHEDULE_OFF
@@ -544,6 +555,7 @@ SAMPLE_CONTEXT: dict[str, Any] = {
         {
             "index": 1,
             "name": "Zona",
+            "plants": "rosmarino e lavanda",
             "soil_moisture_percent": 35,
             "soil_volume_liters": 100,
             "exposure": "south",

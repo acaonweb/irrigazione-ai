@@ -297,3 +297,28 @@ async def test_prompt_editor_in_options(hass: HomeAssistant, valves, aioclient_m
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert "ai_prompt" not in entry.options
+
+
+async def test_plants_sent_to_ai(hass: HomeAssistant, valves, aioclient_mock) -> None:
+    """Le piante della zona arrivano all'AI; una zona senza piante manda null."""
+    aioclient_mock.post(
+        OPENAI_URL,
+        json=_openai_reply(
+            {"irrigate": True, "reason": "ok", "zone_1_liters": 5, "zone_1_reason": "poco",
+             "zone_2_liters": 10, "zone_2_reason": "di più"}
+        ),
+    )
+    entry = await _setup(hass, valves)
+    sub = next(s for s in entry.subentries.values() if s.title == "Secondo piano")
+    hass.config_entries.async_update_subentry(
+        entry, sub, data={**sub.data, "plants": "rosmarino e lavanda"}
+    )
+    await hass.async_block_till_done()
+    controller = entry.runtime_data
+    context = await controller.async_build_ai_context()
+    plants = {z["name"]: z["plants"] for z in context["zones"]}
+    assert plants == {"Secondo piano": "rosmarino e lavanda", "Sottotetto": None}
+    await hass.services.async_call(DOMAIN, "analyze", {}, blocking=True)
+    prompt = aioclient_mock.mock_calls[-1][2]["messages"][0]["content"]
+    assert "rosmarino e lavanda" in prompt
+    assert "drought-tolerant" in prompt

@@ -66,6 +66,7 @@ def formula_variables(
     exposure: str,
     min_duration: int,
     max_duration: int,
+    plants: str | None = None,
 ) -> dict[str, object]:
     """Variabili a disposizione della formula personalizzata.
 
@@ -86,6 +87,7 @@ def formula_variables(
         "exposure": exposure,
         "min_duration": min_duration,
         "max_duration": max_duration,
+        "plants": plants or "",
     }
 
 

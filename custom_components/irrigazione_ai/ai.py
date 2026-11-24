@@ -177,13 +177,13 @@ Data fields:
 - weather_now: current condition, outdoor temperature (°C) and outdoor air humidity (%).
 - rain_last_hours: hours and percentage of time it rained in the recent hours, and whether it rained at all.
 - forecast_next_hours: hourly forecast (condition, temperature, precipitation in mm and its probability).
-- zones: for each zone, soil_moisture_percent (0-100%), soil_volume_liters (liters of substrate to water), exposure (north/south/east/west: affects evaporation and sun), flow_rate_liters_per_minute, min_minutes/max_minutes and formula_minutes (the duration of the classic formula, for reference).
+- zones: for each zone, plants (what grows there, written by the owner; null if not given), soil_moisture_percent (0-100%), soil_volume_liters (liters of substrate to water), exposure (north/south/east/west: affects evaporation and sun), flow_rate_liters_per_minute, min_minutes/max_minutes and formula_minutes (the duration of the classic formula, for reference).
 
 Data (JSON):
 {{ data_json }}
 
 Your goal, for each zone:
-1. Estimate the expected evapotranspiration of the substrate.
+1. Estimate the expected evapotranspiration of the substrate and of the plants growing there.
 2. Estimate how much water is already present thanks to rain (fallen and expected).
 3. Compute the liters of water to add, sized on the soil volume: a larger substrate needs more liters to reach the same moisture.
 
@@ -191,6 +191,7 @@ Rules:
 - If it rained for more than 50% of the recent hours, or significant rain is expected in the next hours, set irrigate to false; if it rained less, reduce the liters proportionally.
 - If the soil moisture of a zone is above 70%, give that zone 0 liters.
 - If the soil moisture is between 50% and 65%, still give a small maintenance amount, even for large soil volumes (over 1000 L).
+- Size the water on the plants of each zone: drought-tolerant plants (succulents, cacti, rosemary, lavender, olive, Mediterranean herbs) need much less water and tolerate drier soil; leafy and flowering plants, vegetables, citrus in pots and young plants need more. Consider the season too. If plants is null, ignore it.
 - South exposure increases evaporation, north exposure reduces it.
 - Higher temperatures increase the water need.
 - Do not invent missing data: if something is missing or unclear, make a prudent estimate.

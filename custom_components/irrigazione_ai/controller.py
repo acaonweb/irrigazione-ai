@@ -75,6 +75,7 @@ from .const import (
     CONF_MIN_DURATION,
     CONF_MOISTURE,
     CONF_NOTIFY,
+    CONF_PLANTS,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
     CONF_SOIL_VOLUME,
@@ -152,6 +153,7 @@ class ZoneConfig:
     soil_volume: float
     exposure: str
     formula: str | None = None
+    plants: str | None = None
     schedule: str = DEFAULT_SCHEDULE
     days: tuple[str, ...] = tuple(DEFAULT_ZONE_DAYS)
     anchor: date | None = None
@@ -175,6 +177,7 @@ class ZoneConfig:
             soil_volume=float(data.get(CONF_SOIL_VOLUME, DEFAULT_SOIL_VOLUME)),
             exposure=data.get(CONF_EXPOSURE, DEFAULT_EXPOSURE),
             formula=(data.get(CONF_FORMULA) or "").strip() or None,
+            plants=(data.get(CONF_PLANTS) or "").strip() or None,
             schedule=(
                 data.get(CONF_ZONE_SCHEDULE)
                 if data.get(CONF_ZONE_SCHEDULE) in SCHEDULES
@@ -481,6 +484,7 @@ class IrrigationController:
             exposure=zone.exposure,
             min_duration=zone.min_duration,
             max_duration=zone.max_duration,
+            plants=zone.plants,
         )
 
     def calculated_minutes(self, zone: ZoneConfig) -> int:
@@ -659,6 +663,7 @@ class IrrigationController:
                 {
                     "index": index,
                     "name": zone.name,
+                    "plants": zone.plants,
                     "soil_moisture_percent": self.zone_moisture(zone),
                     "soil_volume_liters": zone.soil_volume,
                     "exposure": zone.exposure,

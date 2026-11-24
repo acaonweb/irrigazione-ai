@@ -93,6 +93,7 @@ DEFAULT_FREQUENCY: Final = FREQ_TWICE_WEEKLY
 
 # Programmazione per zona
 CONF_ZONE_SCHEDULE: Final = "schedule"
+CONF_PLANTS: Final = "plants"
 CONF_ZONE_DAYS: Final = "days"
 CONF_ZONE_ANCHOR: Final = "alternate_anchor"
 SCHEDULE_OFF: Final = "off"
