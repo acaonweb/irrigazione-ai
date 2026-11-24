@@ -98,7 +98,7 @@ I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, s
 - **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
 - Se l'AI non risponde scegli tu se irrigare con la formula, spegnere l'AI o saltare il ciclo. In ogni caso ricevi una notifica.
 
-### 🎛️ Due card pronte all'uso
+### 🎛️ Tre card pronte all'uso
 Si registrano da sole all'installazione e non richiedono mushroom, button-card o apexcharts.
 
 - **`custom:irrigazione-ai-card`, i comandi:**
@@ -108,6 +108,7 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
   - la riga del timer (off/15/30/60);
   - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
+- **`custom:irrigazione-ai-moisture-card`, umidità del terriccio di sensori a scelta:** lo stesso grafico con le fasce rosso, verde e blu, per piante che non sono zone dell'impianto (vasi annaffiati a mano, aromatiche…).
 - **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; il **registro delle irrigazioni** con gli ultimi eventi (cicli, aperture manuali, cicli saltati con il motivo), ciascuno con orario, minuti, dettaglio delle zone e litri, più la prossima irrigazione prevista; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
 
 ## 🔄 Come nasce un ciclo
@@ -372,6 +373,17 @@ entity: sensor.irrigazione_stato          # facoltativo, se hai più impianti
 type: custom:irrigazione-ai-charts-card   # grafici e registro
 log_items: 8                              # facoltativo: eventi mostrati nel registro
 show_log: true                            # facoltativo: false per nascondere il registro
+```
+
+```yaml
+type: custom:irrigazione-ai-moisture-card  # umidità del terriccio di sensori a scelta
+entities:
+  - entity: sensor.prezzemolo_umidita
+    name: Prezzemolo
+  - entity: sensor.rosmarino_umidita
+    name: Rosmarino
+hours: 120                                 # facoltativo: ore mostrate (default 5 giorni)
+threshold: 25                              # facoltativo: soglia "secco" (default quella dell'impianto)
 ```
 
 Le colonne dei 7 giorni usano le statistiche di Home Assistant, calcolate alla fine di ogni ora: su un'installazione nuova compaiono dopo il primo ciclo e la prima ora completa.

@@ -3,11 +3,12 @@
  *
  *   type: custom:irrigazione-ai-card          # controllo: generale, AI, pioggia, zone, timer, programmazione per zona
  *   type: custom:irrigazione-ai-charts-card   # grafici: consumi 7 giorni, umidità terriccio, esterno
+ *   type: custom:irrigazione-ai-moisture-card # umidità terriccio di sensori a scelta
  *
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.11.0";
+const CARD_VERSION = "0.11.1";
 
 const TEXT = {
   it: {
@@ -605,11 +606,103 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
   }
 }
 
+/* ------------------------------------------------------------------ */
+
+/*
+ * Umidità del terriccio di sensori a scelta (anche fuori dalle zone), con lo
+ * stesso grafico della card dei grafici:
+ *   type: custom:irrigazione-ai-moisture-card
+ *   entities:
+ *     - entity: sensor.rosmarino_umidita
+ *       name: Rosmarino
+ *   hours: 120        # facoltativo, ore mostrate (default 5 giorni)
+ *   threshold: 25     # facoltativo, soglia "secco" (default quella dell'impianto, o 25)
+ */
+class IrrigazioneAiMoistureCard extends IrrigazioneAiChartsCard {
+  static getStubConfig(hass) {
+    const id = Object.keys(hass.states).find((e) => e.startsWith("sensor.")
+      && hass.states[e].attributes.device_class === "moisture");
+    return { entities: id ? [id] : [] };
+  }
+
+  setConfig(config) {
+    if (!config || !Array.isArray(config.entities) || !config.entities.length) {
+      throw new Error("entities: indica almeno un sensore di umidità del terriccio");
+    }
+    super.setConfig(config);
+    this._items = config.entities.map((e) => (typeof e === "string" ? { entity: e } : e)).filter((e) => e.entity);
+  }
+
+  getCardSize() { return 3 * this._items.length; }
+
+  set hass(hass) {
+    const first = !this._hass;
+    this._hass = hass;
+    const now = Date.now();
+    const sig = this._signature(this._items.map((e) => e.entity));
+    if (first || !this._loaded || now - this._loaded > 10 * 60 * 1000) {
+      this._loaded = now;
+      this._sig = sig;
+      this._loadSoil();
+    } else if (sig !== this._sig) {
+      this._sig = sig;
+      this._draw();
+    }
+  }
+
+  _hours() { return Number(this._config.hours) > 0 ? Number(this._config.hours) : 120; }
+
+  async _loadSoil() {
+    const ids = this._items.map((e) => e.entity);
+    const end = new Date();
+    try {
+      const h = await this._hass.callWS({
+        type: "history/history_during_period", start_time: new Date(end - this._hours() * 3600e3).toISOString(),
+        end_time: end.toISOString(), entity_ids: ids, minimal_response: true, no_attributes: true,
+      });
+      this._soil = Object.fromEntries(ids.map((id) => [id, this._points(h[id])]));
+    } catch (e) { this._soil = {}; }
+    this._draw();
+  }
+
+  _draw() {
+    const t = this._t();
+    const map = this._map();
+    const dryAt = Number(this._config.threshold) > 0 ? Number(this._config.threshold)
+      : (map && map.dry_threshold > 0 ? map.dry_threshold : 25);
+    const now = Date.now();
+    const charts = this._items.map((it) => {
+      const st = this._s(it.entity);
+      const name = it.name || (st && st.attributes.friendly_name) || it.entity;
+      const cur = this._num(it.entity);
+      return `<div class="tile chart" data-more="${it.entity}">
+        <div class="ctitle">${this._config.prefix === false ? "" : `${t.soil} – `}${name}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
+        ${this._area((this._soil || {})[it.entity] || [], {
+          start: now - this._hours() * 3600e3, end: now, min: 0, max: 100, empty: t.noData, unit: "%",
+          yLabels: [dryAt, 50], thresholds: [[0, "#f44336"], [dryAt, "#4caf50"], [50, "#2196f3"]],
+        })}</div>`;
+    }).join("");
+    this.shadowRoot.innerHTML = `
+      <style>${BASE_STYLE}${CHART_STYLE}</style>
+      <ha-card><div class="grid">
+        ${this._config.title ? `<div class="sec-title">${this._config.title}</div>` : ""}
+        ${charts}
+      </div></ha-card>`;
+    this.shadowRoot.querySelectorAll("[data-more]").forEach((el) => el.addEventListener("click", () => {
+      const ev = new Event("hass-more-info", { bubbles: true, composed: true });
+      ev.detail = { entityId: el.dataset.more };
+      this.dispatchEvent(ev);
+    }));
+  }
+}
+
 customElements.define("irrigazione-ai-card", IrrigazioneAiCard);
 customElements.define("irrigazione-ai-charts-card", IrrigazioneAiChartsCard);
+customElements.define("irrigazione-ai-moisture-card", IrrigazioneAiMoistureCard);
 window.customCards = window.customCards || [];
 window.customCards.push(
   { type: "irrigazione-ai-card", name: "Irrigazione AI", description: "Comandi dell'impianto: generale, AI, pioggia, zone, timer, programmazione per zona, durate.", preview: true },
+  { type: "irrigazione-ai-moisture-card", name: "Irrigazione AI – Umidità terriccio", description: "Grafico dell'umidità del terriccio di sensori a scelta, con le fasce secco, ottimale e umido.", preview: true },
   { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici e registro", description: "Litri di oggi, del mese e totali, consumo degli ultimi 7 giorni, registro delle irrigazioni, umidità del terriccio e meteo esterno.", preview: true },
 );
 console.info(`%c IRRIGAZIONE-AI-CARD %c ${CARD_VERSION} `, "background:#26a69a;color:#fff", "");
