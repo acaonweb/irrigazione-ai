@@ -142,8 +142,12 @@ flowchart LR
 
 ## 📦 Installation
 
-1. In Home Assistant open **Settings → Marketplace** (before 2026.11: **HACS**).
-2. **Add from link** → `https://github.com/acaonweb/irrigazione-ai`, category *Integration*.
+[![Open in Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=acaonweb&repository=irrigazione-ai&category=integration)
+
+The button opens the Irrigazione AI page right in your Home Assistant. Otherwise:
+
+1. In Home Assistant open **Settings → Marketplace** (before 2026.11: **HACS**) and search for **Irrigazione AI**.
+2. If it doesn't show up, it isn't in the official catalog yet (the request is under review): use **Add from link** → `https://github.com/acaonweb/irrigazione-ai`, category *Integration*.
 3. Install **Irrigazione AI** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → Irrigazione AI.**
 5. Follow the wizard (the field-by-field guide is below), then add the cards to a dashboard.
