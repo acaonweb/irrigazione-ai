@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/card.png" alt="Card Irrigazione AI: comandi a riposo, comandi durante un ciclo con AI, grafici" width="900">
+  <img src="docs/card.png" alt="Le quattro card di Irrigazione AI: comandi durante un ciclo con AI e programmazione per zona; consumi, meteo e umidità delle zone; umidità di piante a scelta e registro delle irrigazioni" width="900">
 </p>
 
 <h1 align="center">
