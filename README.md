@@ -1,9 +1,9 @@
 <p align="center">
-  <b>🇮🇹 Italiano</b> · <a href="README.en.md">🇬🇧 English</a>
+  <a href="README.it.md">🇮🇹 Italiano</a> · <b>🇬🇧 English</b>
 </p>
 
 <p align="center">
-  <img src="docs/card.png" alt="Le quattro card di Irrigazione AI: comandi durante un ciclo con AI e programmazione per zona; consumi, meteo e umidità delle zone; umidità di piante a scelta e registro delle irrigazioni" width="900">
+  <img src="docs/card.png" alt="The four Irrigazione AI cards: controls during an AI cycle with per-zone schedules; water use, weather and zone moisture; moisture of plants of your choice and the irrigation log" width="900">
 </p>
 
 <h1 align="center">
@@ -14,340 +14,342 @@
 </h1>
 
 <p align="center">
-  <b>L'impianto di irrigazione che decide da solo quanta acqua dare, zona per zona.</b><br>
-  Un wizard, nessuna automazione da scrivere. Formula tua o agronomo AI, Live Activity sul telefono, registro dei litri.
+  <b>The irrigation system that decides on its own how much water to give, zone by zone.</b><br>
+  One wizard, no automations to write. Your own formula or an AI agronomist, Live Activities on your phone, a log of the liters used.
 </p>
 
 <p align="center">
   <a href="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml"><img src="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml/badge.svg" alt="Validate"></a>
   <img src="https://img.shields.io/badge/Home%20Assistant-2025.8%2B-41BDF5?logo=home-assistant&logoColor=white" alt="Home Assistant 2025.8+">
   <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-custom-orange" alt="Marketplace / HACS">
-  <img src="https://img.shields.io/badge/lingue-IT%20%7C%20EN-blue" alt="Italiano e inglese">
-  <img src="https://img.shields.io/badge/licenza-MIT-green" alt="MIT">
+  <img src="https://img.shields.io/badge/languages-IT%20%7C%20EN-blue" alt="Italian and English">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
   <a href="https://buymeacoffee.com/acaonweb"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-acaonweb-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 </p>
 
 ---
 
-Di solito un impianto di irrigazione in Home Assistant è un groviglio di helper, sensori template e automazioni che solo chi le ha scritte capisce. **Irrigazione AI** lo sostituisce con un'unica integrazione. Le valvole, i sensori di umidità e il meteo li scegli da un wizard. Lei decide quando partire e quanto irrigare ogni zona, ti avvisa sul telefono e tiene il conto dell'acqua.
+An irrigation system in Home Assistant is usually a tangle of helpers, template sensors and automations that only the person who wrote them understands. **Irrigazione AI** replaces it with a single integration. You pick the valves, the moisture sensors and the weather in a wizard. It decides when to start and how much to water each zone, notifies you on your phone and keeps track of the water used.
 
-## ✨ Cosa sa fare
+> The name is Italian ("irrigazione" means irrigation). The whole integration — forms, entities, cards, notifications, Live Activities and calendar — is available in English and Italian.
 
-### 🧭 Un wizard al posto delle automazioni
-Impianto, zone, programmazione, formula, AI e notifiche si configurano in pochi passi guidati, con descrizioni chiare per ogni campo. Le zone si aggiungono e si modificano quando vuoi dalla pagina dell'integrazione. Nessun file YAML, nessun riavvio.
+## ✨ What it does
 
-### 🌱 Ogni zona è diversa
-Una zona è una valvola (`switch` o `valve`) con i suoi dati:
-- sensore di umidità del terriccio;
-- portata in L/min;
-- durata minima e massima;
-- coefficiente;
-- volume del terriccio;
-- esposizione;
-- **piante** che ci crescono, scritte con parole tue (per esempio "rosmarino e lavanda" o "pomodori").
+### 🧭 A wizard instead of automations
+System, zones, scheduling, formula, AI and notifications are set up in a few guided steps, with a clear description for every field. Zones can be added and edited at any time from the integration page. No YAML files, no restarts.
 
-Le zone partono in parallelo o una dopo l'altra, utile se la pressione dell'acqua è bassa.
+### 🌱 Every zone is different
+A zone is a valve (`switch` or `valve`) with its own data:
+- soil moisture sensor;
+- flow rate in L/min;
+- minimum and maximum duration;
+- coefficient;
+- soil volume;
+- exposure;
+- the **plants** growing there, in your own words (for example "rosemary and lavender" or "tomatoes").
 
-### 📅 Ogni zona ha i suoi giorni
-Per ogni zona scegli quando irrigare, anche direttamente dalla card:
-- **spenta**;
-- **un giorno sì e uno no**, a partire dal giorno in cui lo scegli;
-- **giorni scelti**, quanti ne vuoi (per esempio lunedì, mercoledì, sabato e domenica);
-- **tutti i giorni**.
+Zones run in parallel or one after another, useful when water pressure is low.
 
-All'orario programmato partono solo le zone in programma quel giorno. *Avvia ora* irriga tutte le zone tranne quelle spente. Cambiare i giorni non ricarica l'integrazione e non interrompe un ciclo in corso.
+### 📅 Every zone has its own days
+For each zone you choose when to water, also straight from the card:
+- **off**;
+- **every other day**, starting from the day you choose it;
+- **chosen days**, as many as you like (for example Monday, Wednesday, Saturday and Sunday);
+- **every day**.
 
-### 🧪 La formula la scrivi tu
-La durata si calcola con un **template Jinja** nello stesso editor di Home Assistant. Hai a disposizione umidità, temperatura, meteo, portata, volume, esposizione e qualsiasi `states('sensor.xxx')`. Prima di salvare vedi **in anteprima quanti minuti darebbe a ogni zona** con i valori di adesso. Vuoi solo un timer fisso? `{{ 20 }}` e hai finito.
+At the scheduled time only the zones due that day start. *Start now* waters every zone except those that are off. Changing the days does not reload the integration and does not interrupt a running cycle.
 
-### 🤖 Un agronomo AI, senza server esterni
-Accendi *Analisi AI* e prima di ogni ciclo un modello decide **se irrigare e quanti litri dare a ogni zona**. Tiene conto di:
-- evapotraspirazione;
-- pioggia caduta nelle ultime 12 ore (dallo storico di Home Assistant);
-- previsioni orarie;
-- esposizione e volume del terriccio;
-- le **piante** di ogni zona: rosmarino, lavanda e succulente vogliono poca acqua, ortaggi e piante giovani di più.
+### 🧪 You write the formula
+The duration is computed by a **Jinja template** in the same editor Home Assistant uses. You have moisture, temperature, weather, flow rate, volume, exposure and any `states('sensor.xxx')` at hand. Before saving you see a **preview of how many minutes each zone would get** with the current values. Just want a fixed timer? `{{ 20 }}` and you're done.
 
-Funziona con un'**entità AI Task** già configurata in Home Assistant oppure con la **tua API key** (OpenAI, Anthropic Claude, Google Gemini), o con **Ollama in locale**. Prima di salvare la chiave viene verificata con una richiesta di prova. Il pulsante *Analizza ora* ti fa vedere cosa farebbe l'AI senza aprire una valvola.
+### 🤖 An AI agronomist, no external servers
+Turn on *AI analysis* and before every cycle a model decides **whether to water and how many liters to give each zone**. It takes into account:
+- evapotranspiration;
+- rain over the last 12 hours (from Home Assistant's history);
+- hourly forecast;
+- exposure and soil volume;
+- the **plants** of each zone: rosemary, lavender and succulents want little water, vegetables and young plants more.
 
-E il **prompt è tuo**: si modifica nelle opzioni come template Jinja, con tutti i dati a disposizione. Il formato della risposta lo aggiunge sempre l'integrazione, quindi nessuna modifica può rompere il calcolo dei litri.
+It works with an **AI Task entity** already set up in Home Assistant, with **your own API key** (OpenAI, Anthropic Claude, Google Gemini), or with **local Ollama**. Before saving, the key is checked with a test request. The *Analyze now* button shows what the AI would do without opening a valve.
 
-### 🌵 Allarme terriccio secco
-Se l'umidità del terriccio di una zona resta **sotto la soglia per 5 minuti** (25% di default, si cambia nelle opzioni; 0 = spento) arriva una notifica sui servizi di *Altre notifiche*, per esempio Pushover. Una sola per episodio: la zona torna "normale" quando risale di almeno 3 punti sopra la soglia. Ogni zona con sensore ha il sensore binario *Terriccio secco*, utile per la dashboard o per le tue automazioni, e la card colora di rosso la zona con la stessa soglia.
+And the **prompt is yours**: you edit it in the options as a Jinja template, with all the data available. The integration always appends the response format, so no edit can break the liters calculation.
 
-### 📱 Live Activity su iPhone e Android
-Durante l'irrigazione il telefono mostra una **Live Activity** (schermata di blocco e Dynamic Island su iPhone) o un **Live Update** (Android 16+):
+### 🌵 Dry soil alarm
+If a zone's soil moisture stays **below the threshold for 5 minutes** (25% by default, changeable in the options; 0 = off) you get a notification on the *Other notifications* services, for example Pushover. Only one per episode: the zone goes back to "normal" once it rises at least 3 points above the threshold. Every zone with a sensor has a *Dry soil* binary sensor, handy for dashboards or your own automations, and the card turns the zone red at the same threshold.
+
+### 📱 Live Activities on iPhone and Android
+While watering, your phone shows a **Live Activity** (lock screen and Dynamic Island on iPhone) or a **Live Update** (Android 16+):
 
 ```
-💧 Irrigazione in corso · AI                                   17:41
-1️⃣ Secondo piano · fine 17:41
-2️⃣ Sottotetto · fine 17:30
+💧 Watering · AI                                               17:41
+1️⃣ Second floor · ends 17:41
+2️⃣ Attic · ends 17:30
 ```
 
-> Serve l'**app Home Assistant (Companion)** sul telefono e un **accesso remoto funzionante** a Home Assistant (Home Assistant Cloud / Nabu Casa o un tuo indirizzo esterno). Dettagli nella [guida, punto 5](#5-live-activity-requisiti-e-impostazione).
+> You need the **Home Assistant (Companion) app** on your phone and **working remote access** to Home Assistant (Home Assistant Cloud / Nabu Casa or your own external URL). Details in the [guide, step 5](#5-live-activities-requirements-and-setup).
 
-Gli aggiornamenti sono silenziosi, il suono arriva solo all'avvio e alla fine. Alla fine compare il riepilogo dei litri (`☑️ Secondo piano · 30 min · 21,8 L`) e dopo 5 minuti l'attività sparisce da sola. Funziona anche per le valvole aperte a mano, con l'ora della chiusura di sicurezza. Un tocco apre la dashboard che scegli.
+Updates are silent; sound plays only at start and end. At the end a liters summary appears (`☑️ Second floor · 30 min · 21.8 L`) and after 5 minutes the activity goes away by itself. It also works for valves opened by hand, showing the safety-close time. A tap opens the dashboard of your choice.
 
-### 📒 Registro e consumi d'acqua
-Un **calendario** registra:
-- ogni ciclo, con minuti e litri reali per zona e da dove è partito;
-- le aperture manuali;
-- i cicli saltati, con il motivo (pioggia, decisione dell'AI);
-- la **prossima irrigazione prevista**.
+### 📒 Log and water use
+A **calendar** records:
+- every cycle, with real minutes and liters per zone and what started it;
+- manual openings;
+- skipped cycles, with the reason (rain, AI decision);
+- the **next planned watering**.
 
-I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, si possono aggiungere alla **dashboard Energia**.
+The *Water today / this month / total* sensors, for the system and for each zone, can be added to the **Energy dashboard**.
 
-### 🛡️ Pensato per non allagare niente
-- **Blocco pioggia** collegato al meteo o, meglio, a un **tuo sensore pioggia**.
-- **Chiusura di sicurezza** per le valvole aperte a mano.
-- **Chiusura automatica** delle valvole rimaste aperte se Home Assistant si riavvia a metà ciclo.
-- **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
-- Se l'AI non risponde scegli tu se irrigare con la formula, spegnere l'AI o saltare il ciclo. In ogni caso ricevi una notifica.
+### 🛡️ Built not to flood anything
+- **Rain block** tied to the weather or, better, to **your own rain sensor**.
+- **Safety close** for valves opened by hand.
+- **Automatic closing** of valves left open if Home Assistant restarts mid-cycle.
+- **Three closing attempts** per valve, with an alert if it won't close.
+- If the AI doesn't answer, you choose whether to water with the formula, turn the AI off or skip the cycle. Either way you get a notification.
 
-### 🎛️ Quattro card pronte all'uso
-Si registrano da sole all'installazione e non richiedono mushroom, button-card o apexcharts.
+### 🎛️ Four ready-to-use cards
+They register themselves on install and need no mushroom, button-card or apexcharts.
 
-- **`custom:irrigazione-ai-card`, i comandi:**
-  - il riquadro *Irrigazione Generale*, con lo stato (attiva, inattiva con la prossima irrigazione, saltata per pioggia o dall'AI);
-  - i pulsanti gialli *AI* e *Pioggia*;
-  - una scheda per zona, con umidità (🔴 secco, 🟢 ottimale, 💧 umido), minuti previsti e AI, litri, ora di fine e batteria della valvola. Si illumina di blu con l'irrigatore che oscilla mentre irriga, e di rosso se il terriccio è secco;
-  - la riga del timer (off/15/30/60);
-  - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
-  - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
-- **`custom:irrigazione-ai-log-card`, solo il registro:** lo stesso registro compatto della card dei grafici, da mettere in un'altra colonna o in un'altra dashboard.
-- **`custom:irrigazione-ai-moisture-card`, umidità del terriccio di sensori a scelta:** lo stesso grafico con le fasce rosso, verde e blu, per piante che non sono zone dell'impianto (vasi annaffiati a mano, aromatiche…).
-- **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu; in fondo il **registro delle irrigazioni**, compatto: una riga per evento (cicli, aperture manuali, cicli saltati con il motivo) con giorno, ora e litri, più la prossima irrigazione prevista. Tocca una riga per vedere minuti e litri di ogni zona; "Mostra tutti" espande la lista.
+- **`custom:irrigazione-ai-card`, the controls:**
+  - the main tile with the status (running, idle with the next watering, skipped for rain or by the AI);
+  - the yellow *AI* and *Rain* buttons;
+  - one tile per zone, with moisture (🔴 dry, 🟢 optimal, 💧 wet), planned and AI minutes, liters, end time and valve battery. It lights up blue with a swinging sprinkler while watering, and red when the soil is dry;
+  - the timer row (off/15/30/60);
+  - the **schedule of each zone**: Off, every other day, Days, 7/7 and the weekdays to tap, with the next watering;
+  - planned or AI durations, the AI decision with the *Analyze* button and the time remaining.
+- **`custom:irrigazione-ai-log-card`, just the log:** the same compact log as the charts card, to place in another column or another dashboard.
+- **`custom:irrigazione-ai-moisture-card`, soil moisture of sensors of your choice:** the same chart with red, green and blue bands, for plants that aren't zones of the system (hand-watered pots, herbs…).
+- **`custom:irrigazione-ai-charts-card`, charts and log:** liters today, this month and in total; water use of the last 7 days as bars; outdoor weather of the last 24 hours; soil moisture of each zone over the last 5 days, with red, green and blue bands; at the bottom the compact **irrigation log**: one row per event (cycles, manual openings, skipped cycles with the reason) with day, time and liters, plus the next planned watering. Tap a row to see each zone's minutes and liters; "Show all" expands the list.
 
-## 🔄 Come nasce un ciclo
+## 🔄 How a cycle comes about
 
 ```mermaid
 flowchart LR
-    A[Alba, tramonto o orario fisso<br/>giorno previsto] --> B{Blocco pioggia<br/>e meteo piovoso?}
-    M[Avvia ora / servizio] --> B
-    B -- sì --> X[Saltato<br/>registrato nel calendario]
-    B -- no --> C{Timer manuale<br/>o durata data?}
-    C -- sì --> F[Minuti fissi]
-    C -- no --> D{Analisi AI<br/>accesa?}
-    D -- sì --> E[L'AI decide<br/>litri per zona] --> G[litri ÷ portata = minuti]
-    D -- no --> H[Formula Jinja<br/>per zona]
-    E -. non risponde .-> H
-    E -- non irrigare --> X
-    F --> R[Valvole aperte<br/>Live Activity]
+    A[Sunrise, sunset or fixed time<br/>day scheduled] --> B{Rain block<br/>and rain?}
+    M[Start now / action] --> B
+    B -- yes --> X[Skipped<br/>logged in the calendar]
+    B -- no --> C{Manual timer<br/>or given duration?}
+    C -- yes --> F[Fixed minutes]
+    C -- no --> D{AI analysis<br/>on?}
+    D -- yes --> E[AI decides<br/>liters per zone] --> G[liters ÷ flow rate = minutes]
+    D -- no --> H[Jinja formula<br/>per zone]
+    E -. no answer .-> H
+    E -- don't water --> X
+    F --> R[Valves open<br/>Live Activity]
     G --> R
     H --> R
-    R --> Z[Riepilogo litri<br/>calendario + consumi]
+    R --> Z[Liters summary<br/>calendar + water use]
 ```
 
-## 📦 Installazione
+## 📦 Installation
 
-1. In Home Assistant apri **Impostazioni → Marketplace** (prima della 2026.11: **HACS**).
-2. **Aggiungi da link** → `https://github.com/acaonweb/irrigazione-ai`, categoria *Integrazione*.
-3. Installa **Irrigazione AI** e riavvia Home Assistant.
-4. **Impostazioni → Dispositivi e servizi → Aggiungi integrazione → Irrigazione AI.**
-5. Segui il wizard (sotto trovi la guida campo per campo), poi aggiungi le card a una dashboard.
+1. In Home Assistant open **Settings → Marketplace** (before 2026.11: **HACS**).
+2. **Add from link** → `https://github.com/acaonweb/irrigazione-ai`, category *Integration*.
+3. Install **Irrigazione AI** and restart Home Assistant.
+4. **Settings → Devices & services → Add integration → Irrigazione AI.**
+5. Follow the wizard (the field-by-field guide is below), then add the cards to a dashboard.
 
-## 📖 Guida pratica
+## 📖 Practical guide
 
-Questa sezione spiega con calma tutto quello che il wizard ti chiede. Se è la prima volta, leggila una volta dall'inizio alla fine: ti evita le sorprese più comuni.
+This section calmly explains everything the wizard asks you. If it's your first time, read it once from start to finish: it saves you the most common surprises.
 
-### 1. Cosa ti serve prima di iniziare
+### 1. What you need before you start
 
-| Cosa | Obbligatorio? | Come trovarlo |
+| What | Required? | How to find it |
 | --- | --- | --- |
-| Una **valvola** per zona, vista da Home Assistant come entità `switch.…` o `valve.…` | Sì | *Impostazioni → Dispositivi e servizi → Entità*, cerca il nome della valvola. Accendendola e spegnendola deve aprirsi e chiudersi l'acqua |
-| Un **sensore di umidità del terriccio** per zona (`sensor.…` in %) | No | Senza sensore la formula considera il 50%, l'AI riceve "sconosciuto" e l'allarme terriccio secco non c'è |
-| Un'**entità meteo** (`weather.…`), per esempio quella di Met.no che Home Assistant installa da sola | No, ma consigliata | Serve al blocco pioggia, alla formula (`weather_factor`) e all'AI (previsioni) |
-| Sensori di **temperatura e umidità esterna** | No | Se mancano si usano quelli dell'entità meteo |
-| Un **sensore pioggia** tuo (pluviometro, sensore di pioggia, stazione meteo) | No | Più affidabile del meteo per il blocco pioggia: vedi il punto 3 bis |
-| L'**app Home Assistant** (Companion) sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
-| **Accesso remoto** a Home Assistant | Solo per la Live Activity | Home Assistant Cloud (Nabu Casa) oppure un tuo indirizzo esterno con HTTPS, inserito anche nell'app |
+| One **valve** per zone, seen by Home Assistant as a `switch.…` or `valve.…` entity | Yes | *Settings → Devices & services → Entities*, search for the valve's name. Turning it on and off must open and close the water |
+| One **soil moisture sensor** per zone (`sensor.…` in %) | No | Without a sensor the formula assumes 50%, the AI gets "unknown" and there is no dry soil alarm |
+| A **weather entity** (`weather.…`), for example the Met.no one Home Assistant installs by itself | No, but recommended | Used by the rain block, the formula (`weather_factor`) and the AI (forecast) |
+| **Outdoor temperature and humidity** sensors | No | If missing, those of the weather entity are used |
+| Your own **rain sensor** (rain gauge, rain detector, weather station) | No | More reliable than the weather for the rain block: see step 3b |
+| The **Home Assistant (Companion) app** on your phone | Only for Live Activities and phone notifications | App Store or Google Play, signed in to your Home Assistant |
+| **Remote access** to Home Assistant | Only for Live Activities | Home Assistant Cloud (Nabu Casa) or your own external HTTPS URL, also entered in the app |
 
-### 2. I dati di una zona, spiegati
+### 2. A zone's data, explained
 
-**Portata (L/min).** Quanta acqua esce dalla zona in un minuto. Serve a trasformare minuti in litri e viceversa. Due modi per ricavarla:
-- *dai gocciolatori*: numero di gocciolatori × litri/ora di ciascuno ÷ 60. Per esempio 22 gocciolatori da 2 L/h danno 22 × 2 ÷ 60 = **0,73 L/min**;
-- *misurandola*: metti un gocciolatore (o l'uscita della linea) in un contenitore graduato per 5 minuti, dividi i litri per 5 e, se hai misurato un solo gocciolatore, moltiplica per il numero di gocciolatori.
+**Flow rate (L/min).** How much water comes out of the zone in one minute. It turns minutes into liters and back. Two ways to get it:
+- *from the drippers*: number of drippers × liters/hour of each ÷ 60. For example 22 drippers at 2 L/h give 22 × 2 ÷ 60 = **0.73 L/min**;
+- *by measuring*: put a dripper (or the end of the line) in a measuring jug for 5 minutes, divide the liters by 5 and, if you measured a single dripper, multiply by the number of drippers.
 
-**Durata minima e massima.** Qualunque calcolo (formula o AI) viene tenuto dentro questi limiti. La minima evita irrigazioni inutili da 1 minuto, la massima ti protegge da un valore sbagliato. Fa eccezione l'AI quando decide 0 litri per una zona: in quel caso la zona resta chiusa.
+**Minimum and maximum duration.** Any result (formula or AI) is kept within these limits. The minimum avoids pointless 1-minute runs, the maximum protects you from a wrong value. The exception is the AI deciding 0 liters for a zone: then the zone stays closed.
 
-**Coefficiente.** Un moltiplicatore della formula predefinita: 1 = invariata, 1,2 = 20% di acqua in più, 0,8 = 20% in meno. Comodo per una zona che si asciuga prima delle altre.
+**Coefficient.** A multiplier for the default formula: 1 = unchanged, 1.2 = 20% more water, 0.8 = 20% less. Handy for a zone that dries out before the others.
 
-**Volume del terriccio (L).** Quanta terra c'è da bagnare. L'AI lo usa per dosare i litri: più terra, più acqua per arrivare alla stessa umidità. Per stimarlo:
-- fioriera rettangolare: lunghezza × larghezza × altezza della terra, in cm, ÷ 1000. Per esempio 100 × 20 × 18 cm = **36 L**;
-- vaso tondo: 3,14 × raggio × raggio × altezza, in cm, ÷ 1000;
-- più vasi sulla stessa linea: somma i volumi.
+**Soil volume (L).** How much soil there is to wet. The AI uses it to size the liters: more soil, more water to reach the same moisture. To estimate it:
+- rectangular planter: length × width × soil depth, in cm, ÷ 1000. For example 100 × 20 × 18 cm = **36 L**;
+- round pot: 3.14 × radius × radius × depth, in cm, ÷ 1000;
+- several pots on the same line: add up the volumes.
 
-**Esposizione.** Da che parte prende il sole la zona (nord, sud, est, ovest). Sud e ovest asciugano di più, nord di meno. La usa l'AI; nella formula è disponibile come variabile `exposure`.
+**Exposure.** Which side the zone gets the sun from (north, south, east, west). South and west dry out more, north less. The AI uses it; in the formula it is available as the `exposure` variable.
 
-**Piante.** Scrivi con parole tue cosa cresce nella zona, il più precise possibile: "rosmarino, lavanda e timo in fioriera", "pomodori e basilico", "limone in vaso da 50 cm", "gerani appena trapiantati". L'AI conosce il fabbisogno d'acqua delle piante comuni e dosa di conseguenza: le mediterranee ne vogliono poca, ortaggi, fiori e piante giovani di più. Puoi usarle anche nella formula con la variabile `plants`.
+**Plants.** Write in your own words what grows in the zone, as precisely as you can: "rosemary, lavender and thyme in a planter", "tomatoes and basil", "lemon tree in a 50 cm pot", "freshly transplanted geraniums". The AI knows the water needs of common plants and doses accordingly: Mediterranean plants want little, vegetables, flowers and young plants more. You can also use them in the formula with the `plants` variable.
 
-**Formula della zona.** Facoltativa: se la scrivi, vale solo per questa zona e sostituisce quella dell'impianto (vedi il punto 6).
+**Zone formula.** Optional: if you write one, it applies only to this zone and replaces the system's formula (see step 6).
 
-### 3. Quando irrigare: orario e giorni
+### 3. When to water: time and days
 
-**L'orario** vale per tutto l'impianto e si sceglie in *Programmazione*:
-- **tramonto** o **alba**, più uno scostamento in minuti. Positivo = dopo, negativo = prima: `-30` con l'alba vuol dire mezz'ora prima che sorga il sole;
-- **orario fisso**, per esempio 21:00. Lo scostamento in questo caso non conta.
+**The time** applies to the whole system and is chosen in *Scheduling*:
+- **sunset** or **sunrise**, plus an offset in minutes. Positive = after, negative = before: `-30` with sunrise means half an hour before the sun comes up;
+- **fixed time**, for example 21:00. The offset doesn't count in this case.
 
-Irrigare la sera o all'alba riduce l'evaporazione: è la scelta migliore d'estate.
+Watering in the evening or at dawn reduces evaporation: it's the best choice in summer.
 
-**I giorni** si scelgono per ogni zona, nel form della zona o dalla card (sezione 📅 Programmazione):
+**The days** are chosen per zone, in the zone form or from the card (📅 Schedule section):
 
-| Scelta | Cosa succede | Esempio |
+| Choice | What happens | Example |
 | --- | --- | --- |
-| Spenta | La zona non irriga mai, neanche con *Avvia ora* | D'inverno, o una zona temporaneamente vuota |
-| Un giorno sì e uno no | Irriga il giorno in cui lo scegli, poi a giorni alterni, senza guardare la settimana | Scelto martedì: mar, gio, sab, lun, mer… |
-| Giorni scelti | Irriga nei giorni della settimana che indichi | Lun, mer, sab e dom |
-| Tutti i giorni | Ogni giorno | Piena estate, vasi piccoli |
+| Off | The zone never waters, not even with *Start now* | In winter, or a temporarily empty zone |
+| Every other day | Waters on the day you choose it, then every other day, regardless of the week | Chosen on Tuesday: Tue, Thu, Sat, Mon, Wed… |
+| Chosen days | Waters on the weekdays you pick | Mon, Wed, Sat and Sun |
+| Every day | Every day | High summer, small pots |
 
-Nel form, il campo *Giorni* conta **solo** con "Giorni scelti" e viene ignorato con le altre scelte. Dalla card basta toccare i giorni: la riga si accende in blu e la modifica vale subito.
+In the form, the *Days* field counts **only** with "Chosen days" and is ignored otherwise. On the card just tap the days: the row lights up blue and the change applies right away.
 
-All'orario partono solo le zone in programma quel giorno. *Avvia ora* (o l'interruttore *Irrigazione*) avvia invece tutte le zone che non sono spente.
+At the scheduled time only the zones due that day start. *Start now* (or the *Irrigation* switch) instead starts every zone that isn't off.
 
-### 3 bis. Pioggia: meteo o sensore tuo
+### 3b. Rain: weather or your own sensor
 
-Il **blocco pioggia** (interruttore *Blocco pioggia*, pulsante giallo *Pioggia* della card) impedisce l'avvio se sta piovendo. Per saperlo l'integrazione usa:
+The **rain block** (the *Rain block* switch, the yellow *Rain* button on the card) prevents a start while it's raining. To know that, the integration uses:
 
-1. il **sensore pioggia**, se l'hai indicato nel primo passo del wizard (o in *Configura*);
-2. altrimenti l'**entità meteo**, che però è una previsione per la tua zona e non sa se piove proprio sul tuo balcone.
+1. the **rain sensor**, if you set one in the first wizard step (or in *Configure*);
+2. otherwise the **weather entity**, which however is a forecast for your area and doesn't know whether it's raining right on your balcony.
 
-Il sensore pioggia può essere:
+The rain sensor can be:
 
-| Tipo | Esempi | Quando dice "piove" |
+| Type | Examples | When it means "raining" |
 | --- | --- | --- |
-| Sensore binario | Sensore di pioggia Zigbee, contatto bagnato, `binary_sensor.rain` di una stazione meteo | Quando è **acceso** |
-| Sensore numerico | Intensità di pioggia (mm/h) o pioggia caduta (mm) di Ecowitt, Netatmo, pluviometro | Quando il valore è **maggiore di 0** |
-| Sensore di testo | Stato "rain"/"raining"/"wet" (anche in italiano: "pioggia", "bagnato") | Quando il testo indica pioggia |
+| Binary sensor | Zigbee rain sensor, wetness contact, a weather station's `binary_sensor.rain` | When it's **on** |
+| Numeric sensor | Rain rate (mm/h) or rainfall (mm) from Ecowitt, Netatmo, a rain gauge | When the value is **greater than 0** |
+| Text sensor | State "rain"/"raining"/"wet" (Italian "pioggia", "bagnato" too) | When the text means rain |
 
-Per il blocco conviene un sensore di **intensità** (mm/h) o un sensore binario: un contatore della pioggia caduta *oggi* resta sopra 0 fino a mezzanotte e bloccherebbe anche le irrigazioni della sera dopo un acquazzone del mattino. Se ti serve proprio quel comportamento, va bene così.
+For the block a **rate** sensor (mm/h) or a binary sensor works best: a *today's rainfall* counter stays above 0 until midnight and would also block evening watering after a morning shower. If that's exactly what you want, fine.
 
-Se il sensore smette di rispondere (non disponibile), l'integrazione torna a usare il meteo: non resti senza blocco. Il sensore viene usato anche dall'**AI** (se piove adesso e quante ore ha piovuto nelle ultime 12) e nella **formula**, con la variabile `raining` (vero o falso).
+If the sensor stops responding (unavailable), the integration falls back to the weather: you're never left without a block. The sensor is also used by the **AI** (whether it's raining now and how many of the last 12 hours had rain) and in the **formula**, through the `raining` variable (true or false).
 
-### 3 ter. Formato di orari e date
+### 3c. Time and date format
 
-Nelle opzioni (*Programmazione*) scegli:
-- **Formato orario**: automatico, 24 ore (15:30) o 12 ore (3:30 PM). Vale per le card e per la Live Activity;
-- **Formato data**: automatico, giorno/mese (24/11), mese/giorno (11/24) o anno-mese-giorno. Vale per le card.
+In the options (*Scheduling*) choose:
+- **Time format**: automatic, 24 hours (15:30) or 12 hours (3:30 PM). Applies to the cards and the Live Activity;
+- **Date format**: automatic, day/month (24/11), month/day (11/24) or year-month-day. Applies to the cards.
 
-*Automatico* nelle card segue il formato scelto nel **profilo** di ogni utente di Home Assistant (*Profilo → Generale → Formato orario / Formato data*): in casa ognuno può vedere il suo. Nella Live Activity, che viene generata da Home Assistant e non dal telefono, *automatico* vuol dire 12 ore se il paese impostato in Home Assistant sono gli Stati Uniti, altrimenti 24 ore.
+*Automatic* on the cards follows the format set in each Home Assistant user's **profile** (*Profile → General → Time format / Date format*): everyone at home can see their own. In the Live Activity, which is generated by Home Assistant and not by the phone, *automatic* means 12 hours if Home Assistant's country is the United States, 24 hours otherwise.
 
-Una singola card può anche forzare il suo formato con `time_format: "12"` / `"24"` e `date_format: dmy` / `mdy` / `ymd`.
+A single card can also force its own format with `time_format: "12"` / `"24"` and `date_format: dmy` / `mdy` / `ymd`.
 
-### 4. Notifiche: come riceverle
+### 4. Notifications: how to get them
 
-L'integrazione invia notifiche per: avvio (con i minuti di ogni zona), fine, interruzione, ciclo saltato per pioggia o dall'AI, errore dell'AI, valvola chiusa dalla sicurezza, valvola che non si chiude, terriccio secco.
+The integration sends notifications for: start (with each zone's minutes), end, interruption, cycle skipped for rain or by the AI, AI error, valve closed by the safety close, valve that won't close, dry soil.
 
-Le manda alle **azioni di notifica** che scrivi nel campo *Altre notifiche* (passo *Programmazione*). Un'azione di notifica è un servizio di Home Assistant che si chiama `notify.qualcosa`. Le più comuni:
+It sends them to the **notify actions** you enter in the *Other notifications* field (*Scheduling* step). A notify action is a Home Assistant action named `notify.something`. The most common:
 
-| Dove vuoi la notifica | Cosa scrivere | Cosa ti serve |
+| Where you want the notification | What to enter | What you need |
 | --- | --- | --- |
-| Sul telefono, con l'app Home Assistant | `notify.mobile_app_<nome_telefono>` | L'app installata e collegata |
-| Pushover | `notify.pushover` | L'integrazione Pushover |
-| Telegram | `notify.<nome_del_bot>` | L'integrazione Telegram |
-| Nelle notifiche di Home Assistant (la campanella) | `notify.persistent_notification` | Niente, c'è sempre |
+| On your phone, with the Home Assistant app | `notify.mobile_app_<phone_name>` | The app installed and connected |
+| Pushover | `notify.pushover` | The Pushover integration |
+| Telegram | `notify.<bot_name>` | The Telegram integration |
+| In Home Assistant's notifications (the bell) | `notify.persistent_notification` | Nothing, it's always there |
 
-**Come trovare il nome esatto:** apri *Strumenti → Azioni* (prima della 2026.8 il menu si chiamava *Strumenti per sviluppatori*), scrivi `notify.` nella casella di ricerca e copia il nome che ti interessa. Puoi metterne più di uno: ogni messaggio arriva a tutti.
+**How to find the exact name:** open *Tools → Actions* (before 2026.8 the menu was called *Developer tools*), type `notify.` in the search box and copy the name you want. You can enter more than one: every message goes to all of them.
 
-Le notifiche e la Live Activity sono due cose diverse e si possono usare insieme: le notifiche sono messaggi singoli, la Live Activity è un riquadro che resta sullo schermo e si aggiorna durante l'irrigazione.
+Notifications and the Live Activity are two different things and can be used together: notifications are single messages, the Live Activity is a tile that stays on screen and updates while watering.
 
-### 5. Live Activity: requisiti e impostazione
+### 5. Live Activities: requirements and setup
 
-La Live Activity funziona solo se ci sono **tutte** queste condizioni:
+The Live Activity works only when **all** of these are in place:
 
-- **App Home Assistant (Companion)** installata, aggiornata e collegata al tuo Home Assistant, con le **notifiche consentite**. Su iPhone controlla anche *Impostazioni iOS → Home Assistant → Live Activity* attivo.
-- **Accesso remoto funzionante.** L'app deve raggiungere Home Assistant anche fuori casa: con **Home Assistant Cloud (Nabu Casa)** oppure con un tuo indirizzo esterno (HTTPS, port forwarding, reverse proxy, Cloudflare Tunnel…). L'indirizzo va inserito nell'app in *Impostazioni → Companion app → server → URL esterno*. Per provarlo, spegni il Wi-Fi del telefono e apri l'app: se vedi la dashboard, ci sei. Senza accesso remoto la Live Activity può non comparire o non aggiornarsi, e toccandola fuori casa la dashboard non si apre.
-- **iPhone e iPad:** iOS/iPadOS 17.2 o successivo. Compare nella schermata di blocco e nella Dynamic Island.
-- **Android:** Android 16 o successivo per il *Live Update*; sulle versioni precedenti arriva come notifica normale che si aggiorna al suo posto.
+- **Home Assistant (Companion) app** installed, up to date and connected to your Home Assistant, with **notifications allowed**. On iPhone also check that *iOS Settings → Home Assistant → Live Activities* is on.
+- **Working remote access.** The app must reach Home Assistant away from home too: with **Home Assistant Cloud (Nabu Casa)** or your own external URL (HTTPS, port forwarding, reverse proxy, Cloudflare Tunnel…). The URL must be entered in the app under *Settings → Companion app → server → External URL*. To test it, turn off your phone's Wi-Fi and open the app: if you see the dashboard, you're set. Without remote access the Live Activity may not appear or not update, and tapping it away from home won't open the dashboard.
+- **iPhone and iPad:** iOS/iPadOS 17.2 or later. It appears on the lock screen and in the Dynamic Island.
+- **Android:** Android 16 or later for the *Live Update*; on older versions it arrives as a regular notification that updates in place.
 
-Se il telefono non compare nell'elenco dei dispositivi qui sotto, l'app non è collegata a questo Home Assistant: aprila ed effettua l'accesso.
+If your phone isn't in the device list below, the app isn't connected to this Home Assistant: open it and sign in.
 
-Nel passo *Programmazione*, in **Dispositivi per la Live Activity**, l'elenco propone da solo i telefoni e tablet con l'app. Selezionali tutti quelli su cui la vuoi.
+In the *Scheduling* step, **Live Activity devices** lists the phones and tablets with the app by itself. Select every one you want it on.
 
-**Pagina da aprire** è la dashboard che si apre toccando la Live Activity. Si scrive come percorso, senza l'indirizzo del server: apri la dashboard dal browser e copia la parte dell'indirizzo dopo il nome del server. Per esempio da `http://homeassistant.local:8123/lovelace/irrigazione` scrivi `/lovelace/irrigazione`.
+**Page to open on tap** is the dashboard that opens when you tap the Live Activity. Enter it as a path, without the server address: open the dashboard in a browser and copy the part of the address after the server name. For example from `http://homeassistant.local:8123/lovelace/irrigation` enter `/lovelace/irrigation`.
 
-### 6. Scrivere una formula tua
+### 6. Writing your own formula
 
-La formula è un **template Jinja**, lo stesso linguaggio dei modelli di Home Assistant. Deve restituire **un numero: i minuti di irrigazione** della zona. Il risultato viene comunque tenuto tra durata minima e massima.
+The formula is a **Jinja template**, the same language as Home Assistant templates. It must return **a number: the zone's watering minutes**. The result is always kept between minimum and maximum duration.
 
-**Passo 1, prova sul sicuro.** Apri *Strumenti → Modello* (prima della 2026.8: *Strumenti per sviluppatori → Modello*) e incolla, per esempio:
+**Step 1, try it safely.** Open *Tools → Template* (before 2026.8: *Developer tools → Template*) and paste, for example:
 
 ```jinja
-{% set moisture = states('sensor.umidita_terriccio') | float(50) %}
+{% set moisture = states('sensor.soil_moisture') | float(50) %}
 {{ 40 - moisture / 2 }}
 ```
 
-A destra vedi il risultato con i valori di adesso. Le variabili dell'integrazione (`moisture`, `temperature`…) lì non esistono, per questo le definisci tu con `{% set %}` per provare.
+On the right you see the result with the current values. The integration's variables (`moisture`, `temperature`…) don't exist there, so you define them yourself with `{% set %}` to test.
 
-**Passo 2, mettila nell'integrazione.** *Configura → Formula*: incolla la formula **senza** le righe `{% set %}` delle variabili che l'integrazione ti fornisce già (vedi la tabella in *La formula nel dettaglio*). Prima di salvare compare l'**anteprima** con i minuti che darebbe a ogni zona: se un numero non ti convince, torna indietro e correggi.
+**Step 2, put it in the integration.** *Configure → Formula*: paste the formula **without** the `{% set %}` lines for the variables the integration already provides (see the table in *The formula in detail*). Before saving, a **preview** shows the minutes each zone would get: if a number looks wrong, go back and fix it.
 
-**Passo 3, se serve, una formula per zona.** Nel form della zona, il campo *Formula della zona* sostituisce quella dell'impianto solo per quella zona.
+**Step 3, if needed, a formula per zone.** In the zone form, the *Zone formula* field replaces the system's formula for that zone only.
 
-Esempi, dal più semplice:
+Examples, simplest first:
 
 ```jinja
-{# Sempre 20 minuti #}
+{# Always 20 minutes #}
 {{ 20 }}
 
-{# Più secco = più minuti: 15 min al 70% di umidità, 35 min al 30% #}
+{# Drier = more minutes: 15 min at 70% moisture, 35 min at 30% #}
 {{ 50 - moisture / 2 }}
 
-{# Come sopra, ma più acqua col caldo (oltre 25 °C) e meno se il meteo è nuvoloso o piovoso #}
+{# As above, but more water when hot (over 25 °C) and less if the weather is cloudy or rainy #}
 {{ (50 - moisture / 2) * (1.3 if temperature > 25 else 1) * weather_factor }}
 
-{# Metà dei minuti se piove adesso (per non irrigare affatto usa il blocco pioggia) #}
+{# Half the minutes if it's raining now (to skip watering entirely, use the rain block) #}
 {{ (50 - moisture / 2) * (0.5 if raining else 1) }}
 
-{# Litri necessari a riportare il terriccio al 60%, trasformati in minuti #}
+{# Liters needed to bring the soil back to 60%, turned into minutes #}
 {{ soil_volume * (60 - moisture) / 100 / flow_rate }}
 
-{# Metà acqua se nella zona ci sono piante mediterranee #}
-{{ (50 - moisture / 2) * (0.5 if 'rosmarino' in plants | lower or 'lavanda' in plants | lower else 1) }}
+{# Half the water if the zone has Mediterranean plants #}
+{{ (50 - moisture / 2) * (0.5 if 'rosemary' in plants | lower or 'lavender' in plants | lower else 1) }}
 
-{# Minuti decisi da un tuo helper (input_number) #}
-{{ states('input_number.minuti_irrigazione') | float(20) }}
+{# Minutes set by a helper of yours (input_number) #}
+{{ states('input_number.irrigation_minutes') | float(20) }}
 ```
 
-Se una formula personale smette di funzionare (per esempio un sensore diventa *non disponibile*), l'integrazione usa quella predefinita e scrive l'errore nell'attributo `formula_error` del sensore *Durata prevista* della zona. Così non resti mai senza irrigazione.
+If a custom formula stops working (for example a sensor becomes *unavailable*), the integration uses the default one and writes the error in the `formula_error` attribute of the zone's *Planned duration* sensor. So you're never left without watering.
 
-### 7. Configurare l'AI
+### 7. Setting up the AI
 
-1. **Scegli il servizio** nel passo *Analisi AI*:
-   - **AI Task**: usa un'integrazione AI già configurata in Home Assistant (OpenAI, Google Gemini, Anthropic, Ollama…). È la scelta più semplice se ne hai già una;
-   - **OpenAI, Anthropic, Gemini**: serve una **API key** del servizio. Il wizard mostra il link alla pagina dove crearla. Attenzione a copiare la **chiave segreta** (per OpenAI inizia con `sk-`, per Anthropic con `sk-ant-`, per Gemini con `AIza`) e non l'identificativo della chiave. Su OpenAI e Anthropic l'account deve avere un po' di credito prepagato (bastano pochi euro, vedi la FAQ sui costi);
-   - **Ollama**: un modello che gira gratis su un computer della tua rete. Indica l'indirizzo (per esempio `http://192.168.1.20:11434`) e il modello scaricato (per esempio `llama3.1`).
-2. Prima di salvare viene inviata **una richiesta di prova**: se qualcosa non va, l'errore del servizio compare nel form.
-3. Scegli **cosa fare se l'AI non risponde**: irrigare con la formula (consigliato), irrigare con la formula e spegnere l'AI, oppure saltare il ciclo.
-4. **Note per l'AI** (facoltative): tutto quello che non sta nei campi, per esempio "terrazzo molto ventoso", "vasi in terracotta che asciugano in fretta".
-5. Accendi l'interruttore **Analisi AI** (o il pulsante giallo *AI* della card) e premi **Analizza ora**: vedi cosa deciderebbe adesso, zona per zona, senza aprire le valvole.
+1. **Choose the service** in the *AI analysis* step:
+   - **AI Task**: uses an AI integration already set up in Home Assistant (OpenAI, Google Gemini, Anthropic, Ollama…). The simplest choice if you already have one;
+   - **OpenAI, Anthropic, Gemini**: you need an **API key** for the service. The wizard shows the link to the page where you create it. Make sure you copy the **secret key** (for OpenAI it starts with `sk-`, for Anthropic with `sk-ant-`, for Gemini with `AIza`) and not the key's ID. On OpenAI and Anthropic the account needs some prepaid credit (a few dollars are enough, see the FAQ on costs);
+   - **Ollama**: a model running for free on a computer on your network. Enter the address (for example `http://192.168.1.20:11434`) and the downloaded model (for example `llama3.1`).
+2. Before saving, **a test request** is sent: if something is wrong, the service's error shows up in the form.
+3. Choose **what to do if the AI doesn't answer**: water with the formula (recommended), water with the formula and turn the AI off, or skip the cycle.
+4. **Notes for the AI** (optional): anything that doesn't fit in the fields, for example "very windy terrace", "terracotta pots that dry out fast".
+5. Turn on the **AI analysis** switch (or the yellow *AI* button on the card) and press **Analyze now**: you see what it would decide right now, zone by zone, without opening the valves.
 
-L'AI viene interpellata **all'inizio di ogni ciclo**, programmato o avviato a mano, dopo il controllo della pioggia. Non viene interpellata se il timer manuale è attivo o se avvii con una durata fissa.
+The AI is consulted **at the start of every cycle**, scheduled or started by hand, after the rain check. It isn't consulted if the manual timer is on or if you start with a fixed duration.
 
-### 8. Allarme terriccio secco
+### 8. Dry soil alarm
 
-Nel passo *Programmazione* imposta la **soglia** (25% di default; 0 = spento). Se una zona con sensore resta sotto la soglia per 5 minuti ricevi **una notifica** sulle *Altre notifiche* (punto 4) e si accende il sensore binario *Terriccio secco* della zona. Non ricevi altre notifiche finché l'umidità non risale almeno 3 punti sopra la soglia: un valore che oscilla intorno al 25% non ti tempesta di messaggi.
+In the *Scheduling* step set the **threshold** (25% by default; 0 = off). If a zone with a sensor stays below the threshold for 5 minutes you get **one notification** on the *Other notifications* (step 4) and the zone's *Dry soil* binary sensor turns on. You get no further notifications until moisture rises at least 3 points above the threshold: a value hovering around 25% won't flood you with messages.
 
-### 9. Usare l'integrazione nelle tue automazioni
+### 9. Using the integration in your automations
 
-Tutto quello che vedi nella card è un'entità o un'azione, quindi puoi usarlo nelle automazioni. Alcuni esempi:
+Everything you see on the card is an entity or an action, so you can use it in automations. Some examples:
 
 ```yaml
-# Spegne una zona da novembre a marzo e la riaccende in primavera
+# Turns a zone off from November to March and back on in spring
 triggers:
   - trigger: time
     at: "08:00:00"
 actions:
   - action: irrigazione_ai.set_schedule
     target:
-      entity_id: select.balcone_programmazione
+      entity_id: select.balcony_schedule
     data:
       mode: "{{ 'off' if now().month in [11, 12, 1, 2, 3] else 'days' }}"
 ```
 
 ```yaml
-# Avvia un ciclo extra di 10 minuti se fa molto caldo
+# Starts an extra 10-minute cycle when it's very hot
 triggers:
   - trigger: numeric_state
-    entity_id: sensor.temperatura_esterna
+    entity_id: sensor.outdoor_temperature
     above: 35
 actions:
   - action: irrigazione_ai.start
@@ -356,101 +358,100 @@ actions:
 ```
 
 ```yaml
-# Notifica speciale quando l'AI decide di non irrigare
+# Special notification when the AI decides not to water
 triggers:
   - trigger: state
-    entity_id: sensor.irrigazione_decisione_ai
+    entity_id: sensor.irrigation_ai_decision
     to: skip
 actions:
-  - action: notify.mobile_app_mio_telefono
+  - action: notify.mobile_app_my_phone
     data:
-      message: "Oggi niente acqua: {{ state_attr('sensor.irrigazione_decisione_ai', 'reason') }}"
+      message: "No water today: {{ state_attr('sensor.irrigation_ai_decision', 'reason') }}"
 ```
 
-I nomi delle entità dipendono dal nome che hai dato all'impianto e alle zone: li trovi in *Impostazioni → Dispositivi e servizi → Irrigazione AI*.
+Entity names depend on the names you gave the system and the zones: you find them in *Settings → Devices & services → Irrigazione AI*.
 
-### 10. Se avevi già automazioni di irrigazione
+### 10. If you already had irrigation automations
 
-Puoi provare l'integrazione senza toccare quello che hai: non modifica automazioni, helper, `configuration.yaml` o dashboard, usa solo le valvole e le notifiche che le assegni.
+You can try the integration without touching what you have: it doesn't modify automations, helpers, `configuration.yaml` or dashboards, and only uses the valves and notifications you assign to it.
 
-Finché convivono:
-- metti **Chiusura di sicurezza = 0** e spegni **Chiudi le valvole all'avvio**, altrimenti l'integrazione chiuderebbe anche le valvole aperte dalle tue automazioni;
-- scegli giorni o orari diversi da quelli delle tue automazioni, per non irrigare due volte;
-- tieni presente che litri e calendario dell'integrazione conteranno anche le irrigazioni delle tue automazioni, come aperture manuali.
+While they coexist:
+- set **Safety close = 0** and turn off **Close valves on startup**, otherwise the integration would also close valves opened by your automations;
+- choose days or times different from your automations', so you don't water twice;
+- keep in mind that the integration's liters and calendar will also count your automations' runs, as manual openings.
 
-Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le due sicurezze e sistema i giorni. Se cambi idea, riaccendi le automazioni e rimuovi l'integrazione: si porta via le sue entità e i suoi dati e non lascia altro, a parte lo storico nel database e le eventuali card nelle dashboard.
+When you're ready: **turn off** (don't delete) your automations, re-enable the two safety options and set the days. If you change your mind, turn the automations back on and remove the integration: it takes its entities and data with it and leaves nothing else behind, apart from history in the database and any cards on your dashboards.
 
-### 11. Problemi comuni
+### 11. Common problems
 
-| Problema | Soluzione |
+| Problem | Solution |
 | --- | --- |
-| Non vedo le card nuove, o vedo quelle vecchie | Ricarica la pagina svuotando la cache (Ctrl+Shift+R nel browser; nell'app chiudila del tutto e riaprila) |
-| "La API key è stata rifiutata" | Hai copiato la chiave segreta e non il suo ID? È ancora attiva? Il progetto può usare il modello scelto? Il messaggio d'errore del servizio è riportato tra parentesi |
-| Le *Durate AI* sono vuote | L'AI non ha ancora analizzato nulla: premi *Analizza ora* |
-| Il blocco pioggia non scatta mai | Serve un sensore pioggia o un'entità meteo, e al momento dell'avvio devono indicare pioggia (sensore acceso o > 0; meteo `rainy`, `pouring`…). Il motivo di ogni blocco è nel calendario |
-| Il blocco pioggia scatta anche quando non piove | Il meteo è una previsione per la zona: aggiungi un tuo sensore pioggia, che ha la precedenza |
-| I litri restano a 0 | Controlla la portata della zona: con 0 L/min i litri sono sempre 0 |
-| "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
-| Una valvola non si chiude | L'integrazione riprova tre volte e ti avvisa: controlla la batteria e la copertura radio della valvola |
-| Ho cambiato le opzioni durante un ciclo e non succede niente | È voluto: le modifiche si applicano alla fine del ciclo, per non interrompere l'irrigazione |
-| La Live Activity non compare o non si aggiorna | Manca uno dei requisiti: vedi il punto 5 |
+| I don't see the new cards, or I see the old ones | Reload the page clearing the cache (Ctrl+Shift+R in the browser; in the app close it completely and reopen it) |
+| "The API key was rejected" | Did you copy the secret key and not its ID? Is it still active? Can the project use the chosen model? The service's error message is shown in brackets |
+| *AI duration* is empty | The AI hasn't analyzed anything yet: press *Analyze now* |
+| The rain block never triggers | You need a rain sensor or a weather entity, and at start time they must indicate rain (sensor on or > 0; weather `rainy`, `pouring`…). The reason for every block is in the calendar |
+| The rain block triggers even when it's not raining | The weather is a forecast for your area: add your own rain sensor, which takes precedence |
+| Liters stay at 0 | Check the zone's flow rate: with 0 L/min liters are always 0 |
+| "Failed to set up" after an update | *Settings → System → Logs*, search for `irrigazione_ai` and open an [issue](https://github.com/acaonweb/irrigazione-ai/issues) with the message |
+| A valve won't close | The integration retries three times and alerts you: check the valve's battery and radio coverage |
+| I changed the options during a cycle and nothing happens | That's intended: changes apply at the end of the cycle, so watering isn't interrupted |
+| The Live Activity doesn't appear or doesn't update | One of the requirements is missing: see step 5 |
 
+## 🧭 The wizard, step by step
 
-## 🧭 Il wizard, passo per passo
-
-| Passo | Cosa chiede |
+| Step | What it asks |
 | --- | --- |
-| 1. Impianto | Nome; entità meteo, sensori di temperatura e umidità esterna, sensore pioggia: tutti facoltativi (senza meteo né sensore pioggia il blocco pioggia resta inattivo) |
-| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
-| 3. Programmazione | Formato di orari e date; partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
-| 4. Formula | Editor Jinja con anteprima dei minuti per zona |
-| 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
+| 1. System | Name; weather entity, outdoor temperature and humidity sensors, rain sensor: all optional (without weather or rain sensor the rain block stays inactive) |
+| 2. Zones | One or more zones: valve, soil sensor, flow rate, minimum and maximum duration, coefficient, volume, exposure, plants, when to water it (off, every other day, chosen days, every day), optional own formula |
+| 3. Scheduling | Time and date format; start based on sunset, sunrise (with an offset in minutes, negative too) or a fixed time; zones in parallel or in sequence; safety close; close on startup; Live Activity devices; page to open; other notifications (for example Pushover); dry soil alarm threshold |
+| 4. Formula | Jinja editor with a per-zone minutes preview |
+| 5. AI analysis | None, AI Task, OpenAI, Anthropic, Gemini or Ollama; behavior when the AI doesn't answer; notes for the AI (plants, pots, climate); prompt editor |
 
-Tutto si può cambiare dopo da **Configura** (opzioni) e da **Aggiungi zona / Riconfigura** sulle singole zone.
+Everything can be changed later from **Configure** (options) and from **Add zone / Reconfigure** on each zone.
 
-## 🎛️ Card
+## 🎛️ Cards
 
-Le trovi in *Aggiungi scheda* cercando **"Irrigazione AI"**, oppure in YAML:
+Find them in *Add card* by searching **"Irrigazione AI"**, or in YAML:
 
 ```yaml
-type: custom:irrigazione-ai-card          # comandi
-title: Irrigazione Generale               # facoltativo
-entity: sensor.irrigazione_stato          # facoltativo, se hai più impianti
-time_format: "24"                         # facoltativo: "24" o "12" (default: opzioni dell'integrazione o profilo)
-date_format: dmy                          # facoltativo: dmy, mdy o ymd
+type: custom:irrigazione-ai-card          # controls
+title: Irrigation                         # optional
+entity: sensor.irrigation_status          # optional, if you have more than one system
+time_format: "24"                         # optional: "24" or "12" (default: integration options or profile)
+date_format: dmy                          # optional: dmy, mdy or ymd
 ```
 
 ```yaml
-type: custom:irrigazione-ai-charts-card   # grafici e registro
-log_rows: 3                               # facoltativo: righe del registro prima di "Mostra tutti"
-log_items: 8                              # facoltativo: eventi massimi nel registro
-show_log: true                            # facoltativo: false per nascondere il registro
+type: custom:irrigazione-ai-charts-card   # charts and log
+log_rows: 3                               # optional: log rows before "Show all"
+log_items: 8                              # optional: maximum events in the log
+show_log: true                            # optional: false hides the log
 ```
 
 ```yaml
-type: custom:irrigazione-ai-log-card      # solo il registro (per esempio in un'altra colonna)
+type: custom:irrigazione-ai-log-card      # just the log (for example in another column)
 log_rows: 3
 log_items: 8
 ```
 
 ```yaml
-type: custom:irrigazione-ai-moisture-card  # umidità del terriccio di sensori a scelta
+type: custom:irrigazione-ai-moisture-card  # soil moisture of sensors of your choice
 entities:
-  - entity: sensor.prezzemolo_umidita
-    name: Prezzemolo
-  - entity: sensor.rosmarino_umidita
-    name: Rosmarino
-hours: 120                                 # facoltativo: ore mostrate (default 5 giorni)
-threshold: 25                              # facoltativo: soglia "secco" (default quella dell'impianto)
+  - entity: sensor.parsley_moisture
+    name: Parsley
+  - entity: sensor.rosemary_moisture
+    name: Rosemary
+hours: 120                                 # optional: hours shown (default 5 days)
+threshold: 25                              # optional: "dry" threshold (default: the system's)
 ```
 
-Le colonne dei 7 giorni usano le statistiche di Home Assistant, calcolate alla fine di ogni ora: su un'installazione nuova compaiono dopo il primo ciclo e la prima ora completa.
+The 7-day bars use Home Assistant statistics, computed at the end of every hour: on a new installation they appear after the first cycle and the first full hour.
 
-**Vista pronta**, due colonne come nella foto in cima (modifica dashboard → ⋮ → *Editor di configurazione*, oppure una nuova vista in YAML):
+**Ready-made view**, two columns as in the picture at the top (edit dashboard → ⋮ → *Raw configuration editor*, or a new view in YAML):
 
 ```yaml
-title: Irrigazione
-path: irrigazione
+title: Irrigation
+path: irrigation
 icon: mdi:sprinkler
 type: sections
 max_columns: 2
@@ -464,159 +465,153 @@ sections:
       - type: custom:irrigazione-ai-charts-card
         grid_options: { columns: full }
       - type: calendar
-        entities: [calendar.irrigazione_registro_irrigazioni]
+        entities: [calendar.irrigation_irrigation_log]
         grid_options: { columns: full }
 ```
 
-Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). Toccando una durata si aprono i dettagli del sensore. La batteria della valvola viene trovata da sola, se il dispositivo della valvola ha un sensore batteria. I grafici si aggiornano ogni 10 minuti.
+Tapping a zone opens or closes its valve (the safety close applies). Tapping a duration opens the sensor's details. The valve battery is found automatically if the valve's device has a battery sensor. Charts refresh every 10 minutes.
 
-## 🧩 Entità
+## 🧩 Entities
 
-| Entità | A cosa serve |
+| Entity | What it's for |
 | --- | --- |
-| Interruttore *Irrigazione* | Acceso = ciclo in corso. Accenderlo avvia, spegnerlo ferma e chiude le valvole |
-| Interruttore *Blocco pioggia* | Se il meteo indica pioggia il ciclo non parte |
-| Interruttore *Analisi AI* | A ogni ciclo l'AI decide se e quanto irrigare |
-| Selettore *Timer manuale* | 15/30/60 minuti per tutte le zone al posto della formula |
-| Pulsanti *Avvia ora*, *Ferma*, *Analizza ora* | Comandi immediati |
-| Sensori *Stato*, *Tempo rimanente*, *Prossima irrigazione*, *Ultima irrigazione*, *Ultimo blocco* | Stato dell'impianto |
-| Sensore *Decisione AI* | Irrigare / Saltare / Errore, con motivo e litri per zona |
-| Sensori *Acqua oggi*, *Acqua questo mese*, *Acqua totale* | Litri di tutte le zone |
-| Calendario *Registro irrigazioni* | Cicli, aperture manuali, cicli saltati, prossima irrigazione |
-| Per zona: sensore binario *Terriccio secco* | Acceso dopo 5 minuti sotto la soglia; attributi `moisture` e `threshold` |
-| Per zona: selettore *Programmazione* | Spenta, un giorno sì e uno no, giorni scelti, tutti i giorni; negli attributi i giorni (`days`) e la prossima irrigazione della zona (`next_run`) |
-| Per zona: *Durata prevista*, *Durata AI*, *Fine prevista*, *Acqua oggi*, *Acqua totale* | Minuti, litri e orari della zona; nella durata prevista ci sono anche formula usata ed eventuale errore |
+| *Irrigation* switch | On = cycle running. Turning it on starts, turning it off stops and closes the valves |
+| *Rain block* switch | If it's raining the cycle doesn't start |
+| *AI analysis* switch | At every cycle the AI decides whether and how much to water |
+| *Manual timer* select | 15/30/60 minutes for every zone instead of the formula |
+| *Start now*, *Stop*, *Analyze now* buttons | Immediate commands |
+| *Status*, *Time remaining*, *Next run*, *Last run*, *Last block* sensors | System status |
+| *AI decision* sensor | Water / Skip / Error, with reason and liters per zone |
+| *Water today*, *Water this month*, *Water total* sensors | Liters for all zones |
+| *Irrigation log* calendar | Cycles, manual openings, skipped cycles, next watering |
+| Per zone: *Dry soil* binary sensor | On after 5 minutes below the threshold; `moisture` and `threshold` attributes |
+| Per zone: *Schedule* select | Off, every other day, chosen days, every day; the days (`days`) and the zone's next watering (`next_run`) in the attributes |
+| Per zone: *Planned duration*, *AI duration*, *Expected end*, *Water today*, *Water total* | The zone's minutes, liters and times; the planned duration also holds the formula used and any error |
 
-## 🛠️ Servizi
+## 🛠️ Actions
 
-| Servizio | Cosa fa |
+| Action | What it does |
 | --- | --- |
-| `irrigazione_ai.start` | Avvia un ciclo. Facoltativi: `config_entry_id`, `duration` (minuti per tutte le zone), `force` (ignora il blocco pioggia) |
-| `irrigazione_ai.stop` | Ferma il ciclo e chiude le valvole |
-| `irrigazione_ai.set_schedule` | Cambia la programmazione di una zona (destinazione: il suo selettore *Programmazione*). `mode`: `off`, `alternate`, `days`, `daily`; `days`: per esempio `[mon, wed, sat, sun]`. Solo i giorni impostano anche "giorni scelti"; una lista vuota spegne la zona |
-| `irrigazione_ai.analyze` | Chiede all'AI una valutazione senza irrigare e restituisce decisione, motivo, litri e minuti per zona |
+| `irrigazione_ai.start` | Starts a cycle. Optional: `config_entry_id`, `duration` (minutes for every zone), `force` (ignores the rain block) |
+| `irrigazione_ai.stop` | Stops the cycle and closes the valves |
+| `irrigazione_ai.set_schedule` | Changes a zone's schedule (target: its *Schedule* select). `mode`: `off`, `alternate`, `days`, `daily`; `days`: for example `[mon, wed, sat, sun]`. Days alone also set "chosen days"; an empty list turns the zone off |
+| `irrigazione_ai.analyze` | Asks the AI for an assessment without watering and returns decision, reason, liters and minutes per zone |
 
-## 🧪 La formula nel dettaglio
+## 🧪 The formula in detail
 
-Formula predefinita:
+Default formula:
 
 ```jinja
 {{ (20 + 20 * (100 - moisture) / moisture + 20 * temperature / 25) * 0.9 * weather_factor * coefficient }}
 ```
 
-| Variabile | Significato |
+| Variable | Meaning |
 | --- | --- |
-| `moisture` | Umidità del terriccio della zona in % (minimo 10; 50 senza sensore) |
-| `moisture_raw` | Umidità del terriccio così com'è (`none` se manca) |
-| `temperature` | Temperatura esterna in °C (20 se manca) |
-| `humidity` | Umidità esterna in % (`none` se manca) |
-| `weather` | Stato dell'entità meteo (`sunny`, `cloudy`, `rainy`…) |
-| `raining` | Vero se piove adesso (sensore pioggia o, se manca, meteo) |
-| `weather_factor` | Sereno 1,1 · poco nuvoloso 0,8 · nuvoloso 0,5 · nebbia 0,6 · pioggia 0,2 · altro 1 |
-| `coefficient`, `flow_rate`, `soil_volume`, `exposure` | Dati della zona (portata in L/min, volume in L, `north`/`south`/`east`/`west`) |
-| `min_duration`, `max_duration` | Limiti della zona in minuti |
-| `plants` | Piante della zona, come le hai scritte (testo vuoto se non indicate) |
+| `moisture` | The zone's soil moisture in % (minimum 10; 50 without a sensor) |
+| `moisture_raw` | Soil moisture as is (`none` if missing) |
+| `temperature` | Outdoor temperature in °C (20 if missing) |
+| `humidity` | Outdoor humidity in % (`none` if missing) |
+| `weather` | State of the weather entity (`sunny`, `cloudy`, `rainy`…) |
+| `raining` | True if it's raining now (rain sensor or, if missing, weather) |
+| `weather_factor` | Sunny 1.1 · partly cloudy 0.8 · cloudy 0.5 · fog 0.6 · rain 0.2 · other 1 |
+| `coefficient`, `flow_rate`, `soil_volume`, `exposure` | Zone data (flow rate in L/min, volume in L, `north`/`south`/`east`/`west`) |
+| `min_duration`, `max_duration` | The zone's limits in minutes |
+| `plants` | The zone's plants, as you wrote them (empty text if not set) |
 
-Il risultato resta sempre tra durata minima e massima. Se una formula personalizzata smette di funzionare, per esempio perché un sensore diventa non disponibile, si usa quella predefinita e l'errore compare nell'attributo `formula_error`.
+The result always stays between minimum and maximum duration. If a custom formula stops working, for example because a sensor becomes unavailable, the default one is used and the error shows up in the `formula_error` attribute.
 
 ```jinja
-{# Litri in base al volume del terriccio, convertiti in minuti #}
+{# Liters based on soil volume, converted to minutes #}
 {{ soil_volume * (60 - moisture) / 100 / flow_rate }}
 
-{# Più acqua con l'esposizione a sud #}
+{# More water with southern exposure #}
 {{ (40 - moisture / 2) * (1.3 if exposure == 'south' else 1) * weather_factor }}
 
-{# Meno acqua alle piante mediterranee #}
-{{ (40 - moisture / 2) * (0.6 if 'rosmarino' in plants | lower else 1) * weather_factor }}
+{# Less water for Mediterranean plants #}
+{{ (40 - moisture / 2) * (0.6 if 'rosemary' in plants | lower else 1) * weather_factor }}
 
-{# Tempo fisso deciso da un helper #}
-{{ states('input_number.minuti_irrigazione') | float(20) }}
+{# Fixed time set by a helper #}
+{{ states('input_number.irrigation_minutes') | float(20) }}
 ```
 
-## 🤖 L'AI nel dettaglio
+## 🤖 The AI in detail
 
-**Cosa riceve:**
-- data e ora;
-- posizione approssimata (un solo decimale);
-- meteo attuale;
-- se piove adesso, e ore e percentuale di pioggia nelle ultime 12 ore (dal sensore pioggia se c'è, altrimenti dal meteo);
-- previsioni orarie delle prossime 12 ore;
-- per ogni zona: piante, umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula;
-- le tue note.
+**What it receives:**
+- date and time;
+- approximate location (one decimal place);
+- current weather;
+- whether it's raining now, and hours and percentage of rain over the last 12 hours (from the rain sensor if there is one, otherwise from the weather);
+- hourly forecast for the next 12 hours;
+- for each zone: plants, soil moisture, volume, exposure, flow rate, limits and formula minutes;
+- your notes.
 
-**Le regole che segue:**
-- stima l'evapotraspirazione del substrato;
-- sottrae la pioggia caduta e quella prevista;
-- dimensiona i litri sul **volume del terriccio** di ogni zona: più substrato, più acqua per arrivare alla stessa umidità;
-- non irriga se ha piovuto per più di metà delle ore recenti o se è attesa pioggia significativa;
-- dà 0 litri sopra il 70% di umidità del terriccio;
-- dà un minimo di mantenimento tra 50% e 65%, anche con volumi grandi (oltre 1000 L);
-- se ha piovuto meno di metà delle ore, riduce i litri in proporzione;
-- dosa l'acqua sulle **piante**: poca per quelle resistenti alla siccità (succulente, cactus, rosmarino, lavanda, olivo, aromatiche mediterranee), di più per ortaggi, piante da fiore o a foglia larga, agrumi in vaso e piante giovani, tenendo conto della stagione;
-- con l'esposizione a sud aumenta l'acqua, a nord la riduce.
+**The rules it follows:**
+- estimates the substrate's evapotranspiration;
+- subtracts rain that fell and rain expected;
+- sizes the liters on each zone's **soil volume**: more substrate, more water to reach the same moisture;
+- doesn't water if it rained for more than half of the recent hours or if significant rain is expected;
+- gives 0 liters above 70% soil moisture;
+- gives a maintenance minimum between 50% and 65%, even with large volumes (over 1000 L);
+- if it rained for less than half of the hours, reduces the liters proportionally;
+- doses water on the **plants**: little for drought-tolerant ones (succulents, cacti, rosemary, lavender, olive, Mediterranean herbs), more for vegetables, flowering or broad-leaf plants, potted citrus and young plants, taking the season into account;
+- increases water with southern exposure, reduces it with northern.
 
-**Il prompt è modificabile.** Nelle opzioni AI c'è l'editor (template Jinja), già compilato con il prompt predefinito. Variabili:
+**The prompt is editable.** The AI options contain the editor (Jinja template), prefilled with the default prompt. Variables:
 
-| Variabile | Contenuto |
+| Variable | Content |
 | --- | --- |
-| `data_json` | Tutti i dati qui sopra in JSON (se il tuo prompt non usa i dati, vengono aggiunti in fondo da soli) |
-| `data` | Gli stessi dati come oggetto, per esempio `data.weather_now.temperature_c` |
-| `zones`, `weather_now`, `rain_last_hours`, `forecast_next_hours` | Le singole parti dei dati |
-| `notes` | Le tue note per l'AI |
-| `language` | La lingua in cui l'AI deve rispondere |
+| `data_json` | All the data above as JSON (if your prompt doesn't use the data, it's appended at the end automatically) |
+| `data` | The same data as an object, for example `data.weather_now.temperature_c` |
+| `zones`, `weather_now`, `rain_last_hours`, `forecast_next_hours` | The individual parts of the data |
+| `notes` | Your notes for the AI |
+| `language` | The language the AI must answer in |
 
-In fondo l'integrazione aggiunge sempre le istruzioni sul formato della risposta (chiavi JSON e lingua dei motivi), perché è da lì che ricava i litri. Un prompt che non funziona viene rifiutato prima di salvare. Svuotando il campo torni al prompt predefinito, che riceve i miglioramenti delle nuove versioni.
+At the end the integration always appends the instructions on the response format (JSON keys and language of the reasons), because that's where it reads the liters from. A prompt that doesn't work is rejected before saving. Clearing the field takes you back to the default prompt, which gets the improvements of new versions.
 
 ```jinja
-Sei un agronomo esperto di piante in vaso su un terrazzo ventoso.
-{% for z in zones %}- {{ z.name }}: {{ z.soil_moisture_percent }}% di umidità, {{ z.soil_volume_liters }} L
+You are an agronomist expert in potted plants on a windy terrace.
+{% for z in zones %}- {{ z.name }}: {{ z.soil_moisture_percent }}% moisture, {{ z.soil_volume_liters }} L
 {% endfor %}
-Oggi ci sono {{ weather_now.temperature_c }} °C. Dati completi: {{ data_json }}
+Today it's {{ weather_now.temperature_c }} °C. Full data: {{ data_json }}
 ```
 
-**Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e, per ogni zona, i litri e un breve riassunto tecnico ("ha piovuto a sufficienza" quando i litri sono 0 per la pioggia). I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Una zona con 0 litri resta chiusa.
+**What it returns:** whether to water, a short reason (in Home Assistant's language) and, for each zone, the liters and a short technical summary ("enough rain fell" when the liters are 0 because of rain). Liters become minutes using the zone's flow rate, rounded up and kept between minimum and maximum. A zone with 0 liters stays closed.
 
-**Se qualcosa va storto:**
-- *irriga con la formula* (predefinito);
-- *irriga con la formula e spegni l'analisi AI*;
-- *salta il ciclo*.
+**If something goes wrong:**
+- *water with the formula* (default);
+- *water with the formula and turn AI analysis off*;
+- *skip the cycle*.
 
-In ogni caso arriva una notifica. Con il timer manuale, o con una durata passata a `irrigazione_ai.start`, l'AI non viene interpellata.
+Either way a notification is sent. With the manual timer, or with a duration passed to `irrigazione_ai.start`, the AI isn't consulted.
 
-## 📒 Storico e consumi
+## 📒 History and water use
 
-I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicli e manuali), e si aggiornano ogni 30 secondi mentre una valvola è aperta. "Oggi" si azzera a mezzanotte, "questo mese" il primo del mese. Storico e contatori restano dopo i riavvii (sono salvati in `.storage`) e vengono cancellati se rimuovi l'integrazione. Il registro conserva gli ultimi 1000 eventi.
+Liters are computed as opening time × flow rate, for every opening (cycles and manual), and update every 30 seconds while a valve is open. "Today" resets at midnight, "this month" on the first of the month. History and counters survive restarts (they're saved in `.storage`) and are deleted if you remove the integration. The log keeps the last 1000 events.
 
-## ❓ Domande frequenti
+## ❓ FAQ
 
-**Posso usarla senza sensori?** Sì. Meteo e sensori sono tutti facoltativi. Con la formula `{{ 20 }}` hai un timer fisso con programmazione, sicurezza e registro.
+**Can I use it without sensors?** Yes. Weather and sensors are all optional. With the formula `{{ 20 }}` you get a fixed timer with scheduling, safety and log.
 
-**Aggiorno dalla 0.9: cosa succede ai giorni?** Ogni zona eredita la frequenza che avevi (per esempio "una volta a settimana, lunedì" diventa "giorni scelti: lunedì"), quindi l'impianto continua a irrigare negli stessi giorni. Il vecchio selettore *Frequenza* sparisce.
+**Upgrading from 0.9: what happens to the days?** Each zone inherits the frequency you had (for example "once a week, Monday" becomes "chosen days: Monday"), so the system keeps watering on the same days. The old *Frequency* select goes away.
 
-**In che lingua sono i testi?** Form, entità e card seguono la lingua del tuo profilo. Notifiche, Live Activity, eventi del calendario e motivazioni dell'AI seguono la lingua di sistema (Impostazioni → Sistema → Generale): oggi italiano e inglese, le altre lingue usano l'inglese.
+**What language are the texts in?** Forms, entities and cards follow your profile language. Notifications, Live Activities, calendar events and AI reasons follow the system language (Settings → System → General): Italian and English today, other languages fall back to English.
 
-**Quanto costa l'AI?** Una richiesta per ciclo, più quelle che lanci con *Analizza ora*. Con modelli piccoli (per esempio `gpt-4.1-mini` o `gemini-2.5-flash`) ogni richiesta costa una frazione di centesimo: con 2–3 cicli a settimana, 5 € di credito durano ben più di un anno. Con Ollama in locale, o con AI Task su un modello locale, è gratis.
+**How much does the AI cost?** One request per cycle, plus those you run with *Analyze now*. With small models (for example `gpt-4.1-mini` or `gemini-2.5-flash`) each request costs a fraction of a cent: with 2–3 cycles a week, $5 of credit lasts well over a year. With local Ollama, or AI Task on a local model, it's free.
 
-**La Live Activity funziona su Android?** Sì, come Live Update da Android 16. Sulle versioni precedenti arriva come notifica normale, che si aggiorna al suo posto.
+**Does the Live Activity work on Android?** Yes, as a Live Update from Android 16. On older versions it arrives as a regular notification that updates in place.
 
-**La Live Activity non compare o resta ferma: perché?** Quasi sempre manca uno dei requisiti: app Companion non collegata o con le notifiche disattivate, Live Activity disattivate nelle impostazioni iOS dell'app, oppure accesso remoto assente o non inserito nell'app. Prova con il Wi-Fi spento: se l'app non apre Home Assistant, sistema prima l'accesso remoto (vedi [guida, punto 5](#5-live-activity-requisiti-e-impostazione)).
+**The Live Activity doesn't appear or stays frozen: why?** Almost always one of the requirements is missing: Companion app not connected or with notifications off, Live Activities turned off in the app's iOS settings, or remote access missing or not entered in the app. Try with Wi-Fi off: if the app can't open Home Assistant, fix remote access first (see the [guide, step 5](#5-live-activities-requirements-and-setup)).
 
-**Posso avere più impianti?** Sì: aggiungi l'integrazione più volte, una per impianto (per esempio terrazzo e giardino). Un solo impianto basta per zone con esposizione, piante o formule diverse; ne serve un secondo solo per un orario di partenza diverso, un altro meteo o sensore pioggia, un'altra configurazione AI o un luogo separato.
+**Can I have more than one system?** Yes: add the integration more than once, one per system (for example terrace and garden). One system is enough for zones with different exposure, plants or formulas; you need a second one only for a different start time, weather or rain sensor, AI setup, or a separate location.
 
-## ☕ Ti piace?
+## ☕ Like it?
 
-Se Irrigazione AI ti fa risparmiare acqua (e automazioni), puoi offrirmi un caffè:
+If Irrigazione AI saves you water (and automations), you can buy me a coffee:
 
 <a href="https://buymeacoffee.com/acaonweb"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="45"></a>
 
-Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irrigazione-ai/issues).
+Reports and ideas are welcome in the [issues](https://github.com/acaonweb/irrigazione-ai/issues).
 
----
-
-## English
-
-The full English documentation is in **[README.en.md](README.en.md)**.
-
-## Licenza
+## License
 
 MIT
