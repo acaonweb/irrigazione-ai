@@ -222,9 +222,11 @@ class IrrigationHistory:
         summary: str,
         planned: dict[str, tuple[str, int]],
         note: str | None = None,
+        flows: dict[str, float] | None = None,
     ) -> None:
         """Inizio di un ciclo. planned: zone_id -> (nome, minuti previsti)."""
         self._cycle = {
+            "flows": flows or {},
             "start": dt_util.utcnow(),
             "summary": summary,
             "note": note,
@@ -244,6 +246,12 @@ class IrrigationHistory:
         for zone_id, (name, minutes) in cycle["planned"].items():
             liters = max(0.0, self.zone(zone_id).total - cycle["before"][zone_id])
             total += liters
+            if interrupted:
+                # Minuti davvero irrigati (dai litri e dalla portata), non quelli previsti
+                flow = cycle["flows"].get(zone_id) or 0
+                if flow > 0:
+                    actual = liters / flow
+                    minutes = "<1" if 0 < actual < 1 else min(minutes, round(actual))
             zones[zone_id] = {"name": name, "minutes": minutes, "liters": round(liters, 1)}
             lines.append(
                 tr(

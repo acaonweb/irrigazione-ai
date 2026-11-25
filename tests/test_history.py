@@ -10,7 +10,7 @@ from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.irrigazione_ai.const import DOMAIN
 
-from .conftest import VALVE_1, WEATHER, install_fake_valves, make_entry
+from .conftest import VALVE_1, VALVE_2, WEATHER, install_fake_valves, make_entry
 
 CAL = "calendar.irrigazione_irrigation_log"
 
@@ -84,7 +84,7 @@ async def test_cycle_event_and_live_water(hass: HomeAssistant, valves, freezer, 
     events = await _events(hass, t0 - timedelta(hours=1), t0 + timedelta(hours=3))
     cycle = [e for e in events if e["summary"].startswith("Watering (action)")]
     assert cycle[0]["summary"] == "Watering (action) (stopped)"
-    assert "Secondo piano: 55 min, 3.6 L" in cycle[0]["description"]
+    assert "Secondo piano: 5 min, 3.6 L" in cycle[0]["description"]
     assert "Total: 7.3 L" in cycle[0]["description"]
     # Nessuna "apertura manuale" per le valvole aperte dal ciclo
     assert not [e for e in events if e["summary"].startswith("Manual opening")]
@@ -134,3 +134,40 @@ async def test_counters_persist_and_day_reset(hass: HomeAssistant, valves, freez
     await hass.async_block_till_done()
     assert _num(hass, "sensor.secondo_piano_water_today") == 0
     assert _num(hass, "sensor.secondo_piano_water_total") == 7.3
+
+
+async def test_bounce_after_stop_is_not_manual(
+    hass: HomeAssistant, valves, freezer
+) -> None:
+    """Una valvola che dice 'aperta' subito dopo lo stop non è un'apertura manuale."""
+    entry = await _setup(hass, valves)
+    controller = entry.runtime_data
+    await hass.services.async_call(DOMAIN, "start", {}, blocking=True)
+    await hass.async_block_till_done()
+    await hass.services.async_call(DOMAIN, "stop", {}, blocking=True)
+    await hass.async_block_till_done()
+    # Rimbalzo del dispositivo: on e subito off
+    hass.states.async_set(VALVE_2, "on")
+    await hass.async_block_till_done()
+    hass.states.async_set(VALVE_2, "off")
+    await hass.async_block_till_done()
+    manual = [e for e in controller.history.events if e.kind == "manual"]
+    assert manual == []
+    assert controller.history.events[-1].summary.endswith("(stopped)")
+
+    # Se dopo il rimbalzo resta aperta, viene richiusa
+    hass.states.async_set(VALVE_2, "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=11))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert hass.states.get(VALVE_2).state == "off"
+    assert not [e for e in controller.history.events if e.kind == "manual"]
+
+    # Un'apertura vera, più tardi, è manuale
+    freezer.tick(timedelta(minutes=1))
+    hass.states.async_set(VALVE_2, "on")
+    await hass.async_block_till_done()
+    hass.states.async_set(VALVE_2, "off")
+    await hass.async_block_till_done()
+    assert [e for e in controller.history.events if e.kind == "manual"]

@@ -146,6 +146,9 @@ ATTR_FORCE: Final = "force"
 # Tentativi di chiusura valvola
 CLOSE_RETRIES: Final = 3
 CLOSE_RETRY_DELAY: Final = 2.0
+# Dopo una chiusura comandata dall'integrazione, un "aperta" entro questi secondi
+# è un rimbalzo del dispositivo (messaggio in ritardo), non un'apertura manuale
+BOUNCE_WINDOW: Final = 10
 # Attesa dopo l'avvio di HA prima di chiudere valvole rimaste aperte
 STARTUP_CLOSE_DELAY: Final = 30.0
 

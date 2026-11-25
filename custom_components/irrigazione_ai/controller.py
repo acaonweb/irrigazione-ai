@@ -59,6 +59,7 @@ from .const import (
     AI_NONE,
     AI_ON_ERROR_DISABLE,
     AI_ON_ERROR_SKIP,
+    BOUNCE_WINDOW,
     CLOSE_RETRIES,
     CLOSE_RETRY_DELAY,
     CONF_AI_INSTRUCTIONS,
@@ -294,6 +295,8 @@ class IrrigationController:
         self._run_task: asyncio.Task | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._safety_timers: dict[str, Callable[[], None]] = {}
+        # Ultima chiusura comandata per valvola (per riconoscere i rimbalzi)
+        self._closed_at: dict[str, datetime] = {}
 
         # Allarme terriccio secco: zone secche e timer in attesa
         self.dry: dict[str, bool] = {}
@@ -915,6 +918,7 @@ class IrrigationController:
             summary,
             {zid: (self.zones[zid].name, mins) for zid, mins in durations.items()},
             note,
+            flows={zid: self.zones[zid].flow_rate for zid in durations},
         )
         self.last_block = None
         self.running = True
@@ -1041,6 +1045,7 @@ class IrrigationController:
     async def _close_valve(self, entity_id: str) -> None:
         domain = entity_id.split(".", 1)[0]
         service = "close_valve" if domain == "valve" else "turn_off"
+        self._closed_at[entity_id] = dt_util.utcnow()
         for attempt in range(CLOSE_RETRIES):
             try:
                 await self.hass.services.async_call(
@@ -1088,6 +1093,25 @@ class IrrigationController:
                     self.hass.async_create_task(
                         self.live.async_finish(manual_event, interrupted=False)
                     )
+            return
+
+        closed_at = self._closed_at.get(entity_id)
+        if (
+            not by_cycle
+            and closed_at is not None
+            and (dt_util.utcnow() - closed_at).total_seconds() < BOUNCE_WINDOW
+        ):
+            # Rimbalzo dopo una nostra chiusura: non è un'apertura manuale.
+            # Se fra poco risulta ancora aperta, la richiudiamo.
+            _LOGGER.debug("%s: 'aperta' subito dopo la chiusura, ignorata", entity_id)
+
+            async def _recheck(_now: datetime) -> None:
+                run_now = self.zone_runs.get(zone.zone_id) if self.running else None
+                if self._is_open(entity_id) and not (run_now and run_now.active):
+                    _LOGGER.warning("%s ancora aperta dopo la chiusura: la richiudo", entity_id)
+                    await self._close_valve(entity_id)
+
+            self._unsubs.append(async_call_later(self.hass, BOUNCE_WINDOW, _recheck))
             return
 
         was_counting = self.history.is_open(zone.zone_id)
