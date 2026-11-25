@@ -9,13 +9,15 @@
           "weather_entity": "Weather entity",
           "temperature_sensor": "Outdoor temperature sensor",
           "humidity_sensor": "Outdoor humidity sensor",
-          "rain_sensor": "Rain sensor"
+          "rain_sensor": "Rain sensor",
+          "wind_sensor": "Wind sensor"
         },
         "data_description": {
           "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it (and without a rain sensor) the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
-          "rain_sensor": "Optional: your own device that knows whether it is raining (binary sensor on = rain, or a rain rate/amount sensor > 0). When set it decides instead of the weather; if it stops answering the weather is used"
+          "rain_sensor": "Optional: your own device that knows whether it is raining (binary sensor on = rain, or a rain rate/amount sensor > 0). When set it decides instead of the weather; if it stops answering the weather is used",
+          "wind_sensor": "Optional: wind speed from your own weather station. Without it the weather entity wind is used, if it has one"
         }
       },
       "zone": {
@@ -34,6 +36,7 @@
           "plants": "Plants",
           "schedule": "When to water",
           "days": "Days (only with 'Chosen days')",
+          "learning": "Self-learning",
           "formula": "Zone formula"
         },
         "data_description": {
@@ -49,6 +52,7 @@
           "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
           "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
           "days": "Ignored with the other choices",
+          "learning": "After each watering the zone checks how far its soil moisture rises and adjusts the next dose by itself. Needs a soil moisture sensor. You can also switch it on and off from the card",
           "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
         }
       },
@@ -75,7 +79,11 @@
           "notify_services": "Other notifications",
           "time_format": "Time format",
           "date_format": "Date format",
-          "dry_threshold": "Dry soil alarm"
+          "dry_threshold": "Dry soil alarm",
+          "rain_forecast_hours": "Rain expected within",
+          "frost_temperature": "Frost: don't water below",
+          "wind_max": "Strong wind: don't water above",
+          "learn_target": "Self-learning target"
         },
         "data_description": {
           "start_mode": "Sunset, sunrise or a fixed time of your choice",
@@ -89,7 +97,11 @@
           "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
           "time_format": "For the cards and the Live Activity. Automatic = the format of each user's profile (Live Activity: 12 h in the United States, 24 h elsewhere)",
           "date_format": "For the cards. Automatic = the format of each user's profile",
-          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
+          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)",
+          "rain_forecast_hours": "With the rain block on, the cycle is skipped if the hourly forecast shows rain within these hours (0 = only rain falling now). Skipped if the weather service has no hourly forecast",
+          "frost_temperature": "Current temperature or the next 3 hours of forecast. Leave empty to turn the check off",
+          "wind_max": "Wind from the wind sensor or the weather entity (0 = off). Skipped if no wind data is available",
+          "learn_target": "Soil moisture a zone with self-learning should reach after watering"
         }
       },
       "formula": {
@@ -163,6 +175,7 @@
           "temperature_sensor": "Outdoor temperature sensor",
           "humidity_sensor": "Outdoor humidity sensor",
           "rain_sensor": "Rain sensor",
+          "wind_sensor": "Wind sensor",
           "start_mode": "Start time based on",
           "start_time": "Fixed time",
           "sunset_offset": "Offset in minutes",
@@ -174,13 +187,18 @@
           "notify_services": "Other notifications",
           "time_format": "Time format",
           "date_format": "Date format",
-          "dry_threshold": "Dry soil alarm"
+          "dry_threshold": "Dry soil alarm",
+          "rain_forecast_hours": "Rain expected within",
+          "frost_temperature": "Frost: don't water below",
+          "wind_max": "Strong wind: don't water above",
+          "learn_target": "Self-learning target"
         },
         "data_description": {
           "weather_entity": "Optional: used by the formula, the rain block and the AI analysis. Without it (and without a rain sensor) the rain block stays inactive",
           "temperature_sensor": "Optional: otherwise the weather entity temperature is used",
           "humidity_sensor": "Optional: otherwise the weather entity humidity is used",
           "rain_sensor": "Optional: your own device that knows whether it is raining (binary sensor on = rain, or a rain rate/amount sensor > 0). When set it decides instead of the weather; if it stops answering the weather is used",
+          "wind_sensor": "Optional: wind speed from your own weather station. Without it the weather entity wind is used, if it has one",
           "start_mode": "Sunset, sunrise or a fixed time of your choice",
           "start_time": "Used only with 'Fixed time'",
           "sunset_offset": "Only for sunrise and sunset: minutes after the event; negative = before (e.g. -30 = half an hour before sunrise)",
@@ -192,7 +210,11 @@
           "notify_services": "Notify actions for simple messages (start, end, skipped cycles, dry soil, errors), e.g. notify.pushover",
           "time_format": "For the cards and the Live Activity. Automatic = the format of each user's profile (Live Activity: 12 h in the United States, 24 h elsewhere)",
           "date_format": "For the cards. Automatic = the format of each user's profile",
-          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)"
+          "dry_threshold": "If a zone's soil moisture stays below this for 5 minutes you get a notification (0 = off)",
+          "rain_forecast_hours": "With the rain block on, the cycle is skipped if the hourly forecast shows rain within these hours (0 = only rain falling now). Skipped if the weather service has no hourly forecast",
+          "frost_temperature": "Current temperature or the next 3 hours of forecast. Leave empty to turn the check off",
+          "wind_max": "Wind from the wind sensor or the weather entity (0 = off). Skipped if no wind data is available",
+          "learn_target": "Soil moisture a zone with self-learning should reach after watering"
         }
       },
       "formula": {
@@ -273,6 +295,7 @@
             "plants": "Plants",
             "schedule": "When to water",
             "days": "Days (only with 'Chosen days')",
+            "learning": "Self-learning",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -288,6 +311,7 @@
             "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
             "days": "Ignored with the other choices",
+            "learning": "After each watering the zone checks how far its soil moisture rises and adjusts the next dose by itself. Needs a soil moisture sensor. You can also switch it on and off from the card",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         },
@@ -306,6 +330,7 @@
             "plants": "Plants",
             "schedule": "When to water",
             "days": "Days (only with 'Chosen days')",
+            "learning": "Self-learning",
             "formula": "Zone formula"
           },
           "data_description": {
@@ -321,6 +346,7 @@
             "plants": "What grows in this zone, in your words: e.g. rosemary and lavender, tomatoes, potted lemon tree. The AI uses it to size the water",
             "schedule": "Every other day counts from the day you choose it. You can change it later from the card",
             "days": "Ignored with the other choices",
+            "learning": "After each watering the zone checks how far its soil moisture rises and adjusts the next dose by itself. Needs a soil moisture sensor. You can also switch it on and off from the card",
             "formula": "Optional: replaces the system formula for this zone only. Leave empty to use the system formula"
           }
         }
@@ -425,6 +451,9 @@
       },
       "ai_analysis": {
         "name": "AI analysis"
+      },
+      "zone_learning": {
+        "name": "Self-learning"
       }
     },
     "select": {
@@ -510,6 +539,9 @@
       },
       "zone_water_total": {
         "name": "Water total"
+      },
+      "zone_learned_factor": {
+        "name": "Learned factor"
       }
     },
     "calendar": {
@@ -532,8 +564,8 @@
           "description": "Same minutes for every zone; empty = formula or manual timer."
         },
         "force": {
-          "name": "Ignore rain block",
-          "description": "Start even if the weather says it is raining."
+          "name": "Ignore weather blocks",
+          "description": "Start even if it is raining or rain, frost or strong wind is expected."
         }
       }
     },
@@ -570,6 +602,11 @@
           "description": "Weekdays (mon…sun). Alone, they also set the mode to 'Chosen days'; an empty list turns the zone off."
         }
       }
+    },
+    "reset_learning": {
+      "name": "Reset self-learning",
+      "description": "Brings a zone's learned factor back to 1. Target: the zone's Self-learning switch.",
+      "fields": {}
     }
   },
   "exceptions": {

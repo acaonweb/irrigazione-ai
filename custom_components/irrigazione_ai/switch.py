@@ -1,4 +1,4 @@
-"""Interruttori: irrigazione generale e blocco pioggia."""
+"""Interruttori: irrigazione generale, blocco pioggia, AI e autoapprendimento per zona."""
 
 from __future__ import annotations
 
@@ -7,12 +7,14 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import STATE_OFF
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import IrrigazioneConfigEntry
-from .const import SOURCE_MANUAL
-from .entity import IrrigazioneEntity
+from .const import SERVICE_RESET_LEARNING, SOURCE_MANUAL
+from .controller import ZoneConfig
+from .entity import IrrigazioneEntity, ZoneEntity
 
 
 async def async_setup_entry(
@@ -24,6 +26,12 @@ async def async_setup_entry(
     controller = entry.runtime_data
     async_add_entities(
         [IrrigationSwitch(controller), RainBlockSwitch(controller), AiSwitch(controller)]
+    )
+    for zone_id, zone in controller.zones.items():
+        async_add_entities([LearningSwitch(controller, zone)], config_subentry_id=zone_id)
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_RESET_LEARNING, None, "async_reset_learning"
     )
 
 
@@ -111,3 +119,58 @@ class AiSwitch(IrrigazioneEntity, SwitchEntity, RestoreEntity):
         """Disattiva."""
         self.controller.ai_enabled = False
         self.controller.async_update_listeners()
+
+
+class LearningSwitch(ZoneEntity, SwitchEntity):
+    """Autoapprendimento della zona: corregge da sola la dose dopo ogni irrigazione."""
+
+    def __init__(self, controller, zone: ZoneConfig) -> None:
+        """Inizializza."""
+        super().__init__(controller, zone, "zone_learning")
+
+    @property
+    def _zone(self) -> ZoneConfig | None:
+        return self.controller.zones.get(self.zone.zone_id)
+
+    @property
+    def available(self) -> bool:
+        """Disponibile finché la zona esiste."""
+        return self._zone is not None
+
+    @property
+    def is_on(self) -> bool:
+        """Autoapprendimento acceso."""
+        zone = self._zone
+        return bool(zone and zone.learning)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Fattore appreso e ultima osservazione."""
+        zone = self._zone
+        if zone is None:
+            return {}
+        data = self.controller.learning.zones.get(zone.zone_id)
+        return {
+            "factor": data.factor if data else 1.0,
+            "applied": self.controller.learned_factor(zone),
+            "samples": data.samples if data else 0,
+            "target": self.controller.learn_target,
+            "last_before": data.last_before if data else None,
+            "last_peak": data.last_peak if data else None,
+            "last_result": data.last_result if data else None,
+            "last_at": data.last_at if data else None,
+            "observing": self.controller.observing(zone.zone_id),
+            "has_sensor": zone.moisture_sensor is not None,
+        }
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Accende."""
+        self.controller.async_set_learning(self.zone.zone_id, True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Spegne (il fattore appreso resta, ma non si applica)."""
+        self.controller.async_set_learning(self.zone.zone_id, False)
+
+    async def async_reset_learning(self) -> None:
+        """Azione irrigazione_ai.reset_learning: riparte da fattore 1."""
+        self.controller.async_reset_learning(self.zone.zone_id)

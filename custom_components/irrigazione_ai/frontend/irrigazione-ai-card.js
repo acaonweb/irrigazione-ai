@@ -9,12 +9,12 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.15.0";
+const CARD_VERSION = "0.16.0";
 
 const TEXT = {
   it: {
     general: "Irrigazione Generale", active: "Irrigazione attiva", inactive: "Irrigazione inattiva",
-    blocked: { rain: "Saltata per pioggia", ai: "Saltata dall'AI", ai_error: "AI non riuscita" },
+    blocked: { rain: "Saltata per pioggia", rain_forecast: "Saltata: pioggia prevista", frost: "Saltata: rischio gelo", wind: "Saltata: vento forte", ai: "Saltata dall'AI", ai_error: "AI non riuscita" },
     next: "prossima", ends: "fine", remaining: "Tempo rimanente", zone: "Zona",
     moisture: "Umidità", dry: "🔴 Secco", ok: "🟢 Ottimale", wet: "💧 Umido",
     planned: "Prevista", noSensor: "nessun sensore", unavailable: "non disponibile", battery: "Batteria", ai: "AI", rain: "Pioggia", setup: "Configura",
@@ -23,6 +23,7 @@ const TEXT = {
     off: "Off", daily: "7/7", min: "min", skip: "salta",
     schedule: "Programmazione", alternate: "1 sì 1 no", chosen: "Giorni", zoneOff: "spenta", noDays: "nessun giorno",
     altFrom: "un giorno sì e uno no dal", nextShort: "prossima",
+    learn: "Autoapprendimento", learnNeedsSensor: "serve un sensore di umidità", learnCycles: "cicli", learnNew: "in attesa del primo ciclo", learnOff: "spento", learnWatching: "sto osservando l'umidità",
     water7: "💧 Consumo acqua", soil: "Umidità terriccio", outdoor: "Esterno", temp: "Temperatura", hum: "Umidità",
     noData: "Nessun dato", noEntity: "Nessun impianto Irrigazione AI trovato.",
     today: "Oggi", month: "Mese", total: "Totale", log: "📒 Registro irrigazioni", showAll: "Mostra tutti", showLess: "Mostra meno", noEvents: "Nessun evento negli ultimi 14 giorni",
@@ -31,7 +32,7 @@ const TEXT = {
   },
   en: {
     general: "Irrigation", active: "Watering", inactive: "Idle",
-    blocked: { rain: "Skipped for rain", ai: "Skipped by AI", ai_error: "AI failed" },
+    blocked: { rain: "Skipped for rain", rain_forecast: "Skipped: rain expected", frost: "Skipped: frost risk", wind: "Skipped: strong wind", ai: "Skipped by AI", ai_error: "AI failed" },
     next: "next", ends: "ends", remaining: "Time remaining", zone: "Zone",
     moisture: "Moisture", dry: "🔴 Dry", ok: "🟢 Good", wet: "💧 Wet",
     planned: "Planned", noSensor: "no sensor", unavailable: "unavailable", battery: "Battery", ai: "AI", rain: "Rain", setup: "Set up",
@@ -40,6 +41,7 @@ const TEXT = {
     off: "Off", daily: "7/7", min: "min", skip: "skip",
     schedule: "Schedule", alternate: "Every 2", chosen: "Days", zoneOff: "off", noDays: "no days",
     altFrom: "every other day from", nextShort: "next",
+    learn: "Self-learning", learnNeedsSensor: "needs a moisture sensor", learnCycles: "cycles", learnNew: "waiting for the first cycle", learnOff: "off", learnWatching: "watching the moisture",
     water7: "💧 Water use", soil: "Soil moisture", outdoor: "Outdoor", temp: "Temperature", hum: "Humidity",
     noData: "No data", noEntity: "No Irrigazione AI system found.",
     today: "Today", month: "Month", total: "Total", log: "📒 Irrigation log", showAll: "Show all", showLess: "Show less", noEvents: "No events in the last 14 days",
@@ -106,6 +108,16 @@ const CONTROL_STYLE = `
   .wday.on { background: var(--ia-blue); border-color: var(--ia-blue); color: #fff; font-weight: 600; }
   .wdays.dim .wday { opacity: .45; }
   .salt { font-size: 11px; color: var(--secondary-text-color); }
+  .learn { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 2px; }
+  .learn .ltxt { font-size: 12px; min-width: 0; }
+  .learn .ltxt b { font-weight: 600; }
+  .learn .ltxt small { display: block; font-size: 11px; color: var(--secondary-text-color); }
+  .sw { flex: none; width: 40px; height: 22px; border-radius: 999px; border: none; padding: 0; cursor: pointer; position: relative;
+        background: var(--divider-color, rgba(127,127,127,.4)); transition: background .2s; }
+  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .sw.on { background: var(--ia-blue); }
+  .sw.on::after { left: 21px; }
+  .sw:disabled { opacity: .4; cursor: default; }
 `;
 
 const CHART_STYLE = `
@@ -270,6 +282,21 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     return count % 2 === 1 && i === count - 1 ? "span12" : "span6";
   }
 
+  _learnRow(z, t) {
+    const sw = this._s(z.learning);
+    if (!sw) return "";
+    const on = sw.state === "on";
+    const a = sw.attributes;
+    let info;
+    if (!a.has_sensor) info = t.learnNeedsSensor;
+    else if (!on) info = t.learnOff;
+    else if (a.observing) info = t.learnWatching;
+    else if (!a.samples) info = t.learnNew;
+    else info = `×${Number(a.factor).toLocaleString(this._lang(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${a.samples} ${t.learnCycles}${a.last_peak != null ? ` · ${Math.round(a.last_peak)}% → ${Math.round(a.target)}%` : ""}`;
+    return `<div class="learn"><div class="ltxt"><b>🧠 ${t.learn}</b><small>${info}</small></div>
+      <button class="sw ${on ? "on" : ""}" data-toggle="${z.learning}" ${a.has_sensor || on ? "" : "disabled"} aria-label="${t.learn}"></button></div>`;
+  }
+
   _zoneTile(z, i, t, battery, count) {
     const valve = this._s(z.valve);
     const on = valve && ["on", "open", "opening"].includes(valve.state);
@@ -359,7 +386,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       }
       return `<div class="tile span12 sched">
         <div class="shead"><span class="sname">${t.zone} ${i + 1} – ${z.name}</span><span class="snext">${info}</span></div>
-        <div class="modes">${modes}</div>${dayRow}</div>`;
+        <div class="modes">${modes}</div>${dayRow}${this._learnRow(z, t)}</div>`;
     }).join("");
 
     const durTiles = map.zones.map((z, i) => {

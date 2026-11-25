@@ -58,3 +58,9 @@ set_schedule:
             - sat
             - sun
           translation_key: weekday
+
+reset_learning:
+  target:
+    entity:
+      integration: irrigazione_ai
+      domain: switch

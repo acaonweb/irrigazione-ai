@@ -72,12 +72,15 @@ from .const import (
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
     CONF_FORMULA,
+    CONF_FROST_TEMP,
     CONF_HUMIDITY,
+    CONF_LEARN_TARGET,
     CONF_MAX_DURATION,
     CONF_MIN_DURATION,
     CONF_MOISTURE,
     CONF_NOTIFY,
     CONF_PLANTS,
+    CONF_RAIN_FORECAST_HOURS,
     CONF_RAIN_SENSOR,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
@@ -88,8 +91,11 @@ from .const import (
     CONF_TEMPERATURE,
     CONF_VALVE,
     CONF_WEATHER,
+    CONF_WIND_MAX,
+    CONF_WIND_SENSOR,
     CONF_ZONE_ANCHOR,
     CONF_ZONE_DAYS,
+    CONF_ZONE_LEARNING,
     CONF_ZONE_NAME,
     CONF_ZONE_SCHEDULE,
     DEFAULT_AI_ON_ERROR,
@@ -99,8 +105,11 @@ from .const import (
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
     DEFAULT_FORMULA,
+    DEFAULT_FROST_TEMP,
+    DEFAULT_LEARN_TARGET,
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
+    DEFAULT_RAIN_FORECAST_HOURS,
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
     DEFAULT_SCHEDULE,
@@ -108,10 +117,13 @@ from .const import (
     DEFAULT_START_MODE,
     DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
+    DEFAULT_WIND_MAX,
     DEFAULT_ZONE_DAYS,
     DOMAIN,
     DRY_DELAY,
     DRY_HYSTERESIS,
+    FROST_FORECAST_HOURS,
+    LEARN_WINDOW,
     RAIN_STATES,
     RUN_MODE_SEQUENTIAL,
     SCHEDULE_ALTERNATE,
@@ -133,8 +145,16 @@ from .const import (
 )
 from .formula import FormulaError, render_formula
 from .history import IrrigationHistory
+from .learning import LearningStore, apply_factor
 from .live import LiveActivity
-from .messages import tr
+from .messages import language, tr
+from .weather_guard import (
+    Block,
+    async_hourly_forecast,
+    min_temperature,
+    rain_expected,
+    wind_from_state,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -165,6 +185,7 @@ class ZoneConfig:
     schedule: str = DEFAULT_SCHEDULE
     days: tuple[str, ...] = tuple(DEFAULT_ZONE_DAYS)
     anchor: date | None = None
+    learning: bool = False
 
     def irrigates_on(self, day: date) -> bool:
         """True se la zona va irrigata nel giorno (locale)."""
@@ -195,6 +216,7 @@ class ZoneConfig:
                 d for d in WEEKDAYS if d in data.get(CONF_ZONE_DAYS, DEFAULT_ZONE_DAYS)
             ),
             anchor=_parse_date(data.get(CONF_ZONE_ANCHOR)),
+            learning=bool(data.get(CONF_ZONE_LEARNING, False)),
         )
 
 
@@ -289,6 +311,11 @@ class IrrigationController:
         self._ai_lock = asyncio.Lock()
 
         self.history = IrrigationHistory(hass, entry.entry_id)
+        self.learning = LearningStore(hass, entry.entry_id)
+        # Osservazioni dell'umidità dopo l'irrigazione (autoapprendimento)
+        self._observations: dict[str, dict[str, Any]] = {}
+        # Il ciclo in corso usa formula o AI (non un timer fisso): se ne impara
+        self._learn_cycle = False
         self.live = LiveActivity(self)
         self.manual_close_at: dict[str, datetime] = {}
 
@@ -378,11 +405,14 @@ class IrrigationController:
             cancel()
         self._safety_timers.clear()
         self._dry_timers.clear()
+        for zone_id in list(self._observations):
+            self._end_observation(zone_id)
         if self.running:
             await self.async_stop(notify=False)
         self.live.shutdown()  # dopo lo stop, che programma la chiusura della Live Activity
         self._count_water()
         await self.history.async_save()
+        await self.learning.async_save()
 
     @callback
     def _handle_tick(self, _now: datetime) -> None:
@@ -596,10 +626,123 @@ class IrrigationController:
         return clamp_minutes(value, zone.min_duration, zone.max_duration)
 
     def planned_minutes(self, zone: ZoneConfig) -> int:
-        """Durata che verrebbe usata ora (timer manuale o formula)."""
+        """Durata che verrebbe usata ora (timer manuale o formula + autoapprendimento)."""
         if self.manual_timer > 0:
             return self.manual_timer
-        return self.calculated_minutes(zone)
+        return self.learned_minutes(zone, self.calculated_minutes(zone))
+
+    # ------------------------------------------------------------------
+    # Autoapprendimento
+    # ------------------------------------------------------------------
+    @property
+    def learn_target(self) -> float:
+        """Umidità che la zona dovrebbe raggiungere dopo l'irrigazione."""
+        return float(self.config.get(CONF_LEARN_TARGET, DEFAULT_LEARN_TARGET))
+
+    def learning_active(self, zone: ZoneConfig) -> bool:
+        """L'autoapprendimento è acceso e la zona ha un sensore di umidità."""
+        return zone.learning and zone.moisture_sensor is not None
+
+    def learned_factor(self, zone: ZoneConfig) -> float:
+        """Fattore applicato ai minuti della zona (1 se l'apprendimento è spento)."""
+        if not self.learning_active(zone):
+            return 1.0
+        return self.learning.factor(zone.zone_id)
+
+    def learned_minutes(self, zone: ZoneConfig, minutes: int) -> int:
+        """Minuti di formula o AI corretti dal fattore appreso."""
+        factor = self.learned_factor(zone)
+        if factor == 1.0:
+            return minutes
+        return apply_factor(minutes, factor, zone.min_duration, zone.max_duration)
+
+    @callback
+    def async_set_learning(self, zone_id: str, enabled: bool) -> None:
+        """Accende o spegne l'autoapprendimento di una zona (dalla card)."""
+        sub = self.entry.subentries[zone_id]
+        data = dict(sub.data)
+        if bool(data.get(CONF_ZONE_LEARNING, False)) == enabled:
+            return
+        data[CONF_ZONE_LEARNING] = enabled
+        if not enabled:
+            self._end_observation(zone_id)
+        self.hass.config_entries.async_update_subentry(self.entry, sub, data=data)
+
+    @callback
+    def async_reset_learning(self, zone_id: str) -> None:
+        """Riporta il fattore della zona a 1."""
+        self._end_observation(zone_id)
+        self.learning.reset(zone_id)
+        self.async_update_listeners()
+
+    @callback
+    def _start_observation(self, zone: ZoneConfig, before: float | None) -> None:
+        """Dopo l'irrigazione segue l'umidità della zona per qualche ora."""
+        self._end_observation(zone.zone_id)
+        current = self.zone_moisture(zone)
+        obs: dict[str, Any] = {
+            "before": before,
+            "peak": current,
+            "rained": self.is_raining(),
+        }
+
+        @callback
+        def _changed(_event: Event[EventStateChangedData]) -> None:
+            value = self.zone_moisture(zone)
+            if value is not None and (obs["peak"] is None or value > obs["peak"]):
+                obs["peak"] = value
+            if self.is_raining():
+                obs["rained"] = True
+
+        async def _evaluate(_now: datetime) -> None:
+            obs["timer"] = None
+            self._finish_observation(zone.zone_id)
+
+        obs["unsub"] = async_track_state_change_event(
+            self.hass, [zone.moisture_sensor], _changed
+        )
+        obs["timer"] = async_call_later(self.hass, LEARN_WINDOW, _evaluate)
+        self._observations[zone.zone_id] = obs
+
+    @callback
+    def _finish_observation(self, zone_id: str) -> None:
+        obs = self._observations.get(zone_id)
+        zone = self.zones.get(zone_id)
+        if obs is None:
+            return
+        if zone is not None and self.is_raining():
+            obs["rained"] = True
+        self._end_observation(zone_id)
+        if zone is None or not self.learning_active(zone):
+            return
+        if obs["rained"]:
+            self.learning.skip(zone_id, "skipped_rain")
+        elif obs["peak"] is None:
+            self.learning.skip(zone_id, "skipped_no_data")
+        else:
+            result = self.learning.record(zone_id, obs["before"], obs["peak"], self.learn_target)
+            _LOGGER.debug(
+                "Autoapprendimento %s: picco %s%% (obiettivo %s%%), fattore %s",
+                zone.name,
+                obs["peak"],
+                self.learn_target,
+                result.factor,
+            )
+        self.async_update_listeners()
+
+    @callback
+    def _end_observation(self, zone_id: str) -> None:
+        obs = self._observations.pop(zone_id, None)
+        if obs is None:
+            return
+        if obs.get("unsub"):
+            obs["unsub"]()
+        if obs.get("timer"):
+            obs["timer"]()
+
+    def observing(self, zone_id: str) -> bool:
+        """True se si sta osservando l'umidità della zona dopo un'irrigazione."""
+        return zone_id in self._observations
 
     def rain_sensor_state(self) -> bool | None:
         """Cosa dice il sensore pioggia (None se non c'è o non risponde)."""
@@ -621,6 +764,72 @@ class IrrigationController:
             state = self.hass.states.get(entity_id)
             return tr(self.hass, "block_rain_sensor_desc", sensor=state.name, state=state.state)
         return tr(self.hass, "block_rain_desc", weather=self.weather_state())
+
+    # ------------------------------------------------------------------
+    # Blocchi meteo: pioggia prevista, gelo, vento
+    # ------------------------------------------------------------------
+    @property
+    def rain_forecast_hours(self) -> int:
+        """Ore di previsione guardate dal blocco pioggia (0 = spento)."""
+        return int(self.config.get(CONF_RAIN_FORECAST_HOURS, DEFAULT_RAIN_FORECAST_HOURS) or 0)
+
+    @property
+    def frost_temperature(self) -> float | None:
+        """Sotto questa temperatura non si irriga (None = controllo spento)."""
+        value = self.config.get(CONF_FROST_TEMP, DEFAULT_FROST_TEMP)
+        return None if value is None else float(value)
+
+    @property
+    def wind_max(self) -> float:
+        """Vento massimo in km/h (0 = controllo spento)."""
+        return float(self.config.get(CONF_WIND_MAX, DEFAULT_WIND_MAX) or 0)
+
+    def wind_speed(self) -> float | None:
+        """Vento in km/h: sensore dedicato o, se manca o non risponde, entità meteo."""
+        sensor = self.config.get(CONF_WIND_SENSOR)
+        if sensor:
+            value = wind_from_state(self.hass.states.get(sensor))
+            if value is not None:
+                return value
+        weather = self.config.get(CONF_WEATHER)
+        if weather:
+            return wind_from_state(self.hass.states.get(weather), "wind_speed")
+        return None
+
+    def _num(self, value: float) -> str:
+        """Numero leggibile nella lingua di sistema: intero o con un decimale."""
+        text = str(int(value)) if float(value).is_integer() else f"{value:.1f}"
+        return text.replace(".", ",") if language(self.hass) == "it" else text
+
+    async def async_weather_block(self) -> Block | None:
+        """Motivo per non irrigare adesso (oltre alla pioggia in corso), se c'è.
+
+        Ogni controllo si salta se il dato manca.
+        """
+        rain_hours = self.rain_forecast_hours if self.rain_block else 0
+        frost = self.frost_temperature
+        wind_max = self.wind_max
+        if rain_hours <= 0 and frost is None and wind_max <= 0:
+            return None
+        now = dt_util.utcnow()
+        forecast = None
+        if rain_hours > 0 or frost is not None:
+            forecast = await async_hourly_forecast(self.hass, self.config.get(CONF_WEATHER))
+        if rain_hours > 0 and (rain := rain_expected(forecast, rain_hours, now)):
+            return Block("rain_forecast", {"hours": rain_hours, "at": rain["at"]})
+        if frost is not None:
+            low = min_temperature(
+                self.outdoor_temperature(), forecast, FROST_FORECAST_HOURS, now
+            )
+            if low is not None and low < frost:
+                return Block(
+                    "frost", {"temperature": self._num(low), "threshold": self._num(frost)}
+                )
+        if wind_max > 0:
+            wind = self.wind_speed()
+            if wind is not None and wind > wind_max:
+                return Block("wind", {"wind": self._num(wind), "threshold": self._num(wind_max)})
+        return None
 
     def remaining_minutes(self) -> int:
         """Minuti rimanenti al termine del ciclo in corso."""
@@ -752,6 +961,7 @@ class IrrigationController:
                 "condition": self.weather_state(),
                 "temperature_c": self.outdoor_temperature(),
                 "humidity_percent": self.outdoor_humidity(),
+                "wind_kmh": self.wind_speed(),
             },
             "raining_now": self.is_raining(),
             "rain_last_hours": await async_rain_history(
@@ -853,6 +1063,17 @@ class IrrigationController:
             await self._notify(tr(self.hass, "notify_rain"))
             return False
 
+        if not force and (block := await self.async_weather_block()) is not None:
+            self.last_block = block.reason
+            self.last_block_at = dt_util.utcnow()
+            self.history.add_block(
+                tr(self.hass, f"block_{block.reason}"),
+                tr(self.hass, f"block_{block.reason}_desc", **block.values),
+            )
+            self.async_update_listeners()
+            await self._notify(tr(self.hass, f"notify_{block.reason}", **block.values))
+            return False
+
         durations: dict[str, int] = {}
         self.ai_last_used = False
         use_ai = duration is None and self.manual_timer <= 0 and self.ai_active
@@ -883,7 +1104,7 @@ class IrrigationController:
                     await self._notify(tr(self.hass, "notify_ai_skip", reason=result.reason))
                     return False
                 durations = {
-                    zone_id: zr.minutes
+                    zone_id: self.learned_minutes(self.zones[zone_id], zr.minutes)
                     for zone_id, zr in result.zones.items()
                     if zr.minutes > 0
                     and zone_id in self.zones
@@ -902,6 +1123,7 @@ class IrrigationController:
             return False
 
         self._plan(durations)
+        self._learn_cycle = duration is None and self.manual_timer <= 0
         titles = {SOURCE_SCHEDULE: "cycle_schedule", SOURCE_SERVICE: "cycle_service"}
         summary = tr(self.hass, titles.get(source, "cycle_manual"))
         note = None
@@ -990,6 +1212,7 @@ class IrrigationController:
         run.starts_at = dt_util.utcnow()
         run.ends_at = run.starts_at + timedelta(minutes=run.minutes)
         run.active = True
+        before = self.zone_moisture(zone)
         self.async_update_listeners()
         await self._open_valve(zone.valve)
         try:
@@ -999,6 +1222,8 @@ class IrrigationController:
             run.done = True
         if self._is_open(zone.valve):
             await self._close_valve(zone.valve)
+        if self._learn_cycle and self.learning_active(zone):
+            self._start_observation(zone, before)
         self.async_update_listeners()
         if any(not r.done for r in self.zone_runs.values()):
             await self.live.async_update(silent=True)

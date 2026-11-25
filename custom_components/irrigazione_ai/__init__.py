@@ -62,7 +62,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 CARD_URL = f"/{DOMAIN}/irrigazione-ai-card.js"
 CARD_PATH = Path(__file__).parent / "frontend" / "irrigazione-ai-card.js"
-CARD_VERSION = "0.15.0"
+CARD_VERSION = "0.16.0"
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
@@ -163,6 +163,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry) 
     entry.runtime_data = controller
     # Lo storico va caricato prima delle entità, che leggono i litri salvati
     await controller.history.async_load()
+    await controller.learning.async_load()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await controller.async_setup()
     # Ora che tutte le entità esistono, aggiorna (es. la mappa per la card)
@@ -203,6 +204,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: IrrigazioneConfigEntry)
     from homeassistant.helpers.storage import Store  # noqa: PLC0415
 
     await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
+    await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.learning").async_remove()
 
 
 async def _async_last_state(hass: HomeAssistant, entity_id: str) -> str | None:

@@ -75,6 +75,17 @@ E il **prompt è tuo**: si modifica nelle opzioni come template Jinja, con tutti
 ### 🌵 Allarme terriccio secco
 Se l'umidità del terriccio di una zona resta **sotto la soglia per 5 minuti** (25% di default, si cambia nelle opzioni; 0 = spento) arriva una notifica sui servizi di *Altre notifiche*, per esempio Pushover. Una sola per episodio: la zona torna "normale" quando risale di almeno 3 punti sopra la soglia. Ogni zona con sensore ha il sensore binario *Terriccio secco*, utile per la dashboard o per le tue automazioni, e la card colora di rosso la zona con la stessa soglia.
 
+### 🧠 Ogni zona impara la sua dose
+Accendi l'**autoapprendimento** su una zona (nel form della zona o direttamente dalla card) e la zona corregge da sola la sua dose. Dopo ogni irrigazione guarda fin dove sale l'umidità del terriccio nelle 3 ore successive. Se il picco resta sotto l'obiettivo (60% di default), la volta dopo la zona riceve un po' più d'acqua; se lo supera, un po' meno. La correzione è un fattore che moltiplica i minuti della formula o dell'AI, al massimo del 15% per ciclo e tra ×0,5 e ×2, sempre entro minimo e massimo della zona. Serve un sensore di umidità del terriccio; un campione si scarta se nel frattempo piove, e i cicli a durata fissa non contano. Scegli tu zona per zona: sul balcone sì, in mansarda no.
+
+### ☔ Pioggia in arrivo, gelo e vento
+Oltre alla pioggia in corso, un ciclo si salta quando:
+- è **prevista pioggia** nelle prossime ore (2 di default), dalle previsioni orarie dell'entità meteo;
+- c'è **rischio gelo**: temperatura sotto i 3 °C adesso o nelle prossime 3 ore;
+- c'è **vento forte**: sopra i 30 km/h, dal tuo sensore vento o dall'entità meteo.
+
+Ogni soglia si cambia o si spegne, e **ogni controllo usa solo i dati che ci sono**: se il tuo servizio meteo non dà le previsioni orarie o il vento, quel controllo si salta e l'irrigazione va avanti. Un dato mancante non blocca mai l'impianto.
+
 ### 📱 Live Activity su iPhone e Android
 Durante l'irrigazione il telefono mostra una **Live Activity** (schermata di blocco e Dynamic Island su iPhone) o un **Live Update** (Android 16+):
 
@@ -98,7 +109,7 @@ Un **calendario** registra:
 I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, si possono aggiungere alla **dashboard Energia**.
 
 ### 🛡️ Pensato per non allagare niente
-- **Blocco pioggia** collegato al meteo o, meglio, a un **tuo sensore pioggia**.
+- **Blocco pioggia** collegato al meteo o, meglio, a un **tuo sensore pioggia**, più **pioggia prevista**, **gelo** e **vento forte**.
 - **Chiusura di sicurezza** per le valvole aperte a mano.
 - **Chiusura automatica** delle valvole rimaste aperte se Home Assistant si riavvia a metà ciclo.
 - **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
@@ -108,11 +119,11 @@ I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, s
 Si registrano da sole all'installazione e non richiedono mushroom, button-card o apexcharts.
 
 - **`custom:irrigazione-ai-card`, i comandi:**
-  - il riquadro *Irrigazione Generale*, con lo stato (attiva, inattiva con la prossima irrigazione, saltata per pioggia o dall'AI);
+  - il riquadro *Irrigazione Generale*, con lo stato (attiva, inattiva con la prossima irrigazione, saltata per pioggia, pioggia prevista, gelo, vento o dall'AI);
   - i pulsanti gialli *AI* e *Pioggia*;
   - una scheda per zona, con umidità (🔴 secco, 🟢 ottimale, 💧 umido), minuti previsti e AI, litri, ora di fine e batteria della valvola. Si illumina di blu con l'irrigatore che oscilla mentre irriga, e di rosso se il terriccio è secco;
   - la riga del timer (off/15/30/60);
-  - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
+  - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione, più l'interruttore dell'**autoapprendimento** con il fattore appreso;
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
 - **`custom:irrigazione-ai-log-card`, il registro delle irrigazioni:** compatto, una riga per evento (cicli, aperture manuali, cicli saltati con il motivo) con giorno, ora e litri, più la prossima irrigazione prevista. Tocca una riga per vedere minuti e litri di ogni zona; "Mostra tutti" espande la lista.
 - **`custom:irrigazione-ai-moisture-card`, umidità del terriccio di sensori a scelta:** lo stesso grafico con le fasce rosso, verde e blu, per piante che non sono zone dell'impianto (vasi annaffiati a mano, aromatiche…).
@@ -122,7 +133,7 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
 
 ```mermaid
 flowchart LR
-    A[Alba, tramonto o orario fisso<br/>giorno previsto] --> B{Blocco pioggia<br/>e meteo piovoso?}
+    A[Alba, tramonto o orario fisso<br/>giorno previsto] --> B{Piove, pioggia prevista,<br/>gelo o vento forte?}
     M[Avvia ora / servizio] --> B
     B -- sì --> X[Saltato<br/>registrato nel calendario]
     B -- no --> C{Timer manuale<br/>o durata data?}
@@ -132,10 +143,12 @@ flowchart LR
     D -- no --> H[Formula Jinja<br/>per zona]
     E -. non risponde .-> H
     E -- non irrigare --> X
+    G --> L[× fattore appreso<br/>zone con autoapprendimento]
+    H --> L
     F --> R[Valvole aperte<br/>Live Activity]
-    G --> R
-    H --> R
+    L --> R
     R --> Z[Riepilogo litri<br/>calendario + consumi]
+    R -. 3 ore dopo .-> K[Picco di umidità<br/>aggiorna il fattore]
 ```
 
 ## 📦 Installazione
@@ -163,6 +176,7 @@ Questa sezione spiega con calma tutto quello che il wizard ti chiede. Se è la p
 | Un'**entità meteo** (`weather.…`), per esempio quella di Met.no che Home Assistant installa da sola | No, ma consigliata | Serve al blocco pioggia, alla formula (`weather_factor`) e all'AI (previsioni) |
 | Sensori di **temperatura e umidità esterna** | No | Se mancano si usano quelli dell'entità meteo |
 | Un **sensore pioggia** tuo (pluviometro, sensore di pioggia, stazione meteo) | No | Più affidabile del meteo per il blocco pioggia: vedi il punto 3 bis |
+| Un **sensore vento** (`sensor.…` in km/h, m/s, mph o nodi) | No | Solo se la tua entità meteo non dà il vento, o se hai una stazione meteo: vedi il punto 3 bis |
 | L'**app Home Assistant** (Companion) sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
 | **Accesso remoto** a Home Assistant | Solo per la Live Activity | Home Assistant Cloud (Nabu Casa) oppure un tuo indirizzo esterno con HTTPS, inserito anche nell'app |
 
@@ -227,6 +241,16 @@ Per il blocco conviene un sensore di **intensità** (mm/h) o un sensore binario:
 
 Se il sensore smette di rispondere (non disponibile), l'integrazione torna a usare il meteo: non resti senza blocco. Il sensore viene usato anche dall'**AI** (se piove adesso e quante ore ha piovuto nelle ultime 12) e nella **formula**, con la variabile `raining` (vero o falso).
 
+**Pioggia prevista, gelo e vento.** Nelle opzioni (*Programmazione*) ci sono altri tre controlli, fatti al momento di partire:
+
+| Controllo | Default | Dati usati | Per spegnerlo |
+| --- | --- | --- | --- |
+| **Pioggia prevista entro** | 2 ore | Previsioni orarie dell'entità meteo: un'ora conta come piovosa con condizione di pioggia, almeno 0,5 mm o probabilità dal 70% in su | 0 ore (o spegni il blocco pioggia) |
+| **Gelo: non irrigare sotto** | 3 °C | Temperatura esterna (sensore o meteo) e le prossime 3 ore di previsione | Campo vuoto |
+| **Vento forte: non irrigare sopra** | 30 km/h | Sensore vento, oppure il vento dell'entità meteo se il sensore manca o non risponde | 0 km/h |
+
+La pioggia prevista segue l'interruttore *Blocco pioggia*, come la pioggia in corso; gelo e vento sono sempre attivi finché hanno una soglia. Se un dato manca (niente previsioni orarie, niente vento, niente temperatura) quel controllo **si salta** e l'irrigazione va avanti. Ogni ciclo saltato finisce nel calendario con il motivo e arriva una notifica. `irrigazione_ai.start` con `force: true` ignora tutti questi blocchi.
+
 ### 3 ter. Formato di orari e date
 
 Nelle opzioni (*Programmazione*) scegli:
@@ -239,7 +263,7 @@ Una singola card può anche forzare il suo formato con `time_format: "12"` / `"2
 
 ### 4. Notifiche: come riceverle
 
-L'integrazione invia notifiche per: avvio (con i minuti di ogni zona), fine, interruzione, ciclo saltato per pioggia o dall'AI, errore dell'AI, valvola chiusa dalla sicurezza, valvola che non si chiude, terriccio secco.
+L'integrazione invia notifiche per: avvio (con i minuti di ogni zona), fine, interruzione, ciclo saltato (pioggia, pioggia prevista, gelo, vento o AI), errore dell'AI, valvola chiusa dalla sicurezza, valvola che non si chiude, terriccio secco.
 
 Le manda alle **azioni di notifica** che scrivi nel campo *Altre notifiche* (passo *Programmazione*). Un'azione di notifica è un servizio di Home Assistant che si chiama `notify.qualcosa`. Le più comuni:
 
@@ -330,6 +354,27 @@ L'AI viene interpellata **all'inizio di ogni ciclo**, programmato o avviato a ma
 
 Nel passo *Programmazione* imposta la **soglia** (25% di default; 0 = spento). Se una zona con sensore resta sotto la soglia per 5 minuti ricevi **una notifica** sulle *Altre notifiche* (punto 4) e si accende il sensore binario *Terriccio secco* della zona. Non ricevi altre notifiche finché l'umidità non risale almeno 3 punti sopra la soglia: un valore che oscilla intorno al 25% non ti tempesta di messaggi.
 
+### 8 bis. Autoapprendimento: ogni zona trova la sua dose
+
+La formula (o l'AI) dà una dose di partenza ragionevole, ma ogni vaso si comporta a modo suo: terriccio, drenaggio, sole, quanto sono grandi le radici. L'autoapprendimento corregge la dose sui risultati veri.
+
+**Come si accende.** Nel form della zona (*Riconfigura*) spunta **Autoapprendimento**, oppure usa l'interruttore nel riquadro *Programmazione* della zona, sulla card. È spento di default e si sceglie **zona per zona**. La zona deve avere un sensore di umidità del terriccio; senza, l'interruttore non ha effetto.
+
+**Cosa fa dopo ogni irrigazione.**
+1. Annota l'umidità prima di aprire la valvola.
+2. Dopo la chiusura segue il sensore per **3 ore** e tiene il valore più alto (il picco: l'acqua ci mette un po' a scendere).
+3. Confronta il picco con l'**obiettivo** (60% di default, *Obiettivo dell'autoapprendimento* nelle opzioni):
+   - entro ±5 punti: va bene, non cambia nulla;
+   - sotto: la volta dopo più acqua, fino al 15% in più;
+   - sopra: la volta dopo meno acqua, fino al 15% in meno.
+4. Il nuovo fattore moltiplica i minuti della formula o dell'AI dei cicli successivi. Resta tra ×0,5 e ×2, e i minuti restano sempre tra minimo e massimo della zona.
+
+**Quando un ciclo non conta:** se piove durante le 3 ore, se il sensore non manda valori, se il ciclo è stato fermato prima della fine della zona, oppure se era un ciclo a durata fissa (timer manuale o `duration`), perché lì il fattore non si applica.
+
+**Dove si vede.** Sulla card, sotto l'interruttore: fattore, numero di cicli appresi e ultimo picco confrontato con l'obiettivo (per esempio `×1,12 · 6 cicli · 52% → 60%`). Il sensore *Fattore appreso* di ogni zona ne conserva lo storico. Per ricominciare da capo usa l'azione `irrigazione_ai.reset_learning` sull'interruttore *Autoapprendimento* della zona. Spegnere l'autoapprendimento conserva il fattore ma smette di applicarlo.
+
+**Che obiettivo scegliere.** Il 60% va bene per la maggior parte delle piante in vaso con un sensore capacitivo. Abbassalo (50–55%) per piante mediterranee e grasse, alzalo (65–70%) per ortaggi e piante assetate. Se vuoi obiettivi diversi per zona, usa due impianti.
+
 ### 9. Usare l'integrazione nelle tue automazioni
 
 Tutto quello che vedi nella card è un'entità o un'azione, quindi puoi usarlo nelle automazioni. Alcuni esempi:
@@ -392,7 +437,9 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 | "La API key è stata rifiutata" | Hai copiato la chiave segreta e non il suo ID? È ancora attiva? Il progetto può usare il modello scelto? Il messaggio d'errore del servizio è riportato tra parentesi |
 | Le *Durate AI* sono vuote | L'AI non ha ancora analizzato nulla: premi *Analizza ora* |
 | Il blocco pioggia non scatta mai | Serve un sensore pioggia o un'entità meteo, e al momento dell'avvio devono indicare pioggia (sensore acceso o > 0; meteo `rainy`, `pouring`…). Il motivo di ogni blocco è nel calendario |
-| Il blocco pioggia scatta anche quando non piove | Il meteo è una previsione per la zona: aggiungi un tuo sensore pioggia, che ha la precedenza |
+| Il blocco pioggia scatta anche quando non piove | Il meteo è una previsione per la zona: aggiungi un tuo sensore pioggia, che ha la precedenza. Se il motivo è "pioggia prevista", abbassa *Pioggia prevista entro* o mettila a 0 |
+| Saltata per gelo o vento ma voglio irrigare | Cambia le soglie nelle opzioni (gelo vuoto o vento 0 le spengono), oppure avvia con `force: true` |
+| L'autoapprendimento non cambia il fattore | Servono un sensore di umidità, un ciclo con formula o AI (non un timer fisso) e 3 ore senza pioggia dopo l'irrigazione. La card mostra cosa sta facendo |
 | I litri restano a 0 | Controlla la portata della zona: con 0 L/min i litri sono sempre 0 |
 | "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
 | Una valvola non si chiude | L'integrazione riprova tre volte e ti avvisa: controlla la batteria e la copertura radio della valvola |
@@ -404,9 +451,9 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 
 | Passo | Cosa chiede |
 | --- | --- |
-| 1. Impianto | Nome; entità meteo, sensori di temperatura e umidità esterna, sensore pioggia: tutti facoltativi (senza meteo né sensore pioggia il blocco pioggia resta inattivo) |
-| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), formula propria facoltativa |
-| 3. Programmazione | Formato di orari e date; partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco |
+| 1. Impianto | Nome; entità meteo, sensori di temperatura e umidità esterna, sensore pioggia, sensore vento: tutti facoltativi (senza meteo né sensore pioggia il blocco pioggia resta inattivo) |
+| 2. Zone | Una o più zone: valvola, sensore del terriccio, portata, durata minima e massima, coefficiente, volume, esposizione, piante, quando irrigarla (spenta, un giorno sì e uno no, giorni scelti, tutti i giorni), autoapprendimento, formula propria facoltativa |
+| 3. Programmazione | Formato di orari e date; partenza riferita al tramonto, all'alba (con scostamento in minuti, anche negativo) o a un orario fisso, zone in parallelo o in sequenza, chiusura di sicurezza, chiusura al riavvio, dispositivi per la Live Activity, pagina da aprire, altre notifiche (per esempio Pushover), soglia dell'allarme terriccio secco, soglie di pioggia prevista, gelo e vento, obiettivo dell'autoapprendimento |
 | 4. Formula | Editor Jinja con anteprima dei minuti per zona |
 | 5. Analisi AI | Nessuna, AI Task, OpenAI, Anthropic, Gemini od Ollama; comportamento se l'AI non risponde; note per l'AI (piante, vasi, clima); editor del prompt |
 
@@ -478,7 +525,7 @@ Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). 
 | Entità | A cosa serve |
 | --- | --- |
 | Interruttore *Irrigazione* | Acceso = ciclo in corso. Accenderlo avvia, spegnerlo ferma e chiude le valvole |
-| Interruttore *Blocco pioggia* | Se il meteo indica pioggia il ciclo non parte |
+| Interruttore *Blocco pioggia* | Se piove, o è prevista pioggia entro le ore impostate, il ciclo non parte |
 | Interruttore *Analisi AI* | A ogni ciclo l'AI decide se e quanto irrigare |
 | Selettore *Timer manuale* | 15/30/60 minuti per tutte le zone al posto della formula |
 | Pulsanti *Avvia ora*, *Ferma*, *Analizza ora* | Comandi immediati |
@@ -488,16 +535,19 @@ Toccando una zona apri o chiudi la sua valvola (vale la chiusura di sicurezza). 
 | Calendario *Registro irrigazioni* | Cicli, aperture manuali, cicli saltati, prossima irrigazione |
 | Per zona: sensore binario *Terriccio secco* | Acceso dopo 5 minuti sotto la soglia; attributi `moisture` e `threshold` |
 | Per zona: selettore *Programmazione* | Spenta, un giorno sì e uno no, giorni scelti, tutti i giorni; negli attributi i giorni (`days`) e la prossima irrigazione della zona (`next_run`) |
+| Per zona: interruttore *Autoapprendimento* | Accende o spegne l'autoapprendimento della zona; negli attributi fattore, cicli appresi, ultimo picco e obiettivo |
+| Per zona: sensore *Fattore appreso* | Il fattore di correzione della zona (1 = nessuna), con il suo storico |
 | Per zona: *Durata prevista*, *Durata AI*, *Fine prevista*, *Acqua oggi*, *Acqua totale* | Minuti, litri e orari della zona; nella durata prevista ci sono anche formula usata ed eventuale errore |
 
 ## 🛠️ Servizi
 
 | Servizio | Cosa fa |
 | --- | --- |
-| `irrigazione_ai.start` | Avvia un ciclo. Facoltativi: `config_entry_id`, `duration` (minuti per tutte le zone), `force` (ignora il blocco pioggia) |
+| `irrigazione_ai.start` | Avvia un ciclo. Facoltativi: `config_entry_id`, `duration` (minuti per tutte le zone), `force` (ignora pioggia, pioggia prevista, gelo e vento) |
 | `irrigazione_ai.stop` | Ferma il ciclo e chiude le valvole |
 | `irrigazione_ai.set_schedule` | Cambia la programmazione di una zona (destinazione: il suo selettore *Programmazione*). `mode`: `off`, `alternate`, `days`, `daily`; `days`: per esempio `[mon, wed, sat, sun]`. Solo i giorni impostano anche "giorni scelti"; una lista vuota spegne la zona |
 | `irrigazione_ai.analyze` | Chiede all'AI una valutazione senza irrigare e restituisce decisione, motivo, litri e minuti per zona |
+| `irrigazione_ai.reset_learning` | Riporta a 1 il fattore appreso di una zona (destinazione: il suo interruttore *Autoapprendimento*) |
 
 ## 🧪 La formula nel dettaglio
 
@@ -541,7 +591,7 @@ Il risultato resta sempre tra durata minima e massima. Se una formula personaliz
 **Cosa riceve:**
 - data e ora;
 - posizione approssimata (un solo decimale);
-- meteo attuale;
+- meteo attuale, vento compreso;
 - se piove adesso, e ore e percentuale di pioggia nelle ultime 12 ore (dal sensore pioggia se c'è, altrimenti dal meteo);
 - previsioni orarie delle prossime 12 ore;
 - per ogni zona: piante, umidità del terriccio, volume, esposizione, portata, limiti e minuti della formula;
@@ -577,7 +627,7 @@ Sei un agronomo esperto di piante in vaso su un terrazzo ventoso.
 Oggi ci sono {{ weather_now.temperature_c }} °C. Dati completi: {{ data_json }}
 ```
 
-**Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e, per ogni zona, i litri e un breve riassunto tecnico ("ha piovuto a sufficienza" quando i litri sono 0 per la pioggia). I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Una zona con 0 litri resta chiusa.
+**Cosa restituisce:** se irrigare, un motivo breve (nella lingua di Home Assistant) e, per ogni zona, i litri e un breve riassunto tecnico ("ha piovuto a sufficienza" quando i litri sono 0 per la pioggia). I litri diventano minuti con la portata della zona, arrotondati per eccesso e limitati tra minimo e massimo. Con l'autoapprendimento acceso, quei minuti vengono poi moltiplicati per il fattore appreso della zona. Una zona con 0 litri resta chiusa.
 
 **Se qualcosa va storto:**
 - *irriga con la formula* (predefinito);
@@ -595,6 +645,8 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 **Posso usarla senza sensori?** Sì. Meteo e sensori sono tutti facoltativi. Con la formula `{{ 20 }}` hai un timer fisso con programmazione, sicurezza e registro.
 
 **Aggiorno dalla 0.9: cosa succede ai giorni?** Ogni zona eredita la frequenza che avevi (per esempio "una volta a settimana, lunedì" diventa "giorni scelti: lunedì"), quindi l'impianto continua a irrigare negli stessi giorni. Il vecchio selettore *Frequenza* sparisce.
+
+**Aggiorno alla 0.16: cambia qualcosa da solo?** Due cose: i controlli di pioggia prevista (2 ore), gelo (3 °C) e vento forte (30 km/h) partono con le soglie di default, quindi in una sera di gelo o di vento il ciclo si salta e arriva una notifica. Le cambi o le spegni nelle opzioni. L'autoapprendimento invece parte spento in tutte le zone.
 
 **In che lingua sono i testi?** Form, entità e card seguono la lingua del tuo profilo. Notifiche, Live Activity, eventi del calendario e motivazioni dell'AI seguono la lingua di sistema (Impostazioni → Sistema → Generale): oggi italiano e inglese, le altre lingue usano l'inglese.
 

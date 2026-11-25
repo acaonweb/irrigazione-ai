@@ -37,6 +37,29 @@ CONF_DRY_THRESHOLD: Final = "dry_threshold"
 DEFAULT_DRY_THRESHOLD: Final = 25
 DRY_DELAY: Final = 300  # secondi sotto soglia prima dell'allarme
 DRY_HYSTERESIS: Final = 3  # punti % sopra soglia per tornare "non secco"
+
+# Blocchi meteo (oltre alla pioggia in corso). Ogni controllo si salta se il
+# dato non c'è: l'irrigazione non si blocca mai per un dato mancante.
+CONF_RAIN_FORECAST_HOURS: Final = "rain_forecast_hours"
+DEFAULT_RAIN_FORECAST_HOURS: Final = 2  # 0 = spento
+CONF_FROST_TEMP: Final = "frost_temperature"
+DEFAULT_FROST_TEMP: Final = 3.0  # None = spento
+CONF_WIND_MAX: Final = "wind_max"
+DEFAULT_WIND_MAX: Final = 30  # km/h, 0 = spento
+CONF_WIND_SENSOR: Final = "wind_sensor"
+FROST_FORECAST_HOURS: Final = 3  # ore di previsione guardate per il gelo
+RAIN_FORECAST_MM: Final = 0.5  # mm in un'ora per considerarla piovosa
+RAIN_FORECAST_PROBABILITY: Final = 70  # % oltre cui un'ora è piovosa
+
+# Autoapprendimento (per zona)
+CONF_LEARN_TARGET: Final = "learn_target"
+DEFAULT_LEARN_TARGET: Final = 60  # umidità % attesa dopo l'irrigazione
+LEARN_TOLERANCE: Final = 5  # punti % entro cui il fattore non cambia
+LEARN_WINDOW: Final = 3 * 3600  # secondi di osservazione dopo l'irrigazione
+LEARN_MAX_STEP: Final = 0.15  # variazione massima del fattore per ciclo
+LEARN_MIN_FACTOR: Final = 0.5
+LEARN_MAX_FACTOR: Final = 2.0
+SERVICE_RESET_LEARNING: Final = "reset_learning"
 CONF_FORMULA: Final = "formula"
 
 RUN_MODE_PARALLEL: Final = "parallel"
@@ -103,6 +126,7 @@ DEFAULT_FREQUENCY: Final = FREQ_TWICE_WEEKLY
 # Programmazione per zona
 CONF_ZONE_SCHEDULE: Final = "schedule"
 CONF_PLANTS: Final = "plants"
+CONF_ZONE_LEARNING: Final = "learning"
 CONF_ZONE_DAYS: Final = "days"
 CONF_ZONE_ANCHOR: Final = "alternate_anchor"
 SCHEDULE_OFF: Final = "off"
@@ -115,7 +139,13 @@ DEFAULT_ZONE_DAYS: Final = ["thu", "sun"]
 SERVICE_SET_SCHEDULE: Final = "set_schedule"
 ATTR_MODE: Final = "mode"
 ATTR_DAYS: Final = "days"
-SCHEDULE_KEYS: Final = (CONF_ZONE_SCHEDULE, CONF_ZONE_DAYS, CONF_ZONE_ANCHOR)
+# Dati della zona che si cambiano dalla card senza ricaricare l'integrazione
+SCHEDULE_KEYS: Final = (
+    CONF_ZONE_SCHEDULE,
+    CONF_ZONE_DAYS,
+    CONF_ZONE_ANCHOR,
+    CONF_ZONE_LEARNING,
+)
 
 # --- Timer manuale (select) ---
 MANUAL_TIMER_OPTIONS: Final = ["off", "15", "30", "60"]

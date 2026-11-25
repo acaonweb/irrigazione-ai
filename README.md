@@ -77,6 +77,17 @@ And the **prompt is yours**: you edit it in the options as a Jinja template, wit
 ### 🌵 Dry soil alarm
 If a zone's soil moisture stays **below the threshold for 5 minutes** (25% by default, changeable in the options; 0 = off) you get a notification on the *Other notifications* services, for example Pushover. Only one per episode: the zone goes back to "normal" once it rises at least 3 points above the threshold. Every zone with a sensor has a *Dry soil* binary sensor, handy for dashboards or your own automations, and the card turns the zone red at the same threshold.
 
+### 🧠 Every zone learns its own dose
+Turn on **self-learning** for a zone (in the zone form or straight from the card) and it corrects its own dose. After each watering it watches how far the soil moisture rises over the next 3 hours. If the peak stays below the target (60% by default), the zone gets a bit more water next time; if it goes above, a bit less. The correction is a factor that multiplies the formula or AI minutes, up to 15% per cycle and between ×0.5 and ×2, always within the zone's minimum and maximum. It needs a soil moisture sensor; a sample is discarded if it rains in the meantime, and fixed-duration cycles don't count. You choose zone by zone: on the balcony yes, in the attic no.
+
+### ☔ Rain on the way, frost and wind
+Besides rain falling now, a cycle is skipped when:
+- **rain is expected** within the next hours (2 by default), from the weather entity's hourly forecast;
+- it's **frosty**: temperature below 3 °C now or in the next 3 hours;
+- the **wind is strong**: above 30 km/h, from your wind sensor or the weather entity.
+
+Every threshold can be changed or turned off, and **every check only uses the data that's there**: if your weather service has no hourly forecast or no wind, that check is skipped and watering goes ahead. A missing data point never blocks the system.
+
 ### 📱 Live Activities on iPhone and Android
 While watering, your phone shows a **Live Activity** (lock screen and Dynamic Island on iPhone) or a **Live Update** (Android 16+):
 
@@ -100,7 +111,7 @@ A **calendar** records:
 The *Water today / this month / total* sensors, for the system and for each zone, can be added to the **Energy dashboard**.
 
 ### 🛡️ Built not to flood anything
-- **Rain block** tied to the weather or, better, to **your own rain sensor**.
+- **Rain block** tied to the weather or, better, to **your own rain sensor**, plus **rain expected**, **frost** and **strong wind**.
 - **Safety close** for valves opened by hand.
 - **Automatic closing** of valves left open if Home Assistant restarts mid-cycle.
 - **Three closing attempts** per valve, with an alert if it won't close.
@@ -110,11 +121,11 @@ The *Water today / this month / total* sensors, for the system and for each zone
 They register themselves on install and need no mushroom, button-card or apexcharts.
 
 - **`custom:irrigazione-ai-card`, the controls:**
-  - the main tile with the status (running, idle with the next watering, skipped for rain or by the AI);
+  - the main tile with the status (running, idle with the next watering, skipped for rain, rain expected, frost, wind or by the AI);
   - the yellow *AI* and *Rain* buttons;
   - one tile per zone, with moisture (🔴 dry, 🟢 optimal, 💧 wet), planned and AI minutes, liters, end time and valve battery. It lights up blue with a swinging sprinkler while watering, and red when the soil is dry;
   - the timer row (off/15/30/60);
-  - the **schedule of each zone**: Off, every other day, Days, 7/7 and the weekdays to tap, with the next watering;
+  - the **schedule of each zone**: Off, every other day, Days, 7/7 and the weekdays to tap, with the next watering, plus the **self-learning** switch with the learned factor;
   - planned or AI durations, the AI decision with the *Analyze* button and the time remaining.
 - **`custom:irrigazione-ai-log-card`, the irrigation log:** compact, one row per event (cycles, manual openings, skipped cycles with the reason) with day, time and liters, plus the next planned watering. Tap a row to see each zone's minutes and liters; "Show all" expands the list.
 - **`custom:irrigazione-ai-moisture-card`, soil moisture of sensors of your choice:** the same chart with red, green and blue bands, for plants that aren't zones of the system (hand-watered pots, herbs…).
@@ -124,7 +135,7 @@ They register themselves on install and need no mushroom, button-card or apexcha
 
 ```mermaid
 flowchart LR
-    A[Sunrise, sunset or fixed time<br/>day scheduled] --> B{Rain block<br/>and rain?}
+    A[Sunrise, sunset or fixed time<br/>day scheduled] --> B{Raining, rain expected,<br/>frost or strong wind?}
     M[Start now / action] --> B
     B -- yes --> X[Skipped<br/>logged in the calendar]
     B -- no --> C{Manual timer<br/>or given duration?}
@@ -134,10 +145,12 @@ flowchart LR
     D -- no --> H[Jinja formula<br/>per zone]
     E -. no answer .-> H
     E -- don't water --> X
+    G --> L[× learned factor<br/>zones with self-learning]
+    H --> L
     F --> R[Valves open<br/>Live Activity]
-    G --> R
-    H --> R
+    L --> R
     R --> Z[Liters summary<br/>calendar + water use]
+    R -. next 3 hours .-> K[Moisture peak<br/>updates the factor]
 ```
 
 ## 📦 Installation
@@ -165,6 +178,7 @@ This section calmly explains everything the wizard asks you. If it's your first 
 | A **weather entity** (`weather.…`), for example the Met.no one Home Assistant installs by itself | No, but recommended | Used by the rain block, the formula (`weather_factor`) and the AI (forecast) |
 | **Outdoor temperature and humidity** sensors | No | If missing, those of the weather entity are used |
 | Your own **rain sensor** (rain gauge, rain detector, weather station) | No | More reliable than the weather for the rain block: see step 3b |
+| A **wind sensor** (`sensor.…` in km/h, m/s, mph or knots) | No | Only if your weather entity has no wind, or you have a weather station: see step 3b |
 | The **Home Assistant (Companion) app** on your phone | Only for Live Activities and phone notifications | App Store or Google Play, signed in to your Home Assistant |
 | **Remote access** to Home Assistant | Only for Live Activities | Home Assistant Cloud (Nabu Casa) or your own external HTTPS URL, also entered in the app |
 
@@ -229,6 +243,16 @@ For the block a **rate** sensor (mm/h) or a binary sensor works best: a *today's
 
 If the sensor stops responding (unavailable), the integration falls back to the weather: you're never left without a block. The sensor is also used by the **AI** (whether it's raining now and how many of the last 12 hours had rain) and in the **formula**, through the `raining` variable (true or false).
 
+**Rain expected, frost and wind.** In the options (*Scheduling*) there are three more checks, made when a cycle is about to start:
+
+| Check | Default | Data used | Turn off |
+| --- | --- | --- | --- |
+| **Rain expected within** | 2 hours | Hourly forecast of the weather entity: an hour counts as rainy with a rainy condition, at least 0.5 mm or a probability of 70% or more | 0 hours (or turn off the rain block) |
+| **Frost: don't water below** | 3 °C | Outdoor temperature (sensor or weather) and the next 3 hours of forecast | Empty field |
+| **Strong wind: don't water above** | 30 km/h | Wind sensor, or the weather entity's wind if the sensor is missing or not responding | 0 km/h |
+
+The rain expected check follows the *Rain block* switch, like the rain falling now; frost and wind are always active as long as they have a threshold. If a datum is missing (no hourly forecast, no wind, no temperature) that check is **skipped** and watering goes ahead. Every skipped cycle is in the calendar with the reason, and you get a notification. `irrigazione_ai.start` with `force: true` ignores all these blocks.
+
 ### 3c. Time and date format
 
 In the options (*Scheduling*) choose:
@@ -241,7 +265,7 @@ A single card can also force its own format with `time_format: "12"` / `"24"` an
 
 ### 4. Notifications: how to get them
 
-The integration sends notifications for: start (with each zone's minutes), end, interruption, cycle skipped for rain or by the AI, AI error, valve closed by the safety close, valve that won't close, dry soil.
+The integration sends notifications for: start (with each zone's minutes), end, interruption, cycle skipped (rain, rain expected, frost, wind or AI), AI error, valve closed by the safety close, valve that won't close, dry soil.
 
 It sends them to the **notify actions** you enter in the *Other notifications* field (*Scheduling* step). A notify action is a Home Assistant action named `notify.something`. The most common:
 
@@ -332,6 +356,27 @@ The AI is consulted **at the start of every cycle**, scheduled or started by han
 
 In the *Scheduling* step set the **threshold** (25% by default; 0 = off). If a zone with a sensor stays below the threshold for 5 minutes you get **one notification** on the *Other notifications* (step 4) and the zone's *Dry soil* binary sensor turns on. You get no further notifications until moisture rises at least 3 points above the threshold: a value hovering around 25% won't flood you with messages.
 
+### 8b. Self-learning: each zone finds its own dose
+
+The formula (or the AI) gives a reasonable starting dose, but every pot behaves differently: soil, drainage, sun, how big the roots are. Self-learning fixes the dose on real results.
+
+**How to turn it on.** In the zone form (*Reconfigure*) tick **Self-learning**, or use the switch in the zone's *Schedule* box on the card. It's off by default and set **zone by zone**. The zone needs a soil moisture sensor; without one the switch has no effect.
+
+**What it does after each watering.**
+1. It notes the moisture before opening the valve.
+2. After closing, it watches the sensor for **3 hours** and keeps the highest value (the peak: water takes a while to soak in).
+3. It compares the peak with the **target** (60% by default, *Self-learning target* in the options):
+   - within ±5 points: fine, nothing changes;
+   - below: next time more water, by up to 15%;
+   - above: next time less water, by up to 15%.
+4. The new factor multiplies the formula or AI minutes of the following cycles. It stays between ×0.5 and ×2, and the minutes always stay between the zone's minimum and maximum.
+
+**When a cycle doesn't count:** if it rains during the 3 hours, if the sensor doesn't send any value, if the cycle was stopped before the end of the zone, or if it was a fixed-duration cycle (manual timer or `duration`), because there the factor isn't applied.
+
+**Where to see it.** On the card, under the switch: factor, number of cycles learned and the last peak compared with the target (for example `×1.12 · 6 cycles · 52% → 60%`). The *Learned factor* sensor of each zone keeps its history. To start over, use the `irrigazione_ai.reset_learning` action on the zone's *Self-learning* switch. Turning self-learning off keeps the factor but stops applying it.
+
+**Which target to choose.** 60% suits most potted plants with a capacitive sensor. Lower it (50–55%) for Mediterranean plants and succulents, raise it (65–70%) for vegetables and thirsty plants. If you want different targets per zone, use two systems.
+
 ### 9. Using the integration in your automations
 
 Everything you see on the card is an entity or an action, so you can use it in automations. Some examples:
@@ -394,7 +439,9 @@ When you're ready: **turn off** (don't delete) your automations, re-enable the t
 | "The API key was rejected" | Did you copy the secret key and not its ID? Is it still active? Can the project use the chosen model? The service's error message is shown in brackets |
 | *AI duration* is empty | The AI hasn't analyzed anything yet: press *Analyze now* |
 | The rain block never triggers | You need a rain sensor or a weather entity, and at start time they must indicate rain (sensor on or > 0; weather `rainy`, `pouring`…). The reason for every block is in the calendar |
-| The rain block triggers even when it's not raining | The weather is a forecast for your area: add your own rain sensor, which takes precedence |
+| The rain block triggers even when it's not raining | The weather is a forecast for your area: add your own rain sensor, which takes precedence. If the reason is "rain expected", lower *Rain expected within* or set it to 0 |
+| Skipped for frost or wind but I want to water | Change the thresholds in the options (empty frost field or wind 0 turns them off), or start with `force: true` |
+| Self-learning doesn't change the factor | It needs a moisture sensor, a cycle with formula or AI (not a fixed timer) and 3 hours without rain after watering. The card shows what it's doing |
 | Liters stay at 0 | Check the zone's flow rate: with 0 L/min liters are always 0 |
 | "Failed to set up" after an update | *Settings → System → Logs*, search for `irrigazione_ai` and open an [issue](https://github.com/acaonweb/irrigazione-ai/issues) with the message |
 | A valve won't close | The integration retries three times and alerts you: check the valve's battery and radio coverage |
@@ -405,9 +452,9 @@ When you're ready: **turn off** (don't delete) your automations, re-enable the t
 
 | Step | What it asks |
 | --- | --- |
-| 1. System | Name; weather entity, outdoor temperature and humidity sensors, rain sensor: all optional (without weather or rain sensor the rain block stays inactive) |
-| 2. Zones | One or more zones: valve, soil sensor, flow rate, minimum and maximum duration, coefficient, volume, exposure, plants, when to water it (off, every other day, chosen days, every day), optional own formula |
-| 3. Scheduling | Time and date format; start based on sunset, sunrise (with an offset in minutes, negative too) or a fixed time; zones in parallel or in sequence; safety close; close on startup; Live Activity devices; page to open; other notifications (for example Pushover); dry soil alarm threshold |
+| 1. System | Name; weather entity, outdoor temperature and humidity sensors, rain sensor, wind sensor: all optional (without weather or rain sensor the rain block stays inactive) |
+| 2. Zones | One or more zones: valve, soil sensor, flow rate, minimum and maximum duration, coefficient, volume, exposure, plants, when to water it (off, every other day, chosen days, every day), self-learning, optional own formula |
+| 3. Scheduling | Time and date format; start based on sunset, sunrise (with an offset in minutes, negative too) or a fixed time; zones in parallel or in sequence; safety close; close on startup; Live Activity devices; page to open; other notifications (for example Pushover); dry soil alarm threshold; rain expected, frost and wind thresholds; self-learning target |
 | 4. Formula | Jinja editor with a per-zone minutes preview |
 | 5. AI analysis | None, AI Task, OpenAI, Anthropic, Gemini or Ollama; behavior when the AI doesn't answer; notes for the AI (plants, pots, climate); prompt editor |
 
@@ -479,7 +526,7 @@ Tapping a zone opens or closes its valve (the safety close applies). Tapping a d
 | Entity | What it's for |
 | --- | --- |
 | *Irrigation* switch | On = cycle running. Turning it on starts, turning it off stops and closes the valves |
-| *Rain block* switch | If it's raining the cycle doesn't start |
+| *Rain block* switch | If it's raining, or rain is expected within the set hours, the cycle doesn't start |
 | *AI analysis* switch | At every cycle the AI decides whether and how much to water |
 | *Manual timer* select | 15/30/60 minutes for every zone instead of the formula |
 | *Start now*, *Stop*, *Analyze now* buttons | Immediate commands |
@@ -489,16 +536,19 @@ Tapping a zone opens or closes its valve (the safety close applies). Tapping a d
 | *Irrigation log* calendar | Cycles, manual openings, skipped cycles, next watering |
 | Per zone: *Dry soil* binary sensor | On after 5 minutes below the threshold; `moisture` and `threshold` attributes |
 | Per zone: *Schedule* select | Off, every other day, chosen days, every day; the days (`days`) and the zone's next watering (`next_run`) in the attributes |
+| Per zone: *Self-learning* switch | Turns self-learning on or off for the zone; factor, cycles learned, last peak and target in the attributes |
+| Per zone: *Learned factor* sensor | The zone's correction factor (1 = none), with its history |
 | Per zone: *Planned duration*, *AI duration*, *Expected end*, *Water today*, *Water total* | The zone's minutes, liters and times; the planned duration also holds the formula used and any error |
 
 ## 🛠️ Actions
 
 | Action | What it does |
 | --- | --- |
-| `irrigazione_ai.start` | Starts a cycle. Optional: `config_entry_id`, `duration` (minutes for every zone), `force` (ignores the rain block) |
+| `irrigazione_ai.start` | Starts a cycle. Optional: `config_entry_id`, `duration` (minutes for every zone), `force` (ignores rain, rain expected, frost and wind) |
 | `irrigazione_ai.stop` | Stops the cycle and closes the valves |
 | `irrigazione_ai.set_schedule` | Changes a zone's schedule (target: its *Schedule* select). `mode`: `off`, `alternate`, `days`, `daily`; `days`: for example `[mon, wed, sat, sun]`. Days alone also set "chosen days"; an empty list turns the zone off |
 | `irrigazione_ai.analyze` | Asks the AI for an assessment without watering and returns decision, reason, liters and minutes per zone |
+| `irrigazione_ai.reset_learning` | Brings a zone's learned factor back to 1 (target: its *Self-learning* switch) |
 
 ## 🧪 The formula in detail
 
@@ -542,7 +592,7 @@ The result always stays between minimum and maximum duration. If a custom formul
 **What it receives:**
 - date and time;
 - approximate location (one decimal place);
-- current weather;
+- current weather, wind included;
 - whether it's raining now, and hours and percentage of rain over the last 12 hours (from the rain sensor if there is one, otherwise from the weather);
 - hourly forecast for the next 12 hours;
 - for each zone: plants, soil moisture, volume, exposure, flow rate, limits and formula minutes;
@@ -578,7 +628,7 @@ You are an agronomist expert in potted plants on a windy terrace.
 Today it's {{ weather_now.temperature_c }} °C. Full data: {{ data_json }}
 ```
 
-**What it returns:** whether to water, a short reason (in Home Assistant's language) and, for each zone, the liters and a short technical summary ("enough rain fell" when the liters are 0 because of rain). Liters become minutes using the zone's flow rate, rounded up and kept between minimum and maximum. A zone with 0 liters stays closed.
+**What it returns:** whether to water, a short reason (in Home Assistant's language) and, for each zone, the liters and a short technical summary ("enough rain fell" when the liters are 0 because of rain). Liters become minutes using the zone's flow rate, rounded up and kept between minimum and maximum. With self-learning on, those minutes are then multiplied by the zone's learned factor. A zone with 0 liters stays closed.
 
 **If something goes wrong:**
 - *water with the formula* (default);
@@ -596,6 +646,8 @@ Liters are computed as opening time × flow rate, for every opening (cycles and 
 **Can I use it without sensors?** Yes. Weather and sensors are all optional. With the formula `{{ 20 }}` you get a fixed timer with scheduling, safety and log.
 
 **Upgrading from 0.9: what happens to the days?** Each zone inherits the frequency you had (for example "once a week, Monday" becomes "chosen days: Monday"), so the system keeps watering on the same days. The old *Frequency* select goes away.
+
+**Upgrading to 0.16: does anything change by itself?** Two things: the checks for rain expected (2 hours), frost (3 °C) and strong wind (30 km/h) start with their default thresholds, so on a frosty or windy evening the cycle is skipped and you get a notification. Change or turn them off in the options. Self-learning instead starts off in every zone.
 
 **What language are the texts in?** Forms, entities and cards follow your profile language. Notifications, Live Activities, calendar events and AI reasons follow the system language (Settings → System → General): Italian and English today, other languages fall back to English.
 

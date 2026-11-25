@@ -67,6 +67,7 @@ async def async_setup_entry(
                 ZoneAiSensor(controller, zone),
                 ZoneWaterSensor(controller, zone, "zone_water_today", "day"),
                 ZoneWaterSensor(controller, zone, "zone_water_total", "total"),
+                ZoneLearnedFactorSensor(controller, zone),
             ],
             config_subentry_id=zone_id,
         )
@@ -144,6 +145,8 @@ class StatusSensor(IrrigazioneEntity, SensorEntity):
                 "water_total": find("sensor", f"{zone_id}_zone_water_total"),
                 "schedule": find("select", f"{zone_id}_zone_schedule"),
                 "dry": find("binary_sensor", f"{zone_id}_zone_dry"),
+                "learning": find("switch", f"{zone_id}_zone_learning"),
+                "factor": find("sensor", f"{zone_id}_zone_learned_factor"),
             }
             for zone_id, zone in c.zones.items()
         ]
@@ -301,16 +304,22 @@ class ZoneDurationSensor(ZoneEntity, SensorEntity):
         )
 
     @property
+    def _current(self) -> ZoneConfig:
+        # La zona aggiornata (giorni e autoapprendimento cambiano senza ricarica)
+        return self.controller.zones.get(self.zone.zone_id, self.zone)
+
+    @property
     def native_value(self) -> int:
         """Minuti."""
-        return self.controller.planned_minutes(self.zone)
+        return self.controller.planned_minutes(self._current)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Dati usati nel calcolo."""
         c = self.controller
-        formula_minutes = c.calculated_minutes(self.zone)
-        _formula, source = c.zone_formula(self.zone)
+        zone = self._current
+        formula_minutes = c.calculated_minutes(zone)
+        _formula, source = c.zone_formula(zone)
         return {
             "formula": source,
             "formula_error": c.formula_errors.get(self.zone.zone_id),
@@ -319,7 +328,8 @@ class ZoneDurationSensor(ZoneEntity, SensorEntity):
             "weather": c.weather_state(),
             "formula_minutes": formula_minutes,
             "manual_timer": c.manual_timer or None,
-            "liters": round(c.planned_minutes(self.zone) * self.zone.flow_rate, 1),
+            "learned_factor": c.learned_factor(zone),
+            "liters": round(c.planned_minutes(zone) * zone.flow_rate, 1),
         }
 
 
@@ -466,3 +476,36 @@ class ZoneWaterSensor(_WaterMixin, ZoneEntity, SensorEntity):
         if self._period != "total":
             return None
         return {"month": round(self.controller.history.zone(self.zone.zone_id).month, 1)}
+
+
+class ZoneLearnedFactorSensor(ZoneEntity, SensorEntity):
+    """Fattore appreso dalla zona (1 = nessuna correzione)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, controller: IrrigationController, zone: ZoneConfig) -> None:
+        """Inizializza."""
+        super().__init__(controller, zone, "zone_learned_factor")
+
+    @property
+    def native_value(self) -> float:
+        """Fattore salvato (anche se l'autoapprendimento è spento)."""
+        return round(self.controller.learning.factor(self.zone.zone_id), 3)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Ultima osservazione."""
+        c = self.controller
+        zone = c.zones.get(self.zone.zone_id, self.zone)
+        data = c.learning.zones.get(zone.zone_id)
+        return {
+            "active": c.learning_active(zone),
+            "samples": data.samples if data else 0,
+            "target": c.learn_target,
+            "last_before": data.last_before if data else None,
+            "last_peak": data.last_peak if data else None,
+            "last_result": data.last_result if data else None,
+            "last_at": data.last_at if data else None,
+            "observing": c.observing(zone.zone_id),
+        }

@@ -50,7 +50,9 @@ from .const import (
     CONF_EXPOSURE,
     CONF_FLOW_RATE,
     CONF_FORMULA,
+    CONF_FROST_TEMP,
     CONF_HUMIDITY,
+    CONF_LEARN_TARGET,
     CONF_LIVE_DEVICES,
     CONF_LIVE_URL,
     CONF_MAX_DURATION,
@@ -58,6 +60,7 @@ from .const import (
     CONF_MOISTURE,
     CONF_NOTIFY,
     CONF_PLANTS,
+    CONF_RAIN_FORECAST_HOURS,
     CONF_RAIN_SENSOR,
     CONF_RUN_MODE,
     CONF_SAFETY_MINUTES,
@@ -69,8 +72,11 @@ from .const import (
     CONF_TIME_FORMAT,
     CONF_VALVE,
     CONF_WEATHER,
+    CONF_WIND_MAX,
+    CONF_WIND_SENSOR,
     CONF_ZONE_ANCHOR,
     CONF_ZONE_DAYS,
+    CONF_ZONE_LEARNING,
     CONF_ZONE_NAME,
     CONF_ZONE_SCHEDULE,
     DATE_FORMATS,
@@ -82,10 +88,13 @@ from .const import (
     DEFAULT_EXPOSURE,
     DEFAULT_FLOW_RATE,
     DEFAULT_FORMULA,
+    DEFAULT_FROST_TEMP,
+    DEFAULT_LEARN_TARGET,
     DEFAULT_MAX_DURATION,
     DEFAULT_MIN_DURATION,
     DEFAULT_NAME,
     DEFAULT_OLLAMA_URL,
+    DEFAULT_RAIN_FORECAST_HOURS,
     DEFAULT_RUN_MODE,
     DEFAULT_SAFETY_MINUTES,
     DEFAULT_SCHEDULE,
@@ -93,6 +102,7 @@ from .const import (
     DEFAULT_START_MODE,
     DEFAULT_START_TIME,
     DEFAULT_SUNSET_OFFSET,
+    DEFAULT_WIND_MAX,
     DEFAULT_ZONE_DAYS,
     DOMAIN,
     EXPOSURES,
@@ -141,6 +151,12 @@ def _system_schema(defaults: dict[str, Any]) -> vol.Schema:
                 description={"suggested_value": defaults.get(CONF_RAIN_SENSOR)},
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["binary_sensor", "sensor"])
+            ),
+            vol.Optional(
+                CONF_WIND_SENSOR,
+                description={"suggested_value": defaults.get(CONF_WIND_SENSOR)},
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="wind_speed")
             ),
         }
     )
@@ -240,6 +256,43 @@ def _schedule_schema(defaults: dict[str, Any], hass: HomeAssistant | None = None
                     mode=selector.NumberSelectorMode.BOX,
                 )
             ),
+            vol.Required(
+                CONF_RAIN_FORECAST_HOURS,
+                default=defaults.get(CONF_RAIN_FORECAST_HOURS, DEFAULT_RAIN_FORECAST_HOURS),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=12, step=1, unit_of_measurement="h",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_FROST_TEMP,
+                description={
+                    "suggested_value": defaults.get(CONF_FROST_TEMP, DEFAULT_FROST_TEMP)
+                },
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=-20, max=15, step=0.5, unit_of_measurement="°C",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_WIND_MAX, default=defaults.get(CONF_WIND_MAX, DEFAULT_WIND_MAX)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=150, step=1, unit_of_measurement="km/h",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_LEARN_TARGET,
+                default=defaults.get(CONF_LEARN_TARGET, DEFAULT_LEARN_TARGET),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=20, max=90, step=1, unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -331,6 +384,9 @@ def _zone_schema(defaults: dict[str, Any]) -> vol.Schema:
                     options=WEEKDAYS, multiple=True, translation_key="weekday"
                 )
             ),
+            vol.Required(
+                CONF_ZONE_LEARNING, default=bool(defaults.get(CONF_ZONE_LEARNING, False))
+            ): selector.BooleanSelector(),
             vol.Optional(
                 CONF_FORMULA,
                 description={"suggested_value": defaults.get(CONF_FORMULA)},
@@ -456,6 +512,7 @@ def _clean_zone(
     for key in (CONF_MIN_DURATION, CONF_MAX_DURATION):
         data[key] = int(data[key])
     data[CONF_SOIL_VOLUME] = float(data[CONF_SOIL_VOLUME])
+    data[CONF_ZONE_LEARNING] = bool(data.get(CONF_ZONE_LEARNING, False))
     formula = (data.get(CONF_FORMULA) or "").strip()
     if formula:
         data[CONF_FORMULA] = formula
@@ -500,6 +557,14 @@ def _clean_schedule(user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_SAFETY_MINUTES] = int(data[CONF_SAFETY_MINUTES])
     data[CONF_NOTIFY] = [s.strip() for s in data.get(CONF_NOTIFY, []) if s.strip()]
     data[CONF_DRY_THRESHOLD] = int(data.get(CONF_DRY_THRESHOLD, DEFAULT_DRY_THRESHOLD))
+    data[CONF_RAIN_FORECAST_HOURS] = int(
+        data.get(CONF_RAIN_FORECAST_HOURS, DEFAULT_RAIN_FORECAST_HOURS)
+    )
+    data[CONF_WIND_MAX] = int(data.get(CONF_WIND_MAX, DEFAULT_WIND_MAX))
+    data[CONF_LEARN_TARGET] = int(data.get(CONF_LEARN_TARGET, DEFAULT_LEARN_TARGET))
+    # Campo vuoto = controllo del gelo spento (si salva None, non il default)
+    frost = data.get(CONF_FROST_TEMP)
+    data[CONF_FROST_TEMP] = None if frost in (None, "") else float(frost)
     data[CONF_LIVE_DEVICES] = [
         d if d.startswith("notify.") else f"notify.{d}"
         for d in (x.strip() for x in data.get(CONF_LIVE_DEVICES, []))

@@ -9,13 +9,15 @@
           "weather_entity": "Entità meteo",
           "temperature_sensor": "Sensore temperatura esterna",
           "humidity_sensor": "Sensore umidità esterna",
-          "rain_sensor": "Sensore pioggia"
+          "rain_sensor": "Sensore pioggia",
+          "wind_sensor": "Sensore vento"
         },
         "data_description": {
           "weather_entity": "Facoltativa: usata dalla formula, dal blocco pioggia e dall'analisi AI. Senza meteo e senza sensore pioggia, il blocco pioggia resta inattivo",
           "temperature_sensor": "Facoltativo: altrimenti si usa la temperatura dell'entità meteo",
           "humidity_sensor": "Facoltativo: altrimenti si usa l'umidità dell'entità meteo",
-          "rain_sensor": "Facoltativo: un tuo dispositivo che sa se sta piovendo (sensore binario acceso = pioggia, oppure un sensore di intensità o quantità di pioggia > 0). Se c'è decide lui al posto del meteo; se smette di rispondere si usa il meteo"
+          "rain_sensor": "Facoltativo: un tuo dispositivo che sa se sta piovendo (sensore binario acceso = pioggia, oppure un sensore di intensità o quantità di pioggia > 0). Se c'è decide lui al posto del meteo; se smette di rispondere si usa il meteo",
+          "wind_sensor": "Facoltativo: velocità del vento da una tua stazione meteo. Senza, si usa il vento dell'entità meteo, se lo fornisce"
         }
       },
       "zone": {
@@ -34,6 +36,7 @@
           "plants": "Piante",
           "schedule": "Quando irrigare",
           "days": "Giorni (solo con 'Giorni scelti')",
+          "learning": "Autoapprendimento",
           "formula": "Formula della zona"
         },
         "data_description": {
@@ -49,6 +52,7 @@
           "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
           "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
           "days": "Ignorati con le altre scelte",
+          "learning": "Dopo ogni irrigazione la zona guarda fin dove sale l'umidità del terriccio e corregge da sola la dose successiva. Serve un sensore di umidità. Si accende e si spegne anche dalla card",
           "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
         }
       },
@@ -75,7 +79,11 @@
           "notify_services": "Altre notifiche",
           "time_format": "Formato orario",
           "date_format": "Formato data",
-          "dry_threshold": "Allarme terriccio secco"
+          "dry_threshold": "Allarme terriccio secco",
+          "rain_forecast_hours": "Pioggia prevista entro",
+          "frost_temperature": "Gelo: non irrigare sotto",
+          "wind_max": "Vento forte: non irrigare sopra",
+          "learn_target": "Obiettivo dell'autoapprendimento"
         },
         "data_description": {
           "start_mode": "Tramonto, alba oppure un orario fisso scelto da te",
@@ -89,7 +97,11 @@
           "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, terriccio secco, errori), per esempio notify.pushover",
           "time_format": "Per le card e la Live Activity. Automatico = il formato del profilo di ogni utente (Live Activity: 12 ore negli Stati Uniti, 24 altrove)",
           "date_format": "Per le card. Automatico = il formato del profilo di ogni utente",
-          "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)"
+          "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)",
+          "rain_forecast_hours": "Con il blocco pioggia attivo, il ciclo si salta se le previsioni orarie danno pioggia entro queste ore (0 = solo pioggia in corso). Si salta il controllo se il meteo non ha previsioni orarie",
+          "frost_temperature": "Temperatura attuale o delle prossime 3 ore di previsione. Lascia vuoto per spegnere il controllo",
+          "wind_max": "Vento dal sensore vento o dall'entità meteo (0 = spento). Si salta il controllo se manca il dato del vento",
+          "learn_target": "Umidità del terriccio che una zona con autoapprendimento dovrebbe raggiungere dopo l'irrigazione"
         }
       },
       "formula": {
@@ -163,6 +175,7 @@
           "temperature_sensor": "Sensore temperatura esterna",
           "humidity_sensor": "Sensore umidità esterna",
           "rain_sensor": "Sensore pioggia",
+          "wind_sensor": "Sensore vento",
           "start_mode": "Orario di partenza riferito a",
           "start_time": "Orario fisso",
           "sunset_offset": "Scostamento in minuti",
@@ -174,13 +187,18 @@
           "notify_services": "Altre notifiche",
           "time_format": "Formato orario",
           "date_format": "Formato data",
-          "dry_threshold": "Allarme terriccio secco"
+          "dry_threshold": "Allarme terriccio secco",
+          "rain_forecast_hours": "Pioggia prevista entro",
+          "frost_temperature": "Gelo: non irrigare sotto",
+          "wind_max": "Vento forte: non irrigare sopra",
+          "learn_target": "Obiettivo dell'autoapprendimento"
         },
         "data_description": {
           "weather_entity": "Facoltativa: usata dalla formula, dal blocco pioggia e dall'analisi AI. Senza meteo e senza sensore pioggia, il blocco pioggia resta inattivo",
           "temperature_sensor": "Facoltativo: altrimenti si usa la temperatura dell'entità meteo",
           "humidity_sensor": "Facoltativo: altrimenti si usa l'umidità dell'entità meteo",
           "rain_sensor": "Facoltativo: un tuo dispositivo che sa se sta piovendo (sensore binario acceso = pioggia, oppure un sensore di intensità o quantità di pioggia > 0). Se c'è decide lui al posto del meteo; se smette di rispondere si usa il meteo",
+          "wind_sensor": "Facoltativo: velocità del vento da una tua stazione meteo. Senza, si usa il vento dell'entità meteo, se lo fornisce",
           "start_mode": "Tramonto, alba oppure un orario fisso scelto da te",
           "start_time": "Usato solo con 'Orario fisso'",
           "sunset_offset": "Solo per alba e tramonto: minuti dopo l'evento; negativo = prima (per esempio -30 = mezz'ora prima dell'alba)",
@@ -192,7 +210,11 @@
           "notify_services": "Azioni di notifica per messaggi semplici (avvio, fine, cicli saltati, terriccio secco, errori), per esempio notify.pushover",
           "time_format": "Per le card e la Live Activity. Automatico = il formato del profilo di ogni utente (Live Activity: 12 ore negli Stati Uniti, 24 altrove)",
           "date_format": "Per le card. Automatico = il formato del profilo di ogni utente",
-          "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)"
+          "dry_threshold": "Se l'umidità del terriccio di una zona resta sotto questo valore per 5 minuti arriva una notifica (0 = spento)",
+          "rain_forecast_hours": "Con il blocco pioggia attivo, il ciclo si salta se le previsioni orarie danno pioggia entro queste ore (0 = solo pioggia in corso). Si salta il controllo se il meteo non ha previsioni orarie",
+          "frost_temperature": "Temperatura attuale o delle prossime 3 ore di previsione. Lascia vuoto per spegnere il controllo",
+          "wind_max": "Vento dal sensore vento o dall'entità meteo (0 = spento). Si salta il controllo se manca il dato del vento",
+          "learn_target": "Umidità del terriccio che una zona con autoapprendimento dovrebbe raggiungere dopo l'irrigazione"
         }
       },
       "formula": {
@@ -273,6 +295,7 @@
             "plants": "Piante",
             "schedule": "Quando irrigare",
             "days": "Giorni (solo con 'Giorni scelti')",
+            "learning": "Autoapprendimento",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -288,6 +311,7 @@
             "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
             "days": "Ignorati con le altre scelte",
+            "learning": "Dopo ogni irrigazione la zona guarda fin dove sale l'umidità del terriccio e corregge da sola la dose successiva. Serve un sensore di umidità. Si accende e si spegne anche dalla card",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         },
@@ -306,6 +330,7 @@
             "plants": "Piante",
             "schedule": "Quando irrigare",
             "days": "Giorni (solo con 'Giorni scelti')",
+            "learning": "Autoapprendimento",
             "formula": "Formula della zona"
           },
           "data_description": {
@@ -321,6 +346,7 @@
             "plants": "Cosa cresce in questa zona, con parole tue: per esempio rosmarino e lavanda, pomodori, limone in vaso. L'AI lo usa per dosare l'acqua",
             "schedule": "Un giorno sì e uno no parte dal giorno in cui lo scegli. Si cambia poi anche dalla card",
             "days": "Ignorati con le altre scelte",
+            "learning": "Dopo ogni irrigazione la zona guarda fin dove sale l'umidità del terriccio e corregge da sola la dose successiva. Serve un sensore di umidità. Si accende e si spegne anche dalla card",
             "formula": "Facoltativa: sostituisce la formula dell'impianto solo per questa zona. Lascia vuoto per usare quella dell'impianto"
           }
         }
@@ -425,6 +451,9 @@
       },
       "ai_analysis": {
         "name": "Analisi AI"
+      },
+      "zone_learning": {
+        "name": "Autoapprendimento"
       }
     },
     "select": {
@@ -510,6 +539,9 @@
       },
       "zone_water_total": {
         "name": "Acqua totale"
+      },
+      "zone_learned_factor": {
+        "name": "Fattore appreso"
       }
     },
     "calendar": {
@@ -532,8 +564,8 @@
           "description": "Stessi minuti per ogni zona; vuoto = formula o timer manuale."
         },
         "force": {
-          "name": "Ignora blocco pioggia",
-          "description": "Avvia anche se il meteo indica pioggia."
+          "name": "Ignora i blocchi meteo",
+          "description": "Avvia anche se piove o sono previsti pioggia, gelo o vento forte."
         }
       }
     },
@@ -570,6 +602,11 @@
           "description": "Giorni della settimana (mon…sun). Da soli impostano anche 'Giorni scelti'; una lista vuota spegne la zona."
         }
       }
+    },
+    "reset_learning": {
+      "name": "Azzera l'autoapprendimento",
+      "description": "Riporta a 1 il fattore appreso di una zona. Destinazione: l'interruttore Autoapprendimento della zona.",
+      "fields": {}
     }
   },
   "exceptions": {
