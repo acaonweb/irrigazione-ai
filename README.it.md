@@ -114,9 +114,9 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
   - la riga del timer (off/15/30/60);
   - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
-- **`custom:irrigazione-ai-log-card`, solo il registro:** lo stesso registro compatto della card dei grafici, da mettere in un'altra colonna o in un'altra dashboard.
+- **`custom:irrigazione-ai-log-card`, il registro delle irrigazioni:** compatto, una riga per evento (cicli, aperture manuali, cicli saltati con il motivo) con giorno, ora e litri, più la prossima irrigazione prevista. Tocca una riga per vedere minuti e litri di ogni zona; "Mostra tutti" espande la lista.
 - **`custom:irrigazione-ai-moisture-card`, umidità del terriccio di sensori a scelta:** lo stesso grafico con le fasce rosso, verde e blu, per piante che non sono zone dell'impianto (vasi annaffiati a mano, aromatiche…).
-- **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu; in fondo il **registro delle irrigazioni**, compatto: una riga per evento (cicli, aperture manuali, cicli saltati con il motivo) con giorno, ora e litri, più la prossima irrigazione prevista. Tocca una riga per vedere minuti e litri di ogni zona; "Mostra tutti" espande la lista.
+- **`custom:irrigazione-ai-charts-card`, i grafici:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
 
 ## 🔄 Come nasce un ciclo
 
@@ -425,16 +425,14 @@ date_format: dmy                          # facoltativo: dmy, mdy o ymd
 ```
 
 ```yaml
-type: custom:irrigazione-ai-charts-card   # grafici e registro
-log_rows: 3                               # facoltativo: righe del registro prima di "Mostra tutti"
-log_items: 8                              # facoltativo: eventi massimi nel registro
-show_log: true                            # facoltativo: false per nascondere il registro
+type: custom:irrigazione-ai-charts-card   # grafici
+title: Consumo 7 giorni                   # facoltativo: titolo del grafico a colonne
 ```
 
 ```yaml
-type: custom:irrigazione-ai-log-card      # solo il registro (per esempio in un'altra colonna)
-log_rows: 3
-log_items: 8
+type: custom:irrigazione-ai-log-card      # registro
+log_rows: 3                               # facoltativo: righe prima di "Mostra tutti"
+log_items: 8                              # facoltativo: eventi massimi
 ```
 
 ```yaml
@@ -450,7 +448,7 @@ threshold: 25                              # facoltativo: soglia "secco" (defaul
 
 Le colonne dei 7 giorni usano le statistiche di Home Assistant, calcolate alla fine di ogni ora: su un'installazione nuova compaiono dopo il primo ciclo e la prima ora completa.
 
-**Vista pronta**, due colonne come nella foto in cima (modifica dashboard → ⋮ → *Editor di configurazione*, oppure una nuova vista in YAML):
+**Vista pronta**, due colonne: comandi e registro a sinistra, grafici a destra (modifica dashboard → ⋮ → *Editor di configurazione*, oppure una nuova vista in YAML):
 
 ```yaml
 title: Irrigazione
@@ -465,10 +463,11 @@ sections:
         grid_options: { columns: full }
   - type: grid
     cards:
-      - type: custom:irrigazione-ai-charts-card
+      - type: custom:irrigazione-ai-log-card
         grid_options: { columns: full }
-      - type: calendar
-        entities: [calendar.irrigazione_registro_irrigazioni]
+  - type: grid
+    cards:
+      - type: custom:irrigazione-ai-charts-card
         grid_options: { columns: full }
 ```
 

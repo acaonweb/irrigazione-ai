@@ -9,7 +9,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.14.0";
+const CARD_VERSION = "0.15.0";
 
 const TEXT = {
   it: {
@@ -470,6 +470,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
   }
 
   _wantCharts() { return true; }
+  _wantLog() { return false; }
 
   async _load(map) {
     const hass = this._hass;
@@ -510,7 +511,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
     } catch (e) { /* storico non disponibile */ }
     try {
       const cal = map.system.calendar;
-      if (cal && this._config.show_log !== false) {
+      if (cal && this._wantLog()) {
         const start = new Date(end - 14 * 86400e3).toISOString();
         const stop = new Date(end.getTime() + 8 * 86400e3).toISOString();
         data.events = await hass.callApi("GET", `calendars/${cal}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
@@ -658,7 +659,6 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       <div class="stat"><div class="k">${t.month}</div><div class="v">${lit(map.system.water_month)}</div></div>
       <div class="stat"><div class="k">${t.total}</div><div class="v">${lit(map.system.water_total)}</div></div></div>`;
     const bars = total ? this._bars(d.water, t) : `<div class="empty">${t.collecting}</div>`;
-    const log = this._config.show_log === false ? "" : this._log(d.events, t);
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CHART_STYLE}</style>
       <ha-card><div class="grid">
@@ -668,7 +668,6 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
           ${bars}</div>
         ${outdoor}
         ${soil}
-        ${log}
       </div></ha-card>`;
     this._bindLog();
   }
@@ -686,8 +685,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
 class IrrigazioneAiLogCard extends IrrigazioneAiChartsCard {
   getCardSize() { return 4; }
   _wantCharts() { return false; }
-
-  setConfig(config) { super.setConfig({ ...(config || {}), show_log: true }); }
+  _wantLog() { return true; }
 
   _render(map) {
     const t = this._t();
@@ -798,6 +796,6 @@ window.customCards.push(
   { type: "irrigazione-ai-card", name: "Irrigazione AI", description: "Comandi dell'impianto: generale, AI, pioggia, zone, timer, programmazione per zona, durate.", preview: true },
   { type: "irrigazione-ai-log-card", name: "Irrigazione AI – Registro", description: "Registro compatto delle irrigazioni: cicli, aperture manuali, blocchi e prossima irrigazione.", preview: true },
   { type: "irrigazione-ai-moisture-card", name: "Irrigazione AI – Umidità terriccio", description: "Grafico dell'umidità del terriccio di sensori a scelta, con le fasce secco, ottimale e umido.", preview: true },
-  { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici e registro", description: "Litri di oggi, del mese e totali, consumo degli ultimi 7 giorni, registro delle irrigazioni, umidità del terriccio e meteo esterno.", preview: true },
+  { type: "irrigazione-ai-charts-card", name: "Irrigazione AI – Grafici", description: "Litri di oggi, del mese e totali, consumo degli ultimi 7 giorni, umidità del terriccio e meteo esterno.", preview: true },
 );
 console.info(`%c IRRIGAZIONE-AI-CARD %c ${CARD_VERSION} `, "background:#26a69a;color:#fff", "");

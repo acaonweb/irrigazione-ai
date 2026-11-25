@@ -116,9 +116,9 @@ They register themselves on install and need no mushroom, button-card or apexcha
   - the timer row (off/15/30/60);
   - the **schedule of each zone**: Off, every other day, Days, 7/7 and the weekdays to tap, with the next watering;
   - planned or AI durations, the AI decision with the *Analyze* button and the time remaining.
-- **`custom:irrigazione-ai-log-card`, just the log:** the same compact log as the charts card, to place in another column or another dashboard.
+- **`custom:irrigazione-ai-log-card`, the irrigation log:** compact, one row per event (cycles, manual openings, skipped cycles with the reason) with day, time and liters, plus the next planned watering. Tap a row to see each zone's minutes and liters; "Show all" expands the list.
 - **`custom:irrigazione-ai-moisture-card`, soil moisture of sensors of your choice:** the same chart with red, green and blue bands, for plants that aren't zones of the system (hand-watered pots, herbs…).
-- **`custom:irrigazione-ai-charts-card`, charts and log:** liters today, this month and in total; water use of the last 7 days as bars; outdoor weather of the last 24 hours; soil moisture of each zone over the last 5 days, with red, green and blue bands; at the bottom the compact **irrigation log**: one row per event (cycles, manual openings, skipped cycles with the reason) with day, time and liters, plus the next planned watering. Tap a row to see each zone's minutes and liters; "Show all" expands the list.
+- **`custom:irrigazione-ai-charts-card`, the charts:** liters today, this month and in total; water use of the last 7 days as bars; outdoor weather of the last 24 hours; soil moisture of each zone over the last 5 days, with red, green and blue bands.
 
 ## 🔄 How a cycle comes about
 
@@ -426,16 +426,14 @@ date_format: dmy                          # optional: dmy, mdy or ymd
 ```
 
 ```yaml
-type: custom:irrigazione-ai-charts-card   # charts and log
-log_rows: 3                               # optional: log rows before "Show all"
-log_items: 8                              # optional: maximum events in the log
-show_log: true                            # optional: false hides the log
+type: custom:irrigazione-ai-charts-card   # charts
+title: Water, last 7 days                 # optional: title of the bar chart
 ```
 
 ```yaml
-type: custom:irrigazione-ai-log-card      # just the log (for example in another column)
-log_rows: 3
-log_items: 8
+type: custom:irrigazione-ai-log-card      # log
+log_rows: 3                               # optional: rows before "Show all"
+log_items: 8                              # optional: maximum events
 ```
 
 ```yaml
@@ -451,7 +449,7 @@ threshold: 25                              # optional: "dry" threshold (default:
 
 The 7-day bars use Home Assistant statistics, computed at the end of every hour: on a new installation they appear after the first cycle and the first full hour.
 
-**Ready-made view**, two columns as in the picture at the top (edit dashboard → ⋮ → *Raw configuration editor*, or a new view in YAML):
+**Ready-made view**, two columns: controls and log on the left, charts on the right (edit dashboard → ⋮ → *Raw configuration editor*, or a new view in YAML):
 
 ```yaml
 title: Irrigation
@@ -466,10 +464,11 @@ sections:
         grid_options: { columns: full }
   - type: grid
     cards:
-      - type: custom:irrigazione-ai-charts-card
+      - type: custom:irrigazione-ai-log-card
         grid_options: { columns: full }
-      - type: calendar
-        entities: [calendar.irrigation_irrigation_log]
+  - type: grid
+    cards:
+      - type: custom:irrigazione-ai-charts-card
         grid_options: { columns: full }
 ```
 
