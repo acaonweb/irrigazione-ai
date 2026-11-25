@@ -98,7 +98,7 @@ I sensori *Acqua oggi / questo mese / totale*, per l'impianto e per ogni zona, s
 - **Tre tentativi** di chiusura per ogni valvola, con avviso se non si chiude.
 - Se l'AI non risponde scegli tu se irrigare con la formula, spegnere l'AI o saltare il ciclo. In ogni caso ricevi una notifica.
 
-### 🎛️ Tre card pronte all'uso
+### 🎛️ Quattro card pronte all'uso
 Si registrano da sole all'installazione e non richiedono mushroom, button-card o apexcharts.
 
 - **`custom:irrigazione-ai-card`, i comandi:**
@@ -108,8 +108,9 @@ Si registrano da sole all'installazione e non richiedono mushroom, button-card o
   - la riga del timer (off/15/30/60);
   - la **programmazione di ogni zona**: Off, 1 sì 1 no, Giorni, 7/7 e i giorni della settimana da toccare, con la prossima irrigazione;
   - le durate previste o quelle dell'AI, la decisione dell'AI con il pulsante *Analizza* e il tempo rimanente.
+- **`custom:irrigazione-ai-log-card`, solo il registro:** lo stesso registro compatto della card dei grafici, da mettere in un'altra colonna o in un'altra dashboard.
 - **`custom:irrigazione-ai-moisture-card`, umidità del terriccio di sensori a scelta:** lo stesso grafico con le fasce rosso, verde e blu, per piante che non sono zone dell'impianto (vasi annaffiati a mano, aromatiche…).
-- **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; il **registro delle irrigazioni** con gli ultimi eventi (cicli, aperture manuali, cicli saltati con il motivo), ciascuno con orario, minuti, dettaglio delle zone e litri, più la prossima irrigazione prevista; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu.
+- **`custom:irrigazione-ai-charts-card`, grafici e registro:** litri di oggi, del mese e totali; consumo d'acqua degli ultimi 7 giorni a colonne; meteo esterno delle ultime 24 ore; umidità del terriccio di ogni zona negli ultimi 5 giorni, con le fasce rosso, verde e blu; in fondo il **registro delle irrigazioni**, compatto: una riga per evento (cicli, aperture manuali, cicli saltati con il motivo) con giorno, ora e litri, più la prossima irrigazione prevista. Tocca una riga per vedere minuti e litri di ogni zona; "Mostra tutti" espande la lista.
 
 ## 🔄 Come nasce un ciclo
 
@@ -407,8 +408,15 @@ date_format: dmy                          # facoltativo: dmy, mdy o ymd
 
 ```yaml
 type: custom:irrigazione-ai-charts-card   # grafici e registro
-log_items: 8                              # facoltativo: eventi mostrati nel registro
+log_rows: 3                               # facoltativo: righe del registro prima di "Mostra tutti"
+log_items: 8                              # facoltativo: eventi massimi nel registro
 show_log: true                            # facoltativo: false per nascondere il registro
+```
+
+```yaml
+type: custom:irrigazione-ai-log-card      # solo il registro (per esempio in un'altra colonna)
+log_rows: 3
+log_items: 8
 ```
 
 ```yaml
