@@ -1,4 +1,8 @@
 <p align="center">
+  <b>🇮🇹 Italiano</b> · <a href="README.en.md">🇬🇧 English</a>
+</p>
+
+<p align="center">
   <img src="docs/card.png" alt="Le quattro card di Irrigazione AI: comandi durante un ciclo con AI e programmazione per zona; consumi, meteo e umidità delle zone; umidità di piante a scelta e registro delle irrigazioni" width="900">
 </p>
 
@@ -389,6 +393,7 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 | "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
 | Una valvola non si chiude | L'integrazione riprova tre volte e ti avvisa: controlla la batteria e la copertura radio della valvola |
 | Ho cambiato le opzioni durante un ciclo e non succede niente | È voluto: le modifiche si applicano alla fine del ciclo, per non interrompere l'irrigazione |
+| La Live Activity non compare o non si aggiorna | Manca uno dei requisiti: vedi il punto 5 |
 
 
 ## 🧭 Il wizard, passo per passo
@@ -596,7 +601,7 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 
 **La Live Activity non compare o resta ferma: perché?** Quasi sempre manca uno dei requisiti: app Companion non collegata o con le notifiche disattivate, Live Activity disattivate nelle impostazioni iOS dell'app, oppure accesso remoto assente o non inserito nell'app. Prova con il Wi-Fi spento: se l'app non apre Home Assistant, sistema prima l'accesso remoto (vedi [guida, punto 5](#5-live-activity-requisiti-e-impostazione)).
 
-**Posso avere più impianti?** Sì: aggiungi l'integrazione più volte, una per impianto (per esempio terrazzo e giardino).
+**Posso avere più impianti?** Sì: aggiungi l'integrazione più volte, una per impianto (per esempio terrazzo e giardino). Un solo impianto basta per zone con esposizione, piante o formule diverse; ne serve un secondo solo per un orario di partenza diverso, un altro meteo o sensore pioggia, un'altra configurazione AI o un luogo separato.
 
 ## ☕ Ti piace?
 
@@ -610,16 +615,7 @@ Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irr
 
 ## English
 
-**Irrigazione AI** turns a messy pile of helpers and automations into one Home Assistant integration, set up through a wizard:
-- per-zone durations from a **Jinja formula you write**, with a live preview;
-- an optional **AI agronomist** (Home Assistant AI Task, OpenAI, Anthropic, Gemini or local Ollama) that decides liters per zone from rain history, forecast and soil data, with an **editable Jinja prompt**;
-- **Live Activities on iPhone and Live Updates on Android 16+** (requires the Home Assistant Companion app and working remote access, e.g. Home Assistant Cloud or your own external URL set in the app);
-- a **calendar log** with real liters per zone;
-- **water sensors** for the Energy dashboard;
-- **safety closing** of valves;
-- two ready-made **Lovelace cards** (controls and charts), no extra frontend dependencies.
-
-Install from the Marketplace (or HACS) with **Add from link**, then add the *Irrigazione AI* integration. UI, notifications and Live Activities in Italian and English. The step-by-step guide above (📖 *Guida pratica*) covers flow rate and soil volume, schedules, notifications, Live Activities, writing your own formula, AI setup, the dry-soil alarm, automations and troubleshooting. Like it? [Buy me a coffee](https://buymeacoffee.com/acaonweb) ☕
+The full English documentation is in **[README.en.md](README.en.md)**.
 
 ## Licenza
 
