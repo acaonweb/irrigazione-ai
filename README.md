@@ -80,6 +80,8 @@ Durante l'irrigazione il telefono mostra una **Live Activity** (schermata di blo
 2️⃣ Sottotetto · fine 17:30
 ```
 
+> Serve l'**app Home Assistant (Companion)** sul telefono e un **accesso remoto funzionante** a Home Assistant (Home Assistant Cloud / Nabu Casa o un tuo indirizzo esterno). Dettagli nella [guida, punto 5](#5-live-activity-requisiti-e-impostazione).
+
 Gli aggiornamenti sono silenziosi, il suono arriva solo all'avvio e alla fine. Alla fine compare il riepilogo dei litri (`☑️ Secondo piano · 30 min · 21,8 L`) e dopo 5 minuti l'attività sparisce da sola. Funziona anche per le valvole aperte a mano, con l'ora della chiusura di sicurezza. Un tocco apre la dashboard che scegli.
 
 ### 📒 Registro e consumi d'acqua
@@ -153,7 +155,8 @@ Questa sezione spiega con calma tutto quello che il wizard ti chiede. Se è la p
 | Un'**entità meteo** (`weather.…`), per esempio quella di Met.no che Home Assistant installa da sola | No, ma consigliata | Serve al blocco pioggia, alla formula (`weather_factor`) e all'AI (previsioni) |
 | Sensori di **temperatura e umidità esterna** | No | Se mancano si usano quelli dell'entità meteo |
 | Un **sensore pioggia** tuo (pluviometro, sensore di pioggia, stazione meteo) | No | Più affidabile del meteo per il blocco pioggia: vedi il punto 3 bis |
-| L'**app Home Assistant** sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
+| L'**app Home Assistant** (Companion) sul telefono | Solo per Live Activity e notifiche sul telefono | App Store o Google Play, accedendo al tuo Home Assistant |
+| **Accesso remoto** a Home Assistant | Solo per la Live Activity | Home Assistant Cloud (Nabu Casa) oppure un tuo indirizzo esterno con HTTPS, inserito anche nell'app |
 
 ### 2. I dati di una zona, spiegati
 
@@ -245,8 +248,14 @@ Le notifiche e la Live Activity sono due cose diverse e si possono usare insieme
 
 ### 5. Live Activity: requisiti e impostazione
 
-- **iPhone e iPad:** iOS/iPadOS 17.2 o successivo e l'app Home Assistant aggiornata. Compare nella schermata di blocco e nella Dynamic Island.
+La Live Activity funziona solo se ci sono **tutte** queste condizioni:
+
+- **App Home Assistant (Companion)** installata, aggiornata e collegata al tuo Home Assistant, con le **notifiche consentite**. Su iPhone controlla anche *Impostazioni iOS → Home Assistant → Live Activity* attivo.
+- **Accesso remoto funzionante.** L'app deve raggiungere Home Assistant anche fuori casa: con **Home Assistant Cloud (Nabu Casa)** oppure con un tuo indirizzo esterno (HTTPS, port forwarding, reverse proxy, Cloudflare Tunnel…). L'indirizzo va inserito nell'app in *Impostazioni → Companion app → server → URL esterno*. Per provarlo, spegni il Wi-Fi del telefono e apri l'app: se vedi la dashboard, ci sei. Senza accesso remoto la Live Activity può non comparire o non aggiornarsi, e toccandola fuori casa la dashboard non si apre.
+- **iPhone e iPad:** iOS/iPadOS 17.2 o successivo. Compare nella schermata di blocco e nella Dynamic Island.
 - **Android:** Android 16 o successivo per il *Live Update*; sulle versioni precedenti arriva come notifica normale che si aggiorna al suo posto.
+
+Se il telefono non compare nell'elenco dei dispositivi qui sotto, l'app non è collegata a questo Home Assistant: aprila ed effettua l'accesso.
 
 Nel passo *Programmazione*, in **Dispositivi per la Live Activity**, l'elenco propone da solo i telefoni e tablet con l'app. Selezionali tutti quelli su cui la vuoi.
 
@@ -585,6 +594,8 @@ I litri si calcolano come tempo di apertura per portata, per ogni apertura (cicl
 
 **La Live Activity funziona su Android?** Sì, come Live Update da Android 16. Sulle versioni precedenti arriva come notifica normale, che si aggiorna al suo posto.
 
+**La Live Activity non compare o resta ferma: perché?** Quasi sempre manca uno dei requisiti: app Companion non collegata o con le notifiche disattivate, Live Activity disattivate nelle impostazioni iOS dell'app, oppure accesso remoto assente o non inserito nell'app. Prova con il Wi-Fi spento: se l'app non apre Home Assistant, sistema prima l'accesso remoto (vedi [guida, punto 5](#5-live-activity-requisiti-e-impostazione)).
+
 **Posso avere più impianti?** Sì: aggiungi l'integrazione più volte, una per impianto (per esempio terrazzo e giardino).
 
 ## ☕ Ti piace?
@@ -602,7 +613,7 @@ Segnalazioni e idee sono benvenute nelle [issue](https://github.com/acaonweb/irr
 **Irrigazione AI** turns a messy pile of helpers and automations into one Home Assistant integration, set up through a wizard:
 - per-zone durations from a **Jinja formula you write**, with a live preview;
 - an optional **AI agronomist** (Home Assistant AI Task, OpenAI, Anthropic, Gemini or local Ollama) that decides liters per zone from rain history, forecast and soil data, with an **editable Jinja prompt**;
-- **Live Activities on iPhone and Live Updates on Android 16+**;
+- **Live Activities on iPhone and Live Updates on Android 16+** (requires the Home Assistant Companion app and working remote access, e.g. Home Assistant Cloud or your own external URL set in the app);
 - a **calendar log** with real liters per zone;
 - **water sensors** for the Energy dashboard;
 - **safety closing** of valves;
