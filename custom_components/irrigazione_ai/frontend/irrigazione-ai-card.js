@@ -9,7 +9,7 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.16.1";
+const CARD_VERSION = "0.16.2";
 
 // Ultimi dati caricati, per card (sopravvive al cambio di vista/dashboard):
 // la card si mostra subito con questi e intanto si aggiorna.
@@ -30,6 +30,7 @@ const TEXT = {
     learn: "Autoapprendimento", learnNeedsSensor: "serve un sensore di umidità", learnCycles: "cicli", learnNew: "in attesa del primo ciclo", learnOff: "spento", learnWatching: "sto osservando l'umidità",
     water7: "💧 Consumo acqua", soil: "Umidità terriccio", outdoor: "Esterno", temp: "Temperatura", hum: "Umidità",
     noData: "Nessun dato", loading: "Caricamento…", noEntity: "Nessun impianto Irrigazione AI trovato.",
+    dToday: "oggi", dTomorrow: "domani", dYesterday: "ieri",
     today: "Oggi", month: "Mese", total: "Totale", log: "📒 Registro irrigazioni", showAll: "Mostra tutti", showLess: "Mostra meno", noEvents: "Nessun evento negli ultimi 14 giorni",
     collecting: "Le colonne compaiono quando HA ha calcolato le statistiche (a fine ora)",
     days: { mon: "Lun", tue: "Mar", wed: "Mer", thu: "Gio", fri: "Ven", sat: "Sab", sun: "Dom" },
@@ -48,6 +49,7 @@ const TEXT = {
     learn: "Self-learning", learnNeedsSensor: "needs a moisture sensor", learnCycles: "cycles", learnNew: "waiting for the first cycle", learnOff: "off", learnWatching: "watching the moisture",
     water7: "💧 Water use", soil: "Soil moisture", outdoor: "Outdoor", temp: "Temperature", hum: "Humidity",
     noData: "No data", loading: "Loading…", noEntity: "No Irrigazione AI system found.",
+    dToday: "today", dTomorrow: "tomorrow", dYesterday: "yesterday",
     today: "Today", month: "Month", total: "Total", log: "📒 Irrigation log", showAll: "Show all", showLess: "Show less", noEvents: "No events in the last 14 days",
     collecting: "Bars appear once HA has compiled the statistics (at the end of the hour)",
     days: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" },
@@ -227,11 +229,22 @@ class IrrigazioneAiBase extends HTMLElement {
 
   _wd(d) { return d.toLocaleDateString(this._lang(), { weekday: "short" }); }
 
+  // "oggi", "domani" o "ieri" se il giorno è vicino, altrimenti null
+  _relDay(d) {
+    const t = this._t();
+    const day = (x) => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
+    const diff = Math.round((day(d) - day(new Date())) / 86400e3);
+    return diff === 0 ? t.dToday : diff === 1 ? t.dTomorrow : diff === -1 ? t.dYesterday : null;
+  }
+
+  // Giorno breve per orari: "oggi", "domani", "ieri" oppure il giorno della settimana
+  _dayName(d) { return this._relDay(d) || this._wd(d); }
+
   _time(iso, withDay) {
     if (!iso || iso === "unknown" || iso === "unavailable") return "";
     const d = new Date(iso);
     if (isNaN(d)) return "";
-    return withDay ? `${this._wd(d)} ${this._hm(d)}` : this._hm(d);
+    return withDay ? `${this._dayName(d)} ${this._hm(d)}` : this._hm(d);
   }
 
   _call(domain, service, data) { this._hass.callService(domain, service, data); }
@@ -576,7 +589,11 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
     const past = (events || []).filter((e) => parse(e.start) <= now && !/prevista|planned|in corso|in progress|running/i.test(e.summary))
       .sort((a, b) => parse(b.start) - parse(a.start)).slice(0, this._config.log_items || 8);
     const next = (events || []).filter((e) => parse(e.start) > now).sort((a, b) => parse(a.start) - parse(b.start))[0];
-    const fmt = (ms) => { const d = new Date(ms); return `${this._wd(d)} ${this._dm(d)} ${this._hm(d)}`; };
+    const fmt = (ms) => {
+      const d = new Date(ms);
+      const rel = this._relDay(d);
+      return rel ? `${rel} ${this._hm(d)}` : `${this._wd(d)} ${this._dm(d)} ${this._hm(d)}`;
+    };
     const liters = (desc) => {
       if (!desc) return null;
       const tot = desc.match(/(?:Totale|Total):\s*([\d.,]+)\s*L/);
