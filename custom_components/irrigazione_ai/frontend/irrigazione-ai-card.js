@@ -9,7 +9,11 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.16.0";
+const CARD_VERSION = "0.16.1";
+
+// Ultimi dati caricati, per card (sopravvive al cambio di vista/dashboard):
+// la card si mostra subito con questi e intanto si aggiorna.
+const DATA_CACHE = new Map();
 
 const TEXT = {
   it: {
@@ -25,7 +29,7 @@ const TEXT = {
     altFrom: "un giorno sì e uno no dal", nextShort: "prossima",
     learn: "Autoapprendimento", learnNeedsSensor: "serve un sensore di umidità", learnCycles: "cicli", learnNew: "in attesa del primo ciclo", learnOff: "spento", learnWatching: "sto osservando l'umidità",
     water7: "💧 Consumo acqua", soil: "Umidità terriccio", outdoor: "Esterno", temp: "Temperatura", hum: "Umidità",
-    noData: "Nessun dato", noEntity: "Nessun impianto Irrigazione AI trovato.",
+    noData: "Nessun dato", loading: "Caricamento…", noEntity: "Nessun impianto Irrigazione AI trovato.",
     today: "Oggi", month: "Mese", total: "Totale", log: "📒 Registro irrigazioni", showAll: "Mostra tutti", showLess: "Mostra meno", noEvents: "Nessun evento negli ultimi 14 giorni",
     collecting: "Le colonne compaiono quando HA ha calcolato le statistiche (a fine ora)",
     days: { mon: "Lun", tue: "Mar", wed: "Mer", thu: "Gio", fri: "Ven", sat: "Sab", sun: "Dom" },
@@ -43,7 +47,7 @@ const TEXT = {
     altFrom: "every other day from", nextShort: "next",
     learn: "Self-learning", learnNeedsSensor: "needs a moisture sensor", learnCycles: "cycles", learnNew: "waiting for the first cycle", learnOff: "off", learnWatching: "watching the moisture",
     water7: "💧 Water use", soil: "Soil moisture", outdoor: "Outdoor", temp: "Temperature", hum: "Humidity",
-    noData: "No data", noEntity: "No Irrigazione AI system found.",
+    noData: "No data", loading: "Loading…", noEntity: "No Irrigazione AI system found.",
     today: "Today", month: "Month", total: "Total", log: "📒 Irrigation log", showAll: "Show all", showLess: "Show less", noEvents: "No events in the last 14 days",
     collecting: "Bars appear once HA has compiled the statistics (at the end of the hour)",
     days: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" },
@@ -129,6 +133,10 @@ const CHART_STYLE = `
   .axis { font-size: 10px; fill: var(--secondary-text-color); }
   .lbl { font-size: 10px; fill: var(--primary-text-color); font-weight: 600; }
   .empty { font-size: 12px; color: var(--secondary-text-color); padding: 20px 0; text-align: center; }
+  .empty.loading { animation: ia-pulse 1.2s ease-in-out infinite; aspect-ratio: 320 / 120; padding: 0;
+                   display: flex; align-items: center; justify-content: center; }
+  .empty.loading.tall { aspect-ratio: 320 / 150; }
+  @keyframes ia-pulse { 50% { opacity: .4; } }
   .stats3 { grid-column: span 12; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .stat { background: var(--ia-tile); border-radius: 12px; padding: 8px 12px; border: 1px solid var(--divider-color, rgba(0,0,0,.08)); }
   .stat .k { font-size: 11px; color: var(--secondary-text-color); }
@@ -499,53 +507,67 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
   _wantCharts() { return true; }
   _wantLog() { return false; }
 
-  async _load(map) {
+  _cacheKey(map) {
+    return [this.localName, map.system.water_total, map.system.calendar, map.temperature, map.humidity,
+      ...map.zones.map((z) => z.moisture)].join("|");
+  }
+
+  _load(map) {
     const hass = this._hass;
     const end = new Date();
-    const data = { water: [], soil: {}, outdoor: {} };
-    if (this._wantCharts()) try {
-      if (map.system.water_total) {
-        const start = new Date(end); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
-        const stats = await hass.callWS({
-          type: "recorder/statistics_during_period", start_time: start.toISOString(), end_time: end.toISOString(),
-          statistic_ids: [map.system.water_total], period: "day", types: ["change"],
-        });
-        const rows = stats[map.system.water_total] || [];
-        for (let i = 0; i < 7; i++) {
-          const day = new Date(start); day.setDate(start.getDate() + i);
-          const row = rows.find((r) => new Date(r.start).toDateString() === day.toDateString());
-          data.water.push({ day, value: row && row.change ? Math.max(0, row.change) : 0 });
-        }
-      }
-    } catch (e) { /* statistiche non disponibili */ }
-    if (this._wantCharts()) try {
-      const ids = map.zones.map((z) => z.moisture).filter(Boolean);
-      const outIds = [map.temperature, map.humidity].filter(Boolean);
-      if (ids.length) {
-        const h = await hass.callWS({
-          type: "history/history_during_period", start_time: new Date(end - 5 * 86400e3).toISOString(),
-          end_time: end.toISOString(), entity_ids: ids, minimal_response: true, no_attributes: true,
-        });
-        ids.forEach((id) => { data.soil[id] = this._points(h[id]); });
-      }
-      if (outIds.length) {
-        const h = await hass.callWS({
-          type: "history/history_during_period", start_time: new Date(end - 86400e3).toISOString(),
-          end_time: end.toISOString(), entity_ids: outIds, minimal_response: true, no_attributes: true,
-        });
-        outIds.forEach((id) => { data.outdoor[id] = this._points(h[id]); });
-      }
-    } catch (e) { /* storico non disponibile */ }
-    try {
-      const cal = map.system.calendar;
-      if (cal && this._wantLog()) {
-        const start = new Date(end - 14 * 86400e3).toISOString();
-        const stop = new Date(end.getTime() + 8 * 86400e3).toISOString();
-        data.events = await hass.callApi("GET", `calendars/${cal}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
-      }
-    } catch (e) { /* calendario non disponibile */ }
+    const key = this._cacheKey(map);
+    const cached = DATA_CACHE.get(key);
+    // Si mostra subito: con gli ultimi dati se ci sono, altrimenti con "Caricamento…"
+    const data = cached ? { ...cached, loading: false } : { water: [], soil: {}, outdoor: {}, loading: true };
     this._data = data;
     this._render(map);
+    let pending = 0;
+    const done = () => {
+      if (--pending > 0) { this._render(map); return; }
+      data.loading = false;
+      DATA_CACHE.set(key, { ...data });
+      this._render(map);
+    };
+    // Le richieste partono insieme e ogni grafico compare appena è pronto
+    const run = (job) => { pending++; job().catch(() => {}).finally(done); };
+    if (this._wantCharts() && map.system.water_total) run(async () => {
+      const start = new Date(end); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
+      const stats = await hass.callWS({
+        type: "recorder/statistics_during_period", start_time: start.toISOString(), end_time: end.toISOString(),
+        statistic_ids: [map.system.water_total], period: "day", types: ["change"],
+      });
+      const rows = stats[map.system.water_total] || [];
+      const water = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(start); day.setDate(start.getDate() + i);
+        const row = rows.find((r) => new Date(r.start).toDateString() === day.toDateString());
+        water.push({ day, value: row && row.change ? Math.max(0, row.change) : 0 });
+      }
+      data.water = water;
+    });
+    const ids = this._wantCharts() ? map.zones.map((z) => z.moisture).filter(Boolean) : [];
+    if (ids.length) run(async () => {
+      const h = await hass.callWS({
+        type: "history/history_during_period", start_time: new Date(end - 5 * 86400e3).toISOString(),
+        end_time: end.toISOString(), entity_ids: ids, minimal_response: true, no_attributes: true,
+      });
+      data.soil = Object.fromEntries(ids.map((id) => [id, this._points(h[id])]));
+    });
+    const outIds = this._wantCharts() ? [map.temperature, map.humidity].filter(Boolean) : [];
+    if (outIds.length) run(async () => {
+      const h = await hass.callWS({
+        type: "history/history_during_period", start_time: new Date(end - 86400e3).toISOString(),
+        end_time: end.toISOString(), entity_ids: outIds, minimal_response: true, no_attributes: true,
+      });
+      data.outdoor = Object.fromEntries(outIds.map((id) => [id, this._points(h[id])]));
+    });
+    const cal = map.system.calendar;
+    if (cal && this._wantLog()) run(async () => {
+      const start = new Date(end - 14 * 86400e3).toISOString();
+      const stop = new Date(end.getTime() + 8 * 86400e3).toISOString();
+      data.events = await hass.callApi("GET", `calendars/${cal}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
+    });
+    if (!pending) { data.loading = false; this._render(map); }
   }
 
   _log(events, t) {
@@ -621,7 +643,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
   }
 
   _area(points, opts) {
-    if (points.length < 1) return `<div class="empty">${opts.empty}</div>`;
+    if (points.length < 1) return `<div class="empty ${opts.empty === this._t().loading ? "loading" : ""}">${opts.empty}</div>`;
     const W = 320, H = 120, pad = 4, t0 = opts.start, t1 = opts.end;
     const vals = points.map((p) => p.v);
     const min = opts.min !== undefined ? opts.min : Math.min(...vals) - 1;
@@ -657,21 +679,22 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
 
   _render(map) {
     const t = this._t();
-    const d = this._data || { water: [], soil: {}, outdoor: {} };
+    const d = this._data || { water: [], soil: {}, outdoor: {}, loading: true };
     const now = Date.now();
+    const none = d.loading ? t.loading : t.noData;
     const soil = map.zones.filter((z) => z.moisture).map((z) => {
       const cur = this._num(z.moisture);
       return `<div class="tile chart" style="cursor:default">
         <div class="ctitle">${t.soil} – ${z.name}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
         ${this._area(d.soil[z.moisture] || [], {
-          start: now - 5 * 86400e3, end: now, min: 0, max: 100, empty: t.noData, unit: "%", yLabels: [25, 50],
+          start: now - 5 * 86400e3, end: now, min: 0, max: 100, empty: none, unit: "%", yLabels: [25, 50],
           thresholds: [[0, "#f44336"], [25, "#4caf50"], [50, "#2196f3"]],
         })}</div>`;
     }).join("");
     let outdoor = "";
     if (map.temperature || map.humidity) {
       const tv = this._num(map.temperature), hv = this._num(map.humidity);
-      const temp = map.temperature ? this._area(d.outdoor[map.temperature] || [], { start: now - 86400e3, end: now, color: "#ff9800", empty: t.noData }) : "";
+      const temp = map.temperature ? this._area(d.outdoor[map.temperature] || [], { start: now - 86400e3, end: now, color: "#ff9800", empty: none }) : "";
       const hum = map.humidity ? this._area(d.outdoor[map.humidity] || [], { start: now - 86400e3, end: now, color: "#03a9f4", empty: "", min: 0, max: 100, fillOpacity: 0, dashed: true }) : "";
       outdoor = `<div class="tile chart" style="cursor:default">
         <div class="ctitle">${t.outdoor}${tv !== null ? ` · ${this._fmt(tv)} °C` : ""}${hv !== null ? ` · ${Math.round(hv)}%` : ""}</div>
@@ -685,7 +708,8 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       <div class="stat"><div class="k">${t.today}</div><div class="v">${lit(map.system.water_today)}</div></div>
       <div class="stat"><div class="k">${t.month}</div><div class="v">${lit(map.system.water_month)}</div></div>
       <div class="stat"><div class="k">${t.total}</div><div class="v">${lit(map.system.water_total)}</div></div></div>`;
-    const bars = total ? this._bars(d.water, t) : `<div class="empty">${t.collecting}</div>`;
+    const bars = total ? this._bars(d.water, t)
+      : d.loading ? `<div class="empty loading tall">${t.loading}</div>` : `<div class="empty">${t.collecting}</div>`;
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CHART_STYLE}</style>
       <ha-card><div class="grid">
@@ -717,9 +741,12 @@ class IrrigazioneAiLogCard extends IrrigazioneAiChartsCard {
   _render(map) {
     const t = this._t();
     const d = this._data || {};
+    const body = d.events === undefined && d.loading !== false
+      ? `<div class="tile chart" style="cursor:default"><div class="ctitle">${t.log}</div><div class="empty loading">${t.loading}</div></div>`
+      : this._log(d.events, t);
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CHART_STYLE}</style>
-      <ha-card><div class="grid">${this._log(d.events, t)}</div></ha-card>`;
+      <ha-card><div class="grid">${body}</div></ha-card>`;
     this._bindLog();
   }
 }
@@ -772,14 +799,18 @@ class IrrigazioneAiMoistureCard extends IrrigazioneAiChartsCard {
 
   async _loadSoil() {
     const ids = this._items.map((e) => e.entity);
+    const key = ["moisture", this._hours(), ...ids].join("|");
     const end = new Date();
+    this._soil = DATA_CACHE.get(key) || null;
+    this._draw();
     try {
       const h = await this._hass.callWS({
         type: "history/history_during_period", start_time: new Date(end - this._hours() * 3600e3).toISOString(),
         end_time: end.toISOString(), entity_ids: ids, minimal_response: true, no_attributes: true,
       });
       this._soil = Object.fromEntries(ids.map((id) => [id, this._points(h[id])]));
-    } catch (e) { this._soil = {}; }
+      DATA_CACHE.set(key, this._soil);
+    } catch (e) { this._soil = this._soil || {}; }
     this._draw();
   }
 
@@ -796,7 +827,7 @@ class IrrigazioneAiMoistureCard extends IrrigazioneAiChartsCard {
       return `<div class="tile chart" data-more="${it.entity}">
         <div class="ctitle">${this._config.prefix === false ? "" : `${t.soil} – `}${name}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
         ${this._area((this._soil || {})[it.entity] || [], {
-          start: now - this._hours() * 3600e3, end: now, min: 0, max: 100, empty: t.noData, unit: "%",
+          start: now - this._hours() * 3600e3, end: now, min: 0, max: 100, empty: this._soil ? t.noData : t.loading, unit: "%",
           yLabels: [dryAt, 50], thresholds: [[0, "#f44336"], [dryAt, "#4caf50"], [50, "#2196f3"]],
         })}</div>`;
     }).join("");
