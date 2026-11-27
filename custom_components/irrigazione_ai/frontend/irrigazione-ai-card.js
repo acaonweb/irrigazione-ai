@@ -9,11 +9,17 @@
  * Opzioni comuni: entity (sensore "Stato" dell'impianto, facoltativo), title.
  */
 
-const CARD_VERSION = "0.16.2";
+const CARD_VERSION = "0.16.3";
 
 // Ultimi dati caricati, per card (sopravvive al cambio di vista/dashboard):
 // la card si mostra subito con questi e intanto si aggiorna.
 const DATA_CACHE = new Map();
+
+// Ogni valore che non è testo fisso della card (nomi, titoli, motivi dell'AI,
+// errori dei provider, eventi del calendario, id delle entità) passa da qui
+// prima di finire nell'HTML: < > & " ' diventano testo, non markup.
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = (v) => (v === null || v === undefined ? "" : String(v)).replace(/[&<>"']/g, (c) => ESC[c]);
 
 const TEXT = {
   it: {
@@ -314,8 +320,8 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     else if (a.observing) info = t.learnWatching;
     else if (!a.samples) info = t.learnNew;
     else info = `×${Number(a.factor).toLocaleString(this._lang(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${a.samples} ${t.learnCycles}${a.last_peak != null ? ` · ${Math.round(a.last_peak)}% → ${Math.round(a.target)}%` : ""}`;
-    return `<div class="learn"><div class="ltxt"><b>🧠 ${t.learn}</b><small>${info}</small></div>
-      <button class="sw ${on ? "on" : ""}" data-toggle="${z.learning}" ${a.has_sensor || on ? "" : "disabled"} aria-label="${t.learn}"></button></div>`;
+    return `<div class="learn"><div class="ltxt"><b>🧠 ${t.learn}</b><small>${esc(info)}</small></div>
+      <button class="sw ${on ? "on" : ""}" data-toggle="${esc(z.learning)}" ${a.has_sensor || on ? "" : "disabled"} aria-label="${t.learn}"></button></div>`;
   }
 
   _zoneTile(z, i, t, battery, count) {
@@ -340,10 +346,10 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const bat = battery ? this._num(battery) : null;
     if (bat !== null) chips.push(`<span class="chip">${bat > 80 ? "🟢" : bat > 40 ? "🟡" : "🔴"} ${t.battery} ${Math.round(bat)}%</span>`);
     return `
-      <div class="tile ${this._span(i, count)} ${glow} ${on ? "spray" : ""}" data-valve="${z.valve}" data-on="${on ? 1 : 0}">
+      <div class="tile ${this._span(i, count)} ${glow} ${on ? "spray" : ""}" data-valve="${esc(z.valve)}" data-on="${on ? 1 : 0}">
         <div class="row">
           <div class="shape" style="--ia-c:${on ? "var(--ia-blue)" : "#9e9e9e"}"><ha-icon icon="mdi:sprinkler"></ha-icon></div>
-          <div class="txt wrap"><div class="primary">${t.zone} ${i + 1} – ${z.name}</div><div class="secondary">${secondary}</div></div>
+          <div class="txt wrap"><div class="primary">${t.zone} ${i + 1} – ${esc(z.name)}</div><div class="secondary">${esc(secondary)}</div></div>
         </div>
         ${chips.length ? `<div class="chips">${chips.join("")}</div>` : ""}
       </div>`;
@@ -375,7 +381,7 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
     const timer = this._s(sys.manual_timer);
     const timerIcons = { off: "mdi:timer-check", 15: "mdi:fast-forward-15", 30: "mdi:fast-forward-30", 60: "mdi:fast-forward-60" };
     const timerBtns = timer ? timer.attributes.options.map((o) => `
-      <button class="btn ${o === timer.state ? "on" : ""}" data-select="${sys.manual_timer}" data-option="${o}">
+      <button class="btn ${o === timer.state ? "on" : ""}" data-select="${esc(sys.manual_timer)}" data-option="${esc(o)}">
         <ha-icon icon="${timerIcons[o] || "mdi:timer"}"></ha-icon></button>`).join("") : "";
 
     const dname = (d) => t.days[d] || d;
@@ -392,21 +398,21 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       const nextIso = st.attributes.next_run;
       let info = nextIso ? `${t.nextShort} ${this._time(nextIso, true)}` : (mode === "off" ? t.zoneOff : t.noDays);
       const modes = modeBtns.map(([m, label, icon]) => `
-        <button class="btn ${m === mode ? "on" : ""}" data-sched="${z.schedule}" data-mode="${m}">
+        <button class="btn ${m === mode ? "on" : ""}" data-sched="${esc(z.schedule)}" data-mode="${m}">
           <ha-icon icon="${icon}"></ha-icon><span>${label}</span></button>`).join("");
       let dayRow;
       if (mode === "alternate") {
         const from = st.attributes.alternate_from
           ? this._dm(new Date(st.attributes.alternate_from + "T12:00:00")) : "";
-        dayRow = `<div class="salt">↔ ${t.altFrom} ${from}</div>`;
+        dayRow = `<div class="salt">↔ ${t.altFrom} ${esc(from)}</div>`;
       } else {
         const active = mode === "daily" ? WEEK : (mode === "days" ? days : []);
         dayRow = `<div class="wdays ${mode === "days" ? "" : "dim"}">${WEEK.map((d) => `
-          <button class="wday ${active.includes(d) ? "on" : ""}" data-sched="${z.schedule}" data-day="${d}"
-            data-mode-now="${mode}" data-days="${active.join(",")}">${dname(d)}</button>`).join("")}</div>`;
+          <button class="wday ${active.includes(d) ? "on" : ""}" data-sched="${esc(z.schedule)}" data-day="${d}"
+            data-mode-now="${esc(mode)}" data-days="${esc(active.join(","))}">${dname(d)}</button>`).join("")}</div>`;
       }
       return `<div class="tile span12 sched">
-        <div class="shead"><span class="sname">${t.zone} ${i + 1} – ${z.name}</span><span class="snext">${info}</span></div>
+        <div class="shead"><span class="sname">${t.zone} ${i + 1} – ${esc(z.name)}</span><span class="snext">${esc(info)}</span></div>
         <div class="modes">${modes}</div>${dayRow}${this._learnRow(z, t)}</div>`;
     }).join("");
 
@@ -414,9 +420,9 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       const id = aiOn ? z.ai : z.duration;
       const v = this._num(id);
       const label = v === null ? "–" : (aiOn && v === 0 ? t.skip : `${v} ${t.min}`);
-      return `<div class="tile ${this._span(i, map.zones.length)}" data-more="${id}"><div class="row">
+      return `<div class="tile ${this._span(i, map.zones.length)}" data-more="${esc(id)}"><div class="row">
         <div class="shape" style="--ia-c:${aiOn ? "#ffa000" : "var(--ia-blue)"}"><ha-icon icon="mdi:${aiOn ? "robot" : "sprinkler"}"></ha-icon></div>
-        <div class="txt"><div class="secondary">${t.zone} ${i + 1} – ${z.name}</div><div class="value">${label}</div></div></div></div>`;
+        <div class="txt"><div class="secondary">${t.zone} ${i + 1} – ${esc(z.name)}</div><div class="value">${esc(label)}</div></div></div></div>`;
     }).join("");
 
     let aiBox = "";
@@ -425,31 +431,31 @@ class IrrigazioneAiCard extends IrrigazioneAiBase {
       const state = d ? d.state : "unknown";
       const reason = d ? (d.attributes.reason || d.attributes.error || "") : "";
       aiBox = `<div class="tile span12" style="cursor:default"><div class="row" style="align-items:flex-start">
-        <div class="md txt"><b>${t.aiTitle}: ${t.decision[state] || t.decision.unknown}</b>${reason}</div>
-        <button class="mini" data-press="${sys.analyze}">${t.analyze}</button></div></div>`;
+        <div class="md txt"><b>${t.aiTitle}: ${t.decision[state] || t.decision.unknown}</b>${esc(reason)}</div>
+        <button class="mini" data-press="${esc(sys.analyze)}">${t.analyze}</button></div></div>`;
     }
 
-    const remainingTile = running ? `<div class="tile span12" data-more="${sys.remaining}"><div class="row">
+    const remainingTile = running ? `<div class="tile span12" data-more="${esc(sys.remaining)}"><div class="row">
       <div class="shape" style="--ia-c:var(--ia-blue)"><ha-icon icon="mdi:timer-sand"></ha-icon></div>
       <div class="txt"><div class="secondary">${t.remaining}</div><div class="value">${remaining === null ? "–" : remaining + " " + t.min}</div></div></div></div>` : "";
 
     const aiReady = aiSw && aiSw.state !== "unavailable";
     const aiButton = aiReady
-      ? `<button class="yellow ${aiOn ? "on" : ""}" data-toggle="${sys.ai_analysis}"><ha-icon icon="mdi:robot"></ha-icon>${t.ai}</button>`
+      ? `<button class="yellow ${aiOn ? "on" : ""}" data-toggle="${esc(sys.ai_analysis)}"><ha-icon icon="mdi:robot"></ha-icon>${t.ai}</button>`
       : `<button class="yellow setup" data-setup="1"><span><ha-icon icon="mdi:robot"></ha-icon> ${t.ai}</span><small>${t.setup}</small></button>`;
     const showSide = true;
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CONTROL_STYLE}</style>
       <ha-card><div class="grid">
-        <div class="tile ${showSide ? "span9" : "span12"} ${running ? "glow-blue" : ""}" data-toggle="${sys.irrigation}" style="min-height:120px">
+        <div class="tile ${showSide ? "span9" : "span12"} ${running ? "glow-blue" : ""}" data-toggle="${esc(sys.irrigation)}" style="min-height:120px">
           <div class="row vertical">
             <div class="shape" style="--ia-c:${running ? "var(--ia-blue)" : "#9e9e9e"}"><ha-icon icon="mdi:water-pump"></ha-icon></div>
-            <div class="txt"><div class="primary">${this._config.title || t.general}</div><div class="secondary">${secondary}</div></div>
+            <div class="txt"><div class="primary">${esc(this._config.title || t.general)}</div><div class="secondary">${esc(secondary)}</div></div>
           </div>
         </div>
         ${showSide ? `<div class="span3 stack">
           ${aiButton}
-          ${rain ? `<button class="yellow ${rain.state === "on" ? "on" : ""}" data-toggle="${sys.rain_block}"><ha-icon icon="mdi:weather-rainy"></ha-icon>${t.rain}</button>` : ""}
+          ${rain ? `<button class="yellow ${rain.state === "on" ? "on" : ""}" data-toggle="${esc(sys.rain_block)}"><ha-icon icon="mdi:weather-rainy"></ha-icon>${t.rain}</button>` : ""}
         </div>` : ""}
         ${map.zones.map((z, i) => this._zoneTile(z, i, t, batteries[i], map.zones.length)).join("")}
         ${timer ? `<div class="btns span12" style="grid-template-columns:repeat(${timer.attributes.options.length},1fr)">${timerBtns}</div>` : ""}
@@ -578,7 +584,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
     if (cal && this._wantLog()) run(async () => {
       const start = new Date(end - 14 * 86400e3).toISOString();
       const stop = new Date(end.getTime() + 8 * 86400e3).toISOString();
-      data.events = await hass.callApi("GET", `calendars/${cal}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
+      data.events = await hass.callApi("GET", `calendars/${encodeURIComponent(cal)}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(stop)}`);
     });
     if (!pending) { data.loading = false; this._render(map); }
   }
@@ -610,13 +616,13 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       const detail = (e.description || "").split("\n").filter((x) => !/^(Totale|Total):/.test(x)).join("\n");
       const key = `${e.uid || ""}${s}`;
       const open = this._openEv.has(key);
-      return `<div class="ev c ${future ? "future" : ""} ${open ? "open" : ""}" data-ev="${key}">
+      return `<div class="ev c ${future ? "future" : ""} ${open ? "open" : ""}" data-ev="${esc(key)}">
         <div class="ico">${future ? "📅" : icon(e)}</div>
-        <div class="body"><div class="t1">${e.summary}</div></div>
+        <div class="body"><div class="t1">${esc(e.summary)}</div></div>
         <div class="when">${fmt(s)}${future && mins > 1 ? ` · ${mins} ${t.min || "min"}` : ""}</div>
         <div class="lit">${l !== null && l > 0 ? `${this._fmt(l)} L` : ""}</div>
         <div class="chev">${detail ? "›" : ""}</div>
-        ${open && detail ? `<div class="det">${detail}</div>` : ""}</div>`;
+        ${open && detail ? `<div class="det">${esc(detail)}</div>` : ""}</div>`;
     };
     const rows = this._config.log_rows || 3;
     const shown = this._logAll ? past : past.slice(0, rows);
@@ -688,7 +694,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       paint = `url(#${id})`;
     }
     const grid = (opts.yLabels || []).map((v) => `<line x1="${pad}" x2="${W - pad}" y1="${y(v)}" y2="${y(v)}" stroke="var(--divider-color)" stroke-dasharray="3 3"/>
-      <text class="axis" x="${W - 2}" y="${y(v) - 2}" text-anchor="end">${v}${opts.unit || ""}</text>`).join("");
+      <text class="axis" x="${W - 2}" y="${y(v) - 2}" text-anchor="end">${esc(v)}${esc(opts.unit)}</text>`).join("");
     return `<svg viewBox="0 0 ${W} ${H}">${defs}${grid}
       <path d="${area}" fill="${paint}" opacity="${opts.fillOpacity !== undefined ? opts.fillOpacity : 0.25}"/>
       <path d="${d}" fill="none" stroke="${paint}" stroke-width="2" ${opts.dashed ? 'stroke-dasharray="4 3"' : ""}/></svg>`;
@@ -702,7 +708,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
     const soil = map.zones.filter((z) => z.moisture).map((z) => {
       const cur = this._num(z.moisture);
       return `<div class="tile chart" style="cursor:default">
-        <div class="ctitle">${t.soil} – ${z.name}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
+        <div class="ctitle">${t.soil} – ${esc(z.name)}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
         ${this._area(d.soil[z.moisture] || [], {
           start: now - 5 * 86400e3, end: now, min: 0, max: 100, empty: none, unit: "%", yLabels: [25, 50],
           thresholds: [[0, "#f44336"], [25, "#4caf50"], [50, "#2196f3"]],
@@ -732,7 +738,7 @@ class IrrigazioneAiChartsCard extends IrrigazioneAiBase {
       <ha-card><div class="grid">
         ${stats}
         <div class="tile chart" style="cursor:default">
-          <div class="ctitle">${this._config.title || t.water7}${total ? ` · ${this._fmt(total)} L` : ""}</div>
+          <div class="ctitle">${esc(this._config.title || t.water7)}${total ? ` · ${this._fmt(total)} L` : ""}</div>
           ${bars}</div>
         ${outdoor}
         ${soil}
@@ -841,8 +847,8 @@ class IrrigazioneAiMoistureCard extends IrrigazioneAiChartsCard {
       const st = this._s(it.entity);
       const name = it.name || (st && st.attributes.friendly_name) || it.entity;
       const cur = this._num(it.entity);
-      return `<div class="tile chart" data-more="${it.entity}">
-        <div class="ctitle">${this._config.prefix === false ? "" : `${t.soil} – `}${name}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
+      return `<div class="tile chart" data-more="${esc(it.entity)}">
+        <div class="ctitle">${this._config.prefix === false ? "" : `${t.soil} – `}${esc(name)}${cur !== null ? ` · ${Math.round(cur)}%` : ""}</div>
         ${this._area((this._soil || {})[it.entity] || [], {
           start: now - this._hours() * 3600e3, end: now, min: 0, max: 100, empty: this._soil ? t.noData : t.loading, unit: "%",
           yLabels: [dryAt, 50], thresholds: [[0, "#f44336"], [dryAt, "#4caf50"], [50, "#2196f3"]],
@@ -851,7 +857,7 @@ class IrrigazioneAiMoistureCard extends IrrigazioneAiChartsCard {
     this.shadowRoot.innerHTML = `
       <style>${BASE_STYLE}${CHART_STYLE}</style>
       <ha-card><div class="grid">
-        ${this._config.title ? `<div class="sec-title">${this._config.title}</div>` : ""}
+        ${this._config.title ? `<div class="sec-title">${esc(this._config.title)}</div>` : ""}
         ${charts}
       </div></ha-card>`;
     this.shadowRoot.querySelectorAll("[data-more]").forEach((el) => el.addEventListener("click", () => {
