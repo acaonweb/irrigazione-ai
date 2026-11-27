@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml"><img src="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml/badge.svg" alt="Validate"></a>
   <img src="https://img.shields.io/badge/Home%20Assistant-2025.8%2B-41BDF5?logo=home-assistant&logoColor=white" alt="Home Assistant 2025.8+">
-  <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-custom-orange" alt="Marketplace / HACS">
+  <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-default-41BDF5" alt="Marketplace / HACS">
   <img src="https://img.shields.io/badge/lingue-IT%20%7C%20EN-blue" alt="Italiano e inglese">
   <img src="https://img.shields.io/badge/licenza-MIT-green" alt="MIT">
   <a href="https://buymeacoffee.com/acaonweb"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-acaonweb-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
@@ -158,10 +158,9 @@ flowchart LR
 Il pulsante apre la pagina di Irrigazione AI direttamente nel tuo Home Assistant. In alternativa:
 
 1. In Home Assistant apri **Impostazioni → Marketplace** (prima della 2026.11: **HACS**) e cerca **Irrigazione AI**.
-2. Se non compare, l'integrazione non è ancora nel catalogo ufficiale (la richiesta è in revisione): usa **Aggiungi da link** → `https://github.com/acaonweb/irrigazione-ai`, categoria *Integrazione*.
-3. Installa **Irrigazione AI** e riavvia Home Assistant.
-4. **Impostazioni → Dispositivi e servizi → Aggiungi integrazione → Irrigazione AI.**
-5. Segui il wizard (sotto trovi la guida campo per campo), poi aggiungi le card a una dashboard.
+2. Installa **Irrigazione AI** e riavvia Home Assistant.
+3. **Impostazioni → Dispositivi e servizi → Aggiungi integrazione → Irrigazione AI.**
+4. Segui il wizard (sotto trovi la guida campo per campo), poi aggiungi le card a una dashboard.
 
 ## 📖 Guida pratica
 

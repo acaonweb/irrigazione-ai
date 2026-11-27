@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml"><img src="https://github.com/acaonweb/irrigazione-ai/actions/workflows/validate.yml/badge.svg" alt="Validate"></a>
   <img src="https://img.shields.io/badge/Home%20Assistant-2025.8%2B-41BDF5?logo=home-assistant&logoColor=white" alt="Home Assistant 2025.8+">
-  <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-custom-orange" alt="Marketplace / HACS">
+  <img src="https://img.shields.io/badge/Marketplace%20%2F%20HACS-default-41BDF5" alt="Marketplace / HACS">
   <img src="https://img.shields.io/badge/languages-IT%20%7C%20EN-blue" alt="Italian and English">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
   <a href="https://buymeacoffee.com/acaonweb"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-acaonweb-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
@@ -160,10 +160,9 @@ flowchart LR
 The button opens the Irrigazione AI page right in your Home Assistant. Otherwise:
 
 1. In Home Assistant open **Settings → Marketplace** (before 2026.11: **HACS**) and search for **Irrigazione AI**.
-2. If it doesn't show up, it isn't in the official catalog yet (the request is under review): use **Add from link** → `https://github.com/acaonweb/irrigazione-ai`, category *Integration*.
-3. Install **Irrigazione AI** and restart Home Assistant.
-4. **Settings → Devices & services → Add integration → Irrigazione AI.**
-5. Follow the wizard (the field-by-field guide is below), then add the cards to a dashboard.
+2. Install **Irrigazione AI** and restart Home Assistant.
+3. **Settings → Devices & services → Add integration → Irrigazione AI.**
+4. Follow the wizard (the field-by-field guide is below), then add the cards to a dashboard.
 
 ## 📖 Practical guide
 
