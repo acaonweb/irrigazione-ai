@@ -250,7 +250,29 @@ If the sensor stops responding (unavailable), the integration falls back to the 
 | **Frost: don't water below** | 3 °C | Outdoor temperature (sensor or weather) and the next 3 hours of forecast | Empty field |
 | **Strong wind: don't water above** | 30 km/h | Wind sensor, or the weather entity's wind if the sensor is missing or not responding | 0 km/h |
 
-The rain expected check follows the *Rain block* switch, like the rain falling now; frost and wind are always active as long as they have a threshold. If a datum is missing (no hourly forecast, no wind, no temperature) that check is **skipped** and watering goes ahead. Every skipped cycle is in the calendar with the reason, and you get a notification. `irrigazione_ai.start` with `force: true` ignores all these blocks.
+The rain expected check follows the *Rain block* switch, like the rain falling now; frost and wind are always active as long as they have a threshold. If a datum is missing (no hourly forecast, no wind, no temperature) that check is **skipped** and watering goes ahead. Every skipped cycle is in the calendar with the reason, and you get a notification.
+
+#### Watering anyway, despite a block
+
+When you start from the card (main tile or *Irrigation* switch) the blocks always apply. If you've decided you want to water this time anyway, you have three options.
+
+**1. A full cycle, ignoring the blocks.** The `irrigazione_ai.start` action has a `force` option: with `force: true` the cycle starts even if it's raining, rain is expected, it's freezing or the wind is strong. It applies to that start only; the thresholds stay as they are.
+
+- From the menu: **Tools → Actions** (before 2026.8: *Developer tools → Actions*), pick **Irrigazione AI: Start irrigation**, turn on **Ignore weather blocks** and press **Perform action**. You can also give a **Duration** in minutes for every zone; leave it empty and the formula or the AI decide.
+- In YAML, in an automation or a script:
+
+```yaml
+action: irrigazione_ai.start
+data:
+  force: true
+  duration: 15   # optional: minutes for each zone
+```
+
+- **A button on the dashboard:** create a script with the action above (*Settings → Automations & scenes → Scripts → Add script*, then *Edit in YAML*), then add a *Button* card that runs it.
+
+**2. One zone, right now.** Tap the zone's tile on the card: the valve opens without any weather check and closes by itself after the *safety close* minutes. Tap it again to close it earlier. Handy for a quick watering of a single pot.
+
+**3. If the block triggers too often,** don't force it every time: change the thresholds in *Settings → Devices & services → Irrigazione AI → Configure*, *Scheduling* step. An empty frost field, wind at 0 or rain expected at 0 hours turns the matching check off.
 
 ### 3c. Time and date format
 
@@ -439,7 +461,7 @@ When you're ready: **turn off** (don't delete) your automations, re-enable the t
 | *AI duration* is empty | The AI hasn't analyzed anything yet: press *Analyze now* |
 | The rain block never triggers | You need a rain sensor or a weather entity, and at start time they must indicate rain (sensor on or > 0; weather `rainy`, `pouring`…). The reason for every block is in the calendar |
 | The rain block triggers even when it's not raining | The weather is a forecast for your area: add your own rain sensor, which takes precedence. If the reason is "rain expected", lower *Rain expected within* or set it to 0 |
-| Skipped for frost or wind but I want to water | Change the thresholds in the options (empty frost field or wind 0 turns them off), or start with `force: true` |
+| Skipped for rain, frost or wind but I want to water | Start with `force: true` from *Tools → Actions*, or tap the zone's tile to open it right away: see [Watering anyway](#watering-anyway-despite-a-block) |
 | Self-learning doesn't change the factor | It needs a moisture sensor, a cycle with formula or AI (not a fixed timer) and 3 hours without rain after watering. The card shows what it's doing |
 | Liters stay at 0 | Check the zone's flow rate: with 0 L/min liters are always 0 |
 | "Failed to set up" after an update | *Settings → System → Logs*, search for `irrigazione_ai` and open an [issue](https://github.com/acaonweb/irrigazione-ai/issues) with the message |

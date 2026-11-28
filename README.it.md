@@ -248,7 +248,29 @@ Se il sensore smette di rispondere (non disponibile), l'integrazione torna a usa
 | **Gelo: non irrigare sotto** | 3 °C | Temperatura esterna (sensore o meteo) e le prossime 3 ore di previsione | Campo vuoto |
 | **Vento forte: non irrigare sopra** | 30 km/h | Sensore vento, oppure il vento dell'entità meteo se il sensore manca o non risponde | 0 km/h |
 
-La pioggia prevista segue l'interruttore *Blocco pioggia*, come la pioggia in corso; gelo e vento sono sempre attivi finché hanno una soglia. Se un dato manca (niente previsioni orarie, niente vento, niente temperatura) quel controllo **si salta** e l'irrigazione va avanti. Ogni ciclo saltato finisce nel calendario con il motivo e arriva una notifica. `irrigazione_ai.start` con `force: true` ignora tutti questi blocchi.
+La pioggia prevista segue l'interruttore *Blocco pioggia*, come la pioggia in corso; gelo e vento sono sempre attivi finché hanno una soglia. Se un dato manca (niente previsioni orarie, niente vento, niente temperatura) quel controllo **si salta** e l'irrigazione va avanti. Ogni ciclo saltato finisce nel calendario con il motivo e arriva una notifica.
+
+#### Irrigare lo stesso, nonostante un blocco
+
+Avviando dalla card (riquadro principale o interruttore *Irrigazione*) i blocchi valgono sempre. Se hai deciso che stavolta vuoi irrigare comunque, hai tre strade.
+
+**1. Un ciclo intero, ignorando i blocchi.** L'azione `irrigazione_ai.start` ha l'opzione `force`: con `force: true` il ciclo parte anche se piove, se è prevista pioggia, se gela o se c'è vento forte. Vale solo per quella partenza; le soglie restano come sono.
+
+- Dal menu: **Strumenti → Azioni** (prima della 2026.8: *Strumenti per sviluppatori → Azioni*), scegli **Irrigazione AI: Avvia irrigazione**, attiva **Ignora i blocchi meteo** e premi **Esegui azione**. Puoi anche indicare una **Durata** in minuti per tutte le zone; se la lasci vuota decidono formula o AI.
+- In YAML, in un'automazione o in uno script:
+
+```yaml
+action: irrigazione_ai.start
+data:
+  force: true
+  duration: 15   # facoltativo: minuti per ogni zona
+```
+
+- **Un pulsante nella dashboard:** crea uno script con l'azione qui sopra (*Impostazioni → Automazioni e scene → Script → Aggiungi script*, poi *Modifica in YAML*), quindi aggiungi alla dashboard una card *Pulsante* che lo esegue.
+
+**2. Una sola zona, subito.** Tocca il riquadro della zona nella card: la valvola si apre senza controlli meteo e si richiude da sola dopo i minuti della *chiusura di sicurezza*. Toccala di nuovo per chiuderla prima. È l'ideale per una bagnata veloce a un vaso.
+
+**3. Se il blocco scatta troppo spesso,** non forzarlo ogni volta: cambia le soglie in *Impostazioni → Dispositivi e servizi → Irrigazione AI → Configura*, passo *Programmazione*. Un campo del gelo vuoto, vento a 0 o pioggia prevista a 0 ore spengono il controllo corrispondente.
 
 ### 3 ter. Formato di orari e date
 
@@ -437,7 +459,7 @@ Quando sei pronto: **spegni** (non cancellare) le tue automazioni, riattiva le d
 | Le *Durate AI* sono vuote | L'AI non ha ancora analizzato nulla: premi *Analizza ora* |
 | Il blocco pioggia non scatta mai | Serve un sensore pioggia o un'entità meteo, e al momento dell'avvio devono indicare pioggia (sensore acceso o > 0; meteo `rainy`, `pouring`…). Il motivo di ogni blocco è nel calendario |
 | Il blocco pioggia scatta anche quando non piove | Il meteo è una previsione per la zona: aggiungi un tuo sensore pioggia, che ha la precedenza. Se il motivo è "pioggia prevista", abbassa *Pioggia prevista entro* o mettila a 0 |
-| Saltata per gelo o vento ma voglio irrigare | Cambia le soglie nelle opzioni (gelo vuoto o vento 0 le spengono), oppure avvia con `force: true` |
+| Saltata per pioggia, gelo o vento ma voglio irrigare | Avvia con `force: true` da *Strumenti → Azioni*, oppure tocca il riquadro della zona per aprirla subito: vedi [Irrigare lo stesso](#irrigare-lo-stesso-nonostante-un-blocco) |
 | L'autoapprendimento non cambia il fattore | Servono un sensore di umidità, un ciclo con formula o AI (non un timer fisso) e 3 ore senza pioggia dopo l'irrigazione. La card mostra cosa sta facendo |
 | I litri restano a 0 | Controlla la portata della zona: con 0 L/min i litri sono sempre 0 |
 | "Impossibile configurare" dopo un aggiornamento | *Impostazioni → Sistema → Registri*, cerca `irrigazione_ai` e apri una [issue](https://github.com/acaonweb/irrigazione-ai/issues) con il messaggio |
